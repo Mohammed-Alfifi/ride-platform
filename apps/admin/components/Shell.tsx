@@ -14,10 +14,12 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/drivers', label: t.nav.drivers },
     { href: '/zones', label: t.nav.zones },
     { href: '/plans', label: t.nav.plans },
+    { href: '/subscriptions', label: t.nav.subscriptions },
+    { href: '/payments', label: t.nav.payments },
     { href: '/compliance', label: t.nav.compliance },
     { href: '/partners', label: t.nav.partners },
     { href: '/users', label: t.nav.users },
-  ];
+  ].filter((i) => !(i.href === '/payments' && profile?.role === 'dispatcher'));
 
   async function signOut() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);

@@ -87,6 +87,8 @@ export interface PartnerView {
   tgaLicenseNumber: string | null;
   contactPhone: string | null;
   commissionBps: number;
+  vatNumber: string | null;
+  gatewayAccountId: string | null;
   status: 'active' | 'suspended';
   joinCode: string;
   staffCount: number;
@@ -202,4 +204,52 @@ export interface ExpiringItem {
   expiresAt: string;
   daysLeft: number;
   complianceHold: boolean;
+}
+
+export type SubscriptionStatus = 'pending_payment' | 'active' | 'past_due' | 'paused' | 'cancelled' | 'expired';
+
+export interface AdminSubscription {
+  id: string;
+  status: SubscriptionStatus;
+  riderName: string | null;
+  riderPhone: string;
+  planNameAr: string;
+  planNameEn: string;
+  days: number[];
+  outboundTime: string;
+  returnTime: string | null;
+  priceHalalas: number;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  pausedFrom: string | null;
+  pausedUntil: string | null;
+  partnerId: string;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface AdminPayment {
+  id: string;
+  status: 'initiated' | 'paid' | 'failed';
+  purpose: 'start' | 'renewal';
+  provider: string;
+  amountHalalas: number;
+  platformFeeHalalas: number;
+  partnerShareHalalas: number;
+  failureReason: string | null;
+  paidAt: string | null;
+  createdAt: string;
+  riderName: string | null;
+  riderPhone: string;
+  invoiceId: string | null;
+  invoiceNumber: string | null;
+}
+
+export interface PaymentPage extends Page<AdminPayment> {
+  totals: { paidCount: number; collectedHalalas: number; platformFeeHalalas: number; partnerShareHalalas: number };
 }

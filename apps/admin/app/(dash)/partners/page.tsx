@@ -10,6 +10,7 @@ export default function PartnersPage() {
   const { t, lang, profile, notify } = useApp();
   const isSuper = profile?.role === 'super_admin';
   const [adding, setAdding] = useState(false);
+  const [billing, setBilling] = useState<PartnerView | null>(null);
   const { data, error, loading, reload } = useLoad(() => api<PartnerView[]>('admin/partners'), []);
 
   async function create(form: FormData) {
@@ -23,10 +24,25 @@ export default function PartnersPage() {
         crNumber: text('crNumber') || undefined,
         tgaLicenseNumber: text('tgaLicenseNumber') || undefined,
         commissionBps: Math.round(pct * 100),
+        vatNumber: text('vatNumber') || undefined,
       },
     });
     setAdding(false);
     notify(t.partners.created);
+    await reload();
+  }
+
+  async function saveBilling(form: FormData) {
+    if (!billing) return;
+    const text = (k: string) => String(form.get(k) ?? '').trim();
+    const body: Record<string, unknown> = { commissionBps: Math.round(Number(text('commission') || '0') * 100) };
+    // Empty fields are left as they are; the API keeps the previous value.
+    if (text('legalName')) body.legalName = text('legalName');
+    if (text('vatNumber')) body.vatNumber = text('vatNumber');
+    if (text('gatewayAccountId')) body.gatewayAccountId = text('gatewayAccountId');
+    await api(`admin/partners/${billing.id}`, { method: 'PATCH', body });
+    setBilling(null);
+    notify(t.partners.updated);
     await reload();
   }
 
@@ -66,6 +82,7 @@ export default function PartnersPage() {
                   <th scope="col">{t.partners.license}</th>
                   <th scope="col">{t.partners.joinCode}</th>
                   <th scope="col">{t.partners.commission}</th>
+                  <th scope="col">{t.partners.vat}</th>
                   <th scope="col">{t.partners.staff}</th>
                   <th scope="col">{t.partners.status}</th>
                   {isSuper && <th scope="col"><span className="visually-hidden">{t.partners.status}</span></th>}
@@ -84,12 +101,16 @@ export default function PartnersPage() {
                       <code className="join-code">{p.joinCode}</code>
                     </td>
                     <td className="num">{formatBps(p.commissionBps)}</td>
+                    <td className="num">{p.vatNumber ?? <span className="sub">{t.partners.notRegistered}</span>}</td>
                     <td className="num">{p.staffCount}</td>
                     <td>
                       <StatusBadge status={p.status} />
                     </td>
                     {isSuper && (
                       <td className="actions">
+                        <button type="button" className="btn btn-link" onClick={() => setBilling(p)}>
+                          {t.partners.editBilling}
+                        </button>
                         <button
                           type="button"
                           className={`btn btn-link${p.status === 'active' ? ' btn-danger' : ''}`}
@@ -153,6 +174,73 @@ export default function PartnersPage() {
           />
           <span className="hint" id="commission-hint">
             {t.partners.commissionHint}
+          </span>
+        </div>
+        <div className="field">
+          <label htmlFor="vatNumber">
+            {t.partners.vat} ({t.common.optional})
+          </label>
+          <input id="vatNumber" name="vatNumber" className="input num" inputMode="numeric" pattern="3\d{13}3" maxLength={15} aria-describedby="vat-hint" />
+          <span className="hint" id="vat-hint">
+            {t.partners.vatHint}
+          </span>
+        </div>
+      </FormDialog>
+
+      <FormDialog
+        key={billing?.id ?? 'none'}
+        open={billing !== null}
+        title={`${t.partners.billing}: ${billing ? (lang === 'ar' ? billing.nameAr : billing.nameEn) : ''}`}
+        submitLabel={t.partners.save}
+        onClose={() => setBilling(null)}
+        onSubmit={saveBilling}
+      >
+        <div className="field">
+          <label htmlFor="b-legal">{t.partners.legalName}</label>
+          <input id="b-legal" name="legalName" className="input" maxLength={200} defaultValue={billing?.legalName ?? ''} />
+        </div>
+        <div className="field">
+          <label htmlFor="b-vat">{t.partners.vat}</label>
+          <input
+            id="b-vat"
+            name="vatNumber"
+            className="input num"
+            inputMode="numeric"
+            pattern="3\d{13}3"
+            maxLength={15}
+            defaultValue={billing?.vatNumber ?? ''}
+            aria-describedby="b-vat-hint"
+          />
+          <span className="hint" id="b-vat-hint">
+            {t.partners.vatHint}
+          </span>
+        </div>
+        <div className="field">
+          <label htmlFor="b-commission">{t.partners.commission}</label>
+          <input
+            id="b-commission"
+            name="commission"
+            className="input num"
+            type="number"
+            min={0}
+            max={100}
+            step={0.5}
+            defaultValue={billing ? billing.commissionBps / 100 : 15}
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="b-gateway">{t.partners.gatewayAccount}</label>
+          <input
+            id="b-gateway"
+            name="gatewayAccountId"
+            className="input num"
+            maxLength={80}
+            dir="ltr"
+            defaultValue={billing?.gatewayAccountId ?? ''}
+            aria-describedby="b-gateway-hint"
+          />
+          <span className="hint" id="b-gateway-hint">
+            {t.partners.gatewayAccountHint}
           </span>
         </div>
       </FormDialog>

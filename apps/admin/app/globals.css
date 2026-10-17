@@ -997,3 +997,25 @@ textarea.input {
   color: var(--amber);
   font-weight: 600;
 }
+
+/* ---------- Payments ---------- */
+
+.lede {
+  margin: -0.5rem 0 1.25rem;
+  color: var(--ink-soft);
+  max-width: 44rem;
+}
+.inline-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+.toolbar .inline-field .input {
+  flex: 0 1 11rem;
+}
+.field-pair {
+  display: grid;
+  gap: 0.25rem;
+}
