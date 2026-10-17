@@ -4,6 +4,8 @@ import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { ComplianceService } from '../drivers/compliance.service';
 import { DriversModule } from '../drivers/drivers.module';
+import { RenewalsService } from '../subscriptions/renewals.service';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 
 const QUEUE = 'compliance';
 
@@ -21,7 +23,7 @@ function redisConnection(url: string) {
 }
 
 /**
- * Background jobs. The daily compliance scan runs at 06:00 Riyadh time. BullMQ keeps one
+ * Background jobs: subscription renewals at 05:00 and the compliance scan at 06:00 Riyadh time. BullMQ keeps one
  * schedule in Redis, so several API instances still run the scan once.
  */
 @Injectable()
@@ -33,6 +35,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
   constructor(
     @Inject(ENV) private readonly env: Env,
     private readonly compliance: ComplianceService,
+    private readonly renewals: RenewalsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -44,9 +47,18 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
       { pattern: '0 6 * * *', tz: 'Asia/Riyadh' },
       { name: 'scan', opts: { removeOnComplete: 30, removeOnFail: 100 } },
     );
-    this.worker = new Worker(QUEUE, async () => this.compliance.scan(), { connection, concurrency: 1 });
+    await this.queue.upsertJobScheduler(
+      'daily-renewals',
+      { pattern: '0 5 * * *', tz: 'Asia/Riyadh' },
+      { name: 'renewals', opts: { removeOnComplete: 30, removeOnFail: 100 } },
+    );
+    this.worker = new Worker(
+      QUEUE,
+      async (job) => (job.name === 'renewals' ? this.renewals.run() : this.compliance.scan()),
+      { connection, concurrency: 1 },
+    );
     this.worker.on('failed', (job, err) => this.logger.error(`Job ${job?.id} failed: ${err.message}`));
-    this.logger.log('Daily compliance scan scheduled for 06:00 Asia/Riyadh');
+    this.logger.log('Daily jobs scheduled (Asia/Riyadh): renewals 05:00, compliance scan 06:00');
   }
 
   async onApplicationShutdown(): Promise<void> {
@@ -56,7 +68,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
 }
 
 @Module({
-  imports: [DriversModule],
+  imports: [DriversModule, SubscriptionsModule],
   providers: [JobsRunner],
 })
 export class JobsModule {}

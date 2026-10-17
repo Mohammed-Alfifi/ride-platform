@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, asc, eq, inArray, isNull, lte, ne, SQL } from 'drizzle-orm';
-import { daysBetween, riyadhToday, vehicleEligibleUntil } from '../common/saudi';
+import { addDays, daysBetween, riyadhToday, vehicleEligibleUntil } from '../common/saudi';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
@@ -189,10 +189,4 @@ export class ComplianceService {
     if (!cache.has(partnerId)) cache.set(partnerId, await this.notifications.partnerAdminIds(partnerId));
     return cache.get(partnerId) as string[];
   }
-}
-
-function addDays(isoDate: string, days: number): string {
-  const d = new Date(`${isoDate}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }

@@ -46,3 +46,18 @@ export function riyadhToday(now = new Date()): string {
 export function daysBetween(fromIsoDate: string, toIsoDate: string): number {
   return Math.round((Date.parse(toIsoDate) - Date.parse(fromIsoDate)) / 86_400_000);
 }
+
+/** Adds days to a YYYY-MM-DD date. */
+export function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Last day of a one-month period starting on `start` (Jan 31 -> Feb 28/29, Mar 15 -> Apr 14). */
+export function monthlyPeriodEnd(start: string): string {
+  const [y, m, d] = start.split('-').map(Number);
+  const lastDayNextMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  const next = new Date(Date.UTC(y, m, Math.min(d, lastDayNextMonth)));
+  return addDays(next.toISOString().slice(0, 10), -1);
+}

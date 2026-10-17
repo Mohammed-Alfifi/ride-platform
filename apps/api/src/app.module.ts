@@ -21,6 +21,7 @@ import { JobsModule } from './jobs/jobs.module';
 import { NotificationsModule } from './notifications/notifications.service';
 import { StorageModule } from './storage/storage.service';
 import { ZonesModule } from './zones/zones.controller';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 const env = loadEnv();
 
@@ -64,6 +65,7 @@ const env = loadEnv();
     PartnersModule,
     DriversModule,
     ZonesModule,
+    SubscriptionsModule,
     JobsModule,
   ],
   controllers: [HealthController],

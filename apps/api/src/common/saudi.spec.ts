@@ -1,4 +1,12 @@
-import { daysBetween, isValidSaudiNationalId, normalizePlateLetters, riyadhToday, vehicleEligibleUntil } from './saudi';
+import {
+  addDays,
+  daysBetween,
+  isValidSaudiNationalId,
+  monthlyPeriodEnd,
+  normalizePlateLetters,
+  riyadhToday,
+  vehicleEligibleUntil,
+} from './saudi';
 
 /** Builds a valid ID from 9 leading digits by computing the check digit. */
 function withCheckDigit(first9: string): string {
@@ -47,5 +55,15 @@ describe('dates', () => {
     // 22:30 UTC is already the next day in Riyadh (UTC+3).
     expect(riyadhToday(new Date('2026-10-17T22:30:00Z'))).toBe('2026-10-18');
     expect(daysBetween('2026-10-18', '2026-11-17')).toBe(30);
+  });
+});
+
+describe('billing periods', () => {
+  it('ends the day before the same date next month', () => {
+    expect(monthlyPeriodEnd('2026-03-15')).toBe('2026-04-14');
+    expect(monthlyPeriodEnd('2026-01-31')).toBe('2026-02-27');
+    expect(monthlyPeriodEnd('2028-01-31')).toBe('2028-02-28');
+    expect(monthlyPeriodEnd('2026-12-01')).toBe('2026-12-31');
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01');
   });
 });

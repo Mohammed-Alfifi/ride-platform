@@ -63,6 +63,16 @@ export const envSchema = z
     /** TGA rule: a private car may serve for this many years from January of its model year. */
     VEHICLE_MAX_AGE_YEARS: z.coerce.number().int().min(1).default(5),
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
+    /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
+    PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+    PAYMENT_PROVIDER: z.enum(['sandbox', 'tap', 'moyasar']).default('sandbox'),
+    TAP_SECRET_KEY: z.string().optional().default(''),
+    TAP_MERCHANT_ID: z.string().optional().default(''),
+    TAP_API_URL: z.string().url().default('https://api.tap.company'),
+    MOYASAR_SECRET_KEY: z.string().optional().default(''),
+    MOYASAR_API_URL: z.string().url().default('https://api.moyasar.com'),
+    VAT_RATE_BPS: z.coerce.number().int().min(0).max(10000).default(1500),
+    RENEWAL_GRACE_DAYS: z.coerce.number().int().min(0).max(14).default(3),
     JOBS_ENABLED: z
       .string()
       .optional()
@@ -75,6 +85,15 @@ export const envSchema = z
         path: ['SMS_PROVIDER'],
         message: 'The console SMS provider prints codes to logs and is not allowed in production',
       });
+    }
+    if (env.NODE_ENV === 'production' && env.PAYMENT_PROVIDER === 'sandbox') {
+      ctx.addIssue({ code: 'custom', path: ['PAYMENT_PROVIDER'], message: 'The sandbox payment provider is not allowed in production' });
+    }
+    if (env.PAYMENT_PROVIDER === 'tap' && !env.TAP_SECRET_KEY) {
+      ctx.addIssue({ code: 'custom', path: ['TAP_SECRET_KEY'], message: 'TAP_SECRET_KEY is required when PAYMENT_PROVIDER=tap' });
+    }
+    if (env.PAYMENT_PROVIDER === 'moyasar' && !env.MOYASAR_SECRET_KEY) {
+      ctx.addIssue({ code: 'custom', path: ['MOYASAR_SECRET_KEY'], message: 'MOYASAR_SECRET_KEY is required when PAYMENT_PROVIDER=moyasar' });
     }
     if (env.STORAGE_DRIVER === 's3' && !env.S3_BUCKET) {
       ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 'S3_BUCKET is required when STORAGE_DRIVER=s3' });

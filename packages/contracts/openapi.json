@@ -1488,6 +1488,760 @@
           "coverage"
         ]
       }
+    },
+    "/v1/places": {
+      "get": {
+        "operationId": "RiderController_places",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlaceView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "RiderController_addPlace",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaceView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/places/{id}": {
+      "delete": {
+        "operationId": "RiderController_removePlace",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/quotes": {
+      "post": {
+        "operationId": "RiderController_quote",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Can this plan serve these two places, and at what price?",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions": {
+      "get": {
+        "operationId": "RiderController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubscriptionView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "RiderController_subscribe",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscribeResult"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Subscribe; returns a payment page to open in the app",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}": {
+      "get": {
+        "operationId": "RiderController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}/pay": {
+      "post": {
+        "operationId": "RiderController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "New payment page for a subscription waiting for payment or past due",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}/pause": {
+      "post": {
+        "operationId": "RiderController_pause",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PauseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Pause up to 30 days once a period; the period is extended by the paused days",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}/resume": {
+      "post": {
+        "operationId": "RiderController_resume",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}/cancel": {
+      "post": {
+        "operationId": "RiderController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stop renewing; service continues to the end of the paid period",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/subscriptions/{id}/keep": {
+      "post": {
+        "operationId": "RiderController_keep",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undo a cancellation before the period ends",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/payments/{id}": {
+      "get": {
+        "operationId": "RiderController_payment",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Payment status (confirmed with the provider); poll after the payment page closes",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/payment-methods": {
+      "get": {
+        "operationId": "RiderController_cards",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentMethodView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/payment-methods/{id}": {
+      "delete": {
+        "operationId": "RiderController_removeCard",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/invoices": {
+      "get": {
+        "operationId": "RiderController_invoices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/invoices/{id}": {
+      "get": {
+        "operationId": "InvoicesController_html",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Printable invoice (HTML) for the rider, the partner’s staff or a platform admin",
+        "tags": [
+          "invoices"
+        ]
+      }
+    },
+    "/v1/payments/{id}/return": {
+      "get": {
+        "operationId": "PaymentCallbacksController_returned",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "The payment page returns here; the app closes its browser view on this URL",
+        "tags": [
+          "payments: callbacks"
+        ]
+      }
+    },
+    "/v1/webhooks/payments/{provider}": {
+      "post": {
+        "operationId": "PaymentCallbacksController_webhook",
+        "parameters": [
+          {
+            "name": "provider",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Gateway webhooks. The status is always re-read from the gateway.",
+        "tags": [
+          "payments: callbacks"
+        ]
+      }
+    },
+    "/v1/admin/subscriptions": {
+      "get": {
+        "operationId": "AdminBillingController_subscriptions",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: billing"
+        ]
+      }
+    },
+    "/v1/admin/payments": {
+      "get": {
+        "operationId": "AdminBillingController_payments",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Payments with totals: collected, platform commission and partner share",
+        "tags": [
+          "admin: billing"
+        ]
+      }
     }
   },
   "info": {
@@ -1861,6 +2615,14 @@
           "commissionBps": {
             "type": "number"
           },
+          "vatNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "gatewayAccountId": {
+            "type": "string",
+            "nullable": true
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -1890,6 +2652,8 @@
           "tgaLicenseNumber",
           "contactPhone",
           "commissionBps",
+          "vatNumber",
+          "gatewayAccountId",
           "status",
           "joinCode",
           "staffCount",
@@ -1927,6 +2691,16 @@
             "type": "number",
             "example": 1500,
             "description": "Commission in basis points (1500 = 15%)"
+          },
+          "vatNumber": {
+            "type": "string",
+            "example": "310123456700003",
+            "description": "VAT registration number (15 digits, starts and ends with 3). Leave empty if not VAT registered."
+          },
+          "gatewayAccountId": {
+            "type": "string",
+            "example": "dest_xxxx",
+            "description": "Payment gateway sub-account (Tap destination) that receives the partner share"
           }
         },
         "required": [
@@ -1965,6 +2739,16 @@
             "type": "number",
             "example": 1500,
             "description": "Commission in basis points (1500 = 15%)"
+          },
+          "vatNumber": {
+            "type": "string",
+            "example": "310123456700003",
+            "description": "VAT registration number (15 digits, starts and ends with 3). Leave empty if not VAT registered."
+          },
+          "gatewayAccountId": {
+            "type": "string",
+            "example": "dest_xxxx",
+            "description": "Payment gateway sub-account (Tap destination) that receives the partner share"
           },
           "status": {
             "type": "string",
@@ -2840,6 +3624,384 @@
           "partnerNameAr",
           "partnerNameEn",
           "plans"
+        ]
+      },
+      "PlaceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "name",
+          "lat",
+          "lng",
+          "address"
+        ]
+      },
+      "CreatePlaceDto": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "enum": [
+              "home",
+              "school",
+              "work",
+              "other"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "example": "البيت"
+          },
+          "lat": {
+            "type": "number",
+            "example": 24.8675
+          },
+          "lng": {
+            "type": "number",
+            "example": 46.8275
+          },
+          "address": {
+            "type": "string",
+            "example": "حي الرمال، شارع 15"
+          }
+        },
+        "required": [
+          "label",
+          "name",
+          "lat",
+          "lng"
+        ]
+      },
+      "QuoteDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pickupPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dropoffPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "planId",
+          "pickupPlaceId",
+          "dropoffPlaceId"
+        ]
+      },
+      "QuoteView": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string"
+          },
+          "eligible": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "PLACE_OUTSIDE_ZONE",
+              "PLAN_DISTANCE_EXCEEDED"
+            ]
+          },
+          "distanceKm": {
+            "type": "number",
+            "description": "Estimated road distance (straight line x 1.3), km"
+          },
+          "maxDistanceKm": {
+            "type": "number"
+          },
+          "priceHalalas": {
+            "type": "number",
+            "description": "Monthly, VAT included"
+          },
+          "vatHalalas": {
+            "type": "number"
+          },
+          "daysPerWeek": {
+            "type": "number"
+          },
+          "tripType": {
+            "type": "string",
+            "enum": [
+              "round_trip",
+              "one_way"
+            ]
+          }
+        },
+        "required": [
+          "planId",
+          "eligible",
+          "reason",
+          "distanceKm",
+          "maxDistanceKm",
+          "priceHalalas",
+          "vatHalalas",
+          "daysPerWeek",
+          "tripType"
+        ]
+      },
+      "SubscriptionView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "planNameAr": {
+            "type": "string"
+          },
+          "planNameEn": {
+            "type": "string"
+          },
+          "partnerNameAr": {
+            "type": "string"
+          },
+          "partnerNameEn": {
+            "type": "string"
+          },
+          "pickup": {
+            "$ref": "#/components/schemas/PlaceView"
+          },
+          "dropoff": {
+            "$ref": "#/components/schemas/PlaceView"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            }
+          },
+          "outboundTime": {
+            "type": "string"
+          },
+          "returnTime": {
+            "type": "string",
+            "nullable": true
+          },
+          "distanceKm": {
+            "type": "number"
+          },
+          "priceHalalas": {
+            "type": "number"
+          },
+          "currentPeriodStart": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "nullable": true
+          },
+          "autoRenew": {
+            "type": "boolean"
+          },
+          "cancelAtPeriodEnd": {
+            "type": "boolean"
+          },
+          "pausedFrom": {
+            "type": "string",
+            "nullable": true
+          },
+          "pausedUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "card": {
+            "type": "object",
+            "nullable": true,
+            "description": "Card used for renewals"
+          },
+          "payUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Open payment page when payment is due"
+          },
+          "pendingPaymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "planId",
+          "planNameAr",
+          "planNameEn",
+          "partnerNameAr",
+          "partnerNameEn",
+          "pickup",
+          "dropoff",
+          "days",
+          "outboundTime",
+          "returnTime",
+          "distanceKm",
+          "priceHalalas",
+          "currentPeriodStart",
+          "currentPeriodEnd",
+          "autoRenew",
+          "cancelAtPeriodEnd",
+          "pausedFrom",
+          "pausedUntil",
+          "card",
+          "payUrl",
+          "pendingPaymentId",
+          "createdAt"
+        ]
+      },
+      "CreateSubscriptionDto": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "pickupPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "dropoffPlaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "days": {
+            "example": [
+              0,
+              1,
+              2,
+              3,
+              4
+            ],
+            "description": "0 = Sunday ... 6 = Saturday",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "outboundTime": {
+            "type": "string",
+            "example": "06:30"
+          },
+          "returnTime": {
+            "type": "string",
+            "example": "13:30",
+            "description": "Required for round-trip plans"
+          },
+          "saveCard": {
+            "type": "boolean",
+            "description": "Keep the card for automatic monthly renewal",
+            "default": true
+          }
+        },
+        "required": [
+          "planId",
+          "pickupPlaceId",
+          "dropoffPlaceId",
+          "days",
+          "outboundTime"
+        ]
+      },
+      "SubscribeResult": {
+        "type": "object",
+        "properties": {
+          "subscription": {
+            "$ref": "#/components/schemas/SubscriptionView"
+          },
+          "payment": {
+            "type": "object",
+            "description": "Open checkoutUrl in a browser view; poll the payment until paid"
+          }
+        },
+        "required": [
+          "subscription",
+          "payment"
+        ]
+      },
+      "PauseDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "example": "2026-11-01"
+          },
+          "until": {
+            "type": "string",
+            "example": "2026-11-10"
+          }
+        },
+        "required": [
+          "from",
+          "until"
+        ]
+      },
+      "PaymentMethodView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "brand": {
+            "type": "string"
+          },
+          "last4": {
+            "type": "string"
+          },
+          "expMonth": {
+            "type": "number",
+            "nullable": true
+          },
+          "expYear": {
+            "type": "number",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "brand",
+          "last4",
+          "expMonth",
+          "expYear",
+          "isDefault"
         ]
       }
     }

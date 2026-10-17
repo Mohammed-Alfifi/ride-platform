@@ -67,6 +67,10 @@ export const partners = pgTable(
     status: partnerStatusEnum('status').notNull().default('active'),
     /** Short code drivers type in the driver app to join this partner. */
     joinCode: varchar('join_code', { length: 8 }).notNull(),
+    /** VAT registration number (15 digits); printed on rider invoices, where the partner is the seller. */
+    vatNumber: varchar('vat_number', { length: 15 }),
+    /** The partner's sub-account at the payment gateway (e.g. Tap marketplace retailer id) for split payouts. */
+    gatewayAccountId: varchar('gateway_account_id', { length: 80 }),
     ...timestamps,
   },
   (t) => [
@@ -349,6 +353,183 @@ export const notifications = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------- Phase 3
+
+const point = customType<{ data: string; driverData: string }>({
+  dataType: () => 'geometry(Point,4326)',
+});
+
+export const placeLabelEnum = pgEnum('place_label', ['home', 'school', 'work', 'other']);
+export const subscriptionStatusEnum = pgEnum('subscription_status', [
+  'pending_payment',
+  'active',
+  'past_due',
+  'paused',
+  'cancelled',
+  'expired',
+]);
+export const paymentStatusEnum = pgEnum('payment_status', ['initiated', 'paid', 'failed']);
+export const paymentPurposeEnum = pgEnum('payment_purpose', ['start', 'renewal']);
+
+export const places = pgTable(
+  'places',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    label: placeLabelEnum('label').notNull(),
+    name: varchar('name', { length: 80 }).notNull(),
+    location: point('location').notNull(),
+    address: varchar('address', { length: 255 }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('places_rider_idx').on(t.riderId)],
+);
+
+export const paymentMethods = pgTable(
+  'payment_methods',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: varchar('provider', { length: 20 }).notNull(),
+    brand: varchar('brand', { length: 20 }).notNull(),
+    last4: varchar('last4', { length: 4 }).notNull(),
+    expMonth: integer('exp_month'),
+    expYear: integer('exp_year'),
+    /** Gateway references only; card numbers never reach this system. */
+    providerCustomerId: varchar('provider_customer_id', { length: 80 }),
+    providerCardId: varchar('provider_card_id', { length: 80 }).notNull(),
+    providerAgreementId: varchar('provider_agreement_id', { length: 80 }),
+    isDefault: boolean('is_default').notNull().default(false),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('payment_methods_rider_idx').on(t.riderId),
+    uniqueIndex('payment_methods_card_uq').on(t.provider, t.providerCardId),
+  ],
+);
+
+export const subscriptions = pgTable(
+  'subscriptions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    planId: uuid('plan_id')
+      .notNull()
+      .references(() => plans.id, { onDelete: 'restrict' }),
+    pickupPlaceId: uuid('pickup_place_id')
+      .notNull()
+      .references(() => places.id, { onDelete: 'restrict' }),
+    dropoffPlaceId: uuid('dropoff_place_id')
+      .notNull()
+      .references(() => places.id, { onDelete: 'restrict' }),
+    /** Service days, 0 = Sunday ... 6 = Saturday. */
+    days: integer('days').array().notNull(),
+    /** Riyadh local times, HH:MM. */
+    outboundTime: varchar('outbound_time', { length: 5 }).notNull(),
+    returnTime: varchar('return_time', { length: 5 }),
+    distanceKm: integer('distance_km').notNull(),
+    /** Monthly price locked when subscribing, VAT included, halalas. */
+    priceHalalas: integer('price_halalas').notNull(),
+    status: subscriptionStatusEnum('status').notNull().default('pending_payment'),
+    currentPeriodStart: date('current_period_start'),
+    currentPeriodEnd: date('current_period_end'),
+    autoRenew: boolean('auto_renew').notNull().default(true),
+    cancelAtPeriodEnd: boolean('cancel_at_period_end').notNull().default(false),
+    pausedFrom: date('paused_from'),
+    pausedUntil: date('paused_until'),
+    renewalAttempts: integer('renewal_attempts').notNull().default(0),
+    paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    index('subscriptions_rider_idx').on(t.riderId),
+    index('subscriptions_partner_idx').on(t.partnerId, t.status),
+    index('subscriptions_renewal_idx').on(t.status, t.currentPeriodEnd),
+  ],
+);
+
+export const payments = pgTable(
+  'payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    subscriptionId: uuid('subscription_id')
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: 'restrict' }),
+    purpose: paymentPurposeEnum('purpose').notNull(),
+    provider: varchar('provider', { length: 20 }).notNull(),
+    providerPaymentId: varchar('provider_payment_id', { length: 80 }),
+    checkoutUrl: varchar('checkout_url', { length: 500 }),
+    amountHalalas: integer('amount_halalas').notNull(),
+    /** The platform's commission and the partner's share, fixed when the payment is created. */
+    platformFeeHalalas: integer('platform_fee_halalas').notNull(),
+    partnerShareHalalas: integer('partner_share_halalas').notNull(),
+    status: paymentStatusEnum('status').notNull().default('initiated'),
+    failureReason: varchar('failure_reason', { length: 200 }),
+    /** One renewal payment per subscription period; stops a job retry from charging twice. */
+    idempotencyKey: varchar('idempotency_key', { length: 120 }),
+    /** The service period this payment pays for. */
+    periodStart: date('period_start'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('payments_provider_uq').on(t.provider, t.providerPaymentId),
+    uniqueIndex('payments_idempotency_uq').on(t.idempotencyKey),
+    index('payments_partner_idx').on(t.partnerId, t.createdAt),
+    index('payments_subscription_idx').on(t.subscriptionId),
+  ],
+);
+
+export const invoices = pgTable(
+  'invoices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    paymentId: uuid('payment_id')
+      .notNull()
+      .references(() => payments.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    number: varchar('number', { length: 30 }).notNull(),
+    sellerName: varchar('seller_name', { length: 200 }).notNull(),
+    sellerVatNumber: varchar('seller_vat_number', { length: 15 }),
+    buyerName: varchar('buyer_name', { length: 160 }),
+    description: varchar('description', { length: 255 }).notNull(),
+    totalHalalas: integer('total_halalas').notNull(),
+    vatHalalas: integer('vat_halalas').notNull(),
+    /** ZATCA simplified-invoice QR (TLV, base64). Present when the seller has a VAT number. */
+    qrTlv: varchar('qr_tlv', { length: 600 }),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('invoices_payment_uq').on(t.paymentId), uniqueIndex('invoices_number_uq').on(t.number)],
+);
+
+/** Gap-free invoice numbering per year. */
+export const invoiceSequences = pgTable('invoice_sequences', {
+  year: integer('year').primaryKey(),
+  last: integer('last').notNull(),
+});
+
 export type Partner = typeof partners.$inferSelect;
 export type User = typeof users.$inferSelect;
 export type RefreshToken = typeof refreshTokens.$inferSelect;
@@ -357,3 +538,8 @@ export type Vehicle = typeof vehicles.$inferSelect;
 export type DocumentRow = typeof documents.$inferSelect;
 export type Plan = typeof plans.$inferSelect;
 export type NotificationRow = typeof notifications.$inferSelect;
+export type Place = typeof places.$inferSelect;
+export type Subscription = typeof subscriptions.$inferSelect;
+export type PaymentRow = typeof payments.$inferSelect;
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type Invoice = typeof invoices.$inferSelect;
