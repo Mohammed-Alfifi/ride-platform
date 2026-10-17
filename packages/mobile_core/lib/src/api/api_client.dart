@@ -46,7 +46,24 @@ class ApiClient {
   static const _skipAuth = 'skipAuth';
   static const _retried = 'retried';
 
-  Future<Map<String, dynamic>> get(String path) => _send(() => dio.get<dynamic>(path));
+  Future<Map<String, dynamic>> get(String path, {Map<String, dynamic>? query}) =>
+      _send(() => dio.get<dynamic>(path, queryParameters: query));
+
+  /// For endpoints that answer with a JSON array.
+  Future<List<Map<String, dynamic>>> getList(String path, {Map<String, dynamic>? query}) async {
+    try {
+      final res = await dio.get<dynamic>(path, queryParameters: query);
+      final body = res.data;
+      return body is List ? body.whereType<Map<String, dynamic>>().toList() : const [];
+    } on DioException catch (e) {
+      throw ApiError.fromDio(e);
+    }
+  }
+
+  Future<void> delete(String path) => _send(() => dio.delete<dynamic>(path));
+
+  /// The current access token, for screens that must pass it to a web view (printable invoices).
+  Future<String?> accessToken() async => (await tokens.read())?.accessToken;
 
   Future<Map<String, dynamic>> post(String path, {Object? data, bool auth = true}) =>
       _send(() => dio.post<dynamic>(path, data: data, options: Options(extra: {_skipAuth: !auth})));

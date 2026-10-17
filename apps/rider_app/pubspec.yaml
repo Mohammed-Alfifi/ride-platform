@@ -10,10 +10,14 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_map: ^7.0.2
   flutter_riverpod: ^2.6.1
   go_router: ^14.6.2
+  intl: any
+  latlong2: ^0.9.1
   mobile_core:
     path: ../../packages/mobile_core
+  webview_flutter: ^4.10.0
 
 dev_dependencies:
   flutter_test:
