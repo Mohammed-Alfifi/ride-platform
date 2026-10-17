@@ -47,11 +47,14 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ path: string[] 
       }
     }
 
-    const text = await res.text();
-    const out = new NextResponse(text || null, {
-      status: res.status,
-      headers: { 'Content-Type': res.headers.get('content-type') ?? 'application/json' },
-    });
+    // Pass bodies through as bytes so document files (images, PDFs) arrive intact.
+    const body = res.status === 204 ? null : await res.arrayBuffer();
+    const headers = new Headers({ 'Content-Type': res.headers.get('content-type') ?? 'application/json' });
+    for (const name of ['content-disposition', 'cache-control', 'retry-after']) {
+      const value = res.headers.get(name);
+      if (value) headers.set(name, value);
+    }
+    const out = new NextResponse(body && body.byteLength > 0 ? body : null, { status: res.status, headers });
     if (res.status === 401) clearSession(out);
     else if (renewed) setSession(out, renewed);
     return out;

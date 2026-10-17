@@ -11,6 +11,10 @@ export function Shell({ children }: { children: ReactNode }) {
 
   const items = [
     { href: '/', label: t.nav.overview },
+    { href: '/drivers', label: t.nav.drivers },
+    { href: '/zones', label: t.nav.zones },
+    { href: '/plans', label: t.nav.plans },
+    { href: '/compliance', label: t.nav.compliance },
     { href: '/partners', label: t.nav.partners },
     { href: '/users', label: t.nav.users },
   ];

@@ -663,3 +663,337 @@ dialog.sheet .footer {
     opacity: 1;
   }
 }
+
+/* ---------- Phase 2 ---------- */
+
+.join-code {
+  font-family: inherit;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  padding: 0.125rem 0.5rem;
+  border: 1px dashed var(--route);
+  border-radius: var(--radius-control);
+  color: var(--route-strong);
+  direction: ltr;
+  display: inline-block;
+}
+
+.tabs {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.tabs button {
+  padding: 0.75rem 0.75rem;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  color: var(--ink-soft);
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: inset 0 -2px 0 transparent;
+}
+.tabs button[aria-selected='true'] {
+  color: var(--ink);
+  box-shadow: inset 0 -2px 0 var(--route);
+}
+.count-pill {
+  margin-inline-start: 0.375rem;
+  padding: 0 0.4rem;
+  border-radius: 999px;
+  background: var(--amber-tint);
+  color: var(--amber);
+  font-size: var(--fs-sm);
+}
+
+tr.clickable {
+  cursor: pointer;
+}
+tr.clickable td:first-child a {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+tr.clickable:hover td:first-child a {
+  text-decoration: underline;
+}
+
+.badge-hold {
+  color: var(--red);
+}
+
+/* Saudi plate: Latin letters and digits, framed like the real plate. */
+.plate {
+  display: inline-flex;
+  align-items: stretch;
+  border: 2px solid var(--ink);
+  border-radius: 4px;
+  font-weight: 700;
+  direction: ltr;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.plate span {
+  padding: 0.3rem 0.5rem;
+  letter-spacing: 0.08em;
+}
+.plate span + span {
+  border-left: 2px solid var(--ink);
+}
+
+.detail-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.detail-head h1 {
+  font-size: var(--fs-xl);
+}
+.detail-head .meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  color: var(--ink-soft);
+}
+.back-link {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  font-size: var(--fs-sm);
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+@media (max-width: 960px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.panel h2 {
+  font-size: var(--fs-md);
+  padding: 1rem 1.25rem 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  padding: 1rem 1.25rem 1.25rem;
+}
+.facts dt {
+  color: var(--ink-soft);
+}
+.facts dd {
+  margin: 0;
+  font-weight: 500;
+}
+
+.alert {
+  padding: 1rem 1.25rem;
+  border-radius: var(--radius-panel);
+  margin-bottom: 1.25rem;
+  border: 1px solid;
+}
+.alert h2 {
+  font-size: var(--fs-base);
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+.alert p {
+  margin: 0;
+}
+.alert-red {
+  background: var(--red-tint);
+  border-color: #f0c2bd;
+  color: var(--red);
+}
+.alert-amber {
+  background: var(--amber-tint);
+  border-color: #ecd3a6;
+  color: #7a4d08;
+}
+
+.docs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+.doc {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel);
+}
+.doc.is-marked {
+  border-color: var(--red);
+  box-shadow: 0 0 0 1px var(--red);
+}
+.doc-thumb {
+  display: block;
+  aspect-ratio: 4 / 3;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  overflow: hidden;
+}
+.doc-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.doc-thumb .pdf {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+.doc-body {
+  padding: 0.75rem 0.875rem;
+  display: grid;
+  gap: 0.25rem;
+}
+.doc-body strong {
+  font-weight: 600;
+}
+.doc-body .sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+.doc-body .reason {
+  font-size: var(--fs-sm);
+  color: var(--red);
+}
+.doc-actions {
+  display: flex;
+  gap: 1rem;
+  padding: 0 0.875rem 0.75rem;
+  margin-top: auto;
+}
+.doc-mark {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: var(--fs-sm);
+  padding: 0 0.875rem 0.75rem;
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 -6px 20px rgba(24, 38, 58, 0.06);
+}
+.action-bar p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: var(--fs-sm);
+}
+.action-bar .btns {
+  display: flex;
+  gap: 0.75rem;
+}
+textarea.input {
+  min-height: 5rem;
+  padding: 0.6rem 0.75rem;
+  resize: vertical;
+}
+
+/* ---------- Zones ---------- */
+
+.zones-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20rem;
+  gap: 1.25rem;
+}
+@media (max-width: 1100px) {
+  .zones-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.map {
+  height: 34rem;
+  border-radius: var(--radius-panel);
+  border: 1px solid var(--line);
+  overflow: hidden;
+  background: #e8edef;
+}
+.map.drawing {
+  cursor: crosshair;
+  outline: 2px solid var(--route);
+}
+.zone-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.zone-list li {
+  padding: 0.875rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.25rem;
+}
+.zone-list li:last-child {
+  border-bottom: 0;
+}
+.zone-list li.is-selected {
+  background: var(--route-tint);
+}
+.zone-list .zone-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--ink);
+  text-align: start;
+  cursor: pointer;
+}
+.zone-list .sub {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+.draw-panel {
+  padding: 1rem 1.25rem;
+  display: grid;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--line);
+}
+.draw-panel p {
+  margin: 0;
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+.lead {
+  margin: -0.75rem 0 1.25rem;
+  color: var(--ink-soft);
+  max-width: 48rem;
+}
+.days-expired {
+  color: var(--red);
+  font-weight: 600;
+}
+.days-soon {
+  color: var(--amber);
+  font-weight: 600;
+}

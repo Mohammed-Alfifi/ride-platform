@@ -88,6 +88,118 @@ export interface PartnerView {
   contactPhone: string | null;
   commissionBps: number;
   status: 'active' | 'suspended';
+  joinCode: string;
   staffCount: number;
   createdAt: string;
+}
+
+export type DocType =
+  | 'national_id'
+  | 'driving_license'
+  | 'driver_photo'
+  | 'vehicle_registration'
+  | 'vehicle_insurance'
+  | 'periodic_inspection';
+export type OnboardingStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+export interface DocumentView {
+  id: string;
+  type: DocType;
+  mime: string;
+  sizeBytes: number;
+  expiresAt: string | null;
+  status: 'pending' | 'accepted' | 'rejected';
+  rejectionReason: string | null;
+  fileUrl: string;
+  createdAt: string;
+}
+
+export interface VehicleView {
+  id: string;
+  plateLetters: string;
+  plateNumbers: string;
+  make: string;
+  model: string;
+  year: number;
+  color: string;
+  seats: number;
+  eligibleUntil: string;
+}
+
+export interface DriverListItem {
+  id: string;
+  phone: string;
+  fullName: string | null;
+  accountStatus: string;
+  onboardingStatus: OnboardingStatus;
+  partnerId: string | null;
+  vehicle: string | null;
+  complianceHold: boolean;
+  submittedAt: string | null;
+  pendingDocuments: number;
+}
+
+export interface DriverPage {
+  items: DriverListItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface DriverDetail {
+  id: string;
+  phone: string;
+  accountStatus: 'active' | 'pending' | 'suspended';
+  onboardingStatus: OnboardingStatus;
+  partnerId: string | null;
+  fullName: string | null;
+  nationalId: string | null;
+  dateOfBirth: string | null;
+  vehicle: VehicleView | null;
+  documents: DocumentView[];
+  rejectionReason: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  complianceHold: boolean;
+  complianceReason: string | null;
+}
+
+export interface GeoPolygon {
+  type: 'Polygon';
+  coordinates: number[][][];
+}
+
+export interface ZoneView {
+  id: string;
+  partnerId: string;
+  nameAr: string;
+  nameEn: string;
+  active: boolean;
+  area: GeoPolygon;
+  areaKm2: number;
+  planCount: number;
+}
+
+export interface PlanView {
+  id: string;
+  partnerId: string;
+  zoneId: string;
+  nameAr: string;
+  nameEn: string;
+  tripType: 'round_trip' | 'one_way';
+  daysPerWeek: number;
+  priceHalalas: number;
+  maxDistanceKm: number;
+  active: boolean;
+}
+
+export interface ExpiringItem {
+  documentId: string;
+  driverId: string;
+  driverName: string | null;
+  phone: string;
+  type: DocType;
+  expiresAt: string;
+  daysLeft: number;
+  complianceHold: boolean;
 }

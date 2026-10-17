@@ -64,6 +64,7 @@ export default function PartnersPage() {
                   <th scope="col">{lang === 'ar' ? t.partners.nameAr : t.partners.nameEn}</th>
                   <th scope="col">{t.partners.cr}</th>
                   <th scope="col">{t.partners.license}</th>
+                  <th scope="col">{t.partners.joinCode}</th>
                   <th scope="col">{t.partners.commission}</th>
                   <th scope="col">{t.partners.staff}</th>
                   <th scope="col">{t.partners.status}</th>
@@ -79,6 +80,9 @@ export default function PartnersPage() {
                     </td>
                     <td className="num">{p.crNumber ?? '—'}</td>
                     <td className="num">{p.tgaLicenseNumber ?? '—'}</td>
+                    <td>
+                      <code className="join-code">{p.joinCode}</code>
+                    </td>
                     <td className="num">{formatBps(p.commissionBps)}</td>
                     <td className="num">{p.staffCount}</td>
                     <td>

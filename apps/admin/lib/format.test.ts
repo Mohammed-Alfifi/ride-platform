@@ -12,3 +12,9 @@ test('formats commission basis points', () => {
   assert.equal(formatBps(1250), '12.5%');
   assert.equal(formatBps(0), '0%');
 });
+
+test('formats riyals from halalas', async () => {
+  const { formatSar } = await import('./format.ts');
+  assert.equal(formatSar(120000, 'en'), '1,200');
+  assert.equal(formatSar(9950, 'en'), '99.50');
+});
