@@ -51,7 +51,12 @@ export class AuthService {
 
   async refresh(refreshToken: string, meta: RequestMeta): Promise<TokenPairView> {
     const { user, tokens } = await this.tokens.rotate(refreshToken, meta);
-    await this.assertPartnerActive(user);
+    try {
+      await this.assertPartnerActive(user);
+    } catch (err) {
+      await this.tokens.revokeByToken(tokens.refreshToken);
+      throw err;
+    }
     return tokens;
   }
 
