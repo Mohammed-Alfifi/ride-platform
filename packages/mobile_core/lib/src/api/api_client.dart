@@ -54,6 +54,20 @@ class ApiClient {
   Future<Map<String, dynamic>> patch(String path, {Object? data}) =>
       _send(() => dio.patch<dynamic>(path, data: data));
 
+  Future<Map<String, dynamic>> put(String path, {Object? data}) => _send(() => dio.put<dynamic>(path, data: data));
+
+  /// Multipart upload. [onProgress] receives 0..1 as the file is sent.
+  Future<Map<String, dynamic>> upload(String path, FormData form, {void Function(double)? onProgress}) => _send(
+        () => dio.post<dynamic>(
+          path,
+          data: form,
+          options: Options(sendTimeout: const Duration(minutes: 2)),
+          onSendProgress: (sent, total) {
+            if (onProgress != null && total > 0) onProgress(sent / total);
+          },
+        ),
+      );
+
   Future<Map<String, dynamic>> _send(Future<Response<dynamic>> Function() call) async {
     try {
       final res = await call();
@@ -107,6 +121,8 @@ class ApiClient {
     try {
       req.headers['Authorization'] = 'Bearer $access';
       req.extra[_retried] = true;
+      // A multipart body can be sent only once; retry with a fresh copy.
+      if (req.data is FormData) req.data = (req.data as FormData).clone();
       handler.resolve(await _plain.fetch<dynamic>(req));
     } on DioException catch (e) {
       handler.next(e);
