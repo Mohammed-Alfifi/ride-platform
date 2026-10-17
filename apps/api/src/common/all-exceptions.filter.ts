@@ -40,6 +40,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof HttpException) {
       status = exception.getStatus();
       code = codeForStatus(status);
+      if (code === 'DOCUMENT_TOO_LARGE') params = { maxMb: process.env.UPLOAD_MAX_MB ?? '10' };
       const body = exception.getResponse();
       if (status === HttpStatus.BAD_REQUEST && typeof body === 'object' && body !== null) {
         details = (body as { message?: unknown }).message;
@@ -75,6 +76,8 @@ function codeForStatus(status: number): ErrorCode {
       return 'NOT_FOUND';
     case HttpStatus.TOO_MANY_REQUESTS:
       return 'RATE_LIMITED';
+    case HttpStatus.PAYLOAD_TOO_LARGE:
+      return 'DOCUMENT_TOO_LARGE';
     default:
       return 'INTERNAL';
   }

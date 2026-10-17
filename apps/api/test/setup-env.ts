@@ -1,3 +1,6 @@
+import os from 'node:os';
+import path from 'node:path';
+
 // Test configuration. CI may override any of these through real environment variables.
 const defaults: Record<string, string> = {
   NODE_ENV: 'test',
@@ -14,6 +17,10 @@ const defaults: Record<string, string> = {
   OTP_TEST_PHONES: '+966500000099',
   OTP_TEST_CODE: '246810',
   CORS_ORIGINS: 'http://localhost:3001',
+  DATA_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
+  STORAGE_DRIVER: 'local',
+  STORAGE_DIR: path.join(os.tmpdir(), 'ride-test-uploads'),
+  JOBS_ENABLED: 'false',
 };
 
 for (const [key, value] of Object.entries(defaults)) {

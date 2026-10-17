@@ -1,6 +1,73 @@
 {
   "openapi": "3.0.0",
   "paths": {
+    "/v1/notifications": {
+      "get": {
+        "operationId": "NotificationsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The signed-in user’s notifications, newest first, in their language",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/{id}/read": {
+      "post": {
+        "operationId": "NotificationsController_read",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
+    "/v1/notifications/read-all": {
+      "post": {
+        "operationId": "NotificationsController_readAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/v1/auth/otp/request": {
       "post": {
         "operationId": "AuthController_requestOtp",
@@ -559,6 +626,868 @@
           "admin: partners"
         ]
       }
+    },
+    "/v1/driver/onboarding": {
+      "get": {
+        "operationId": "DriverOnboardingController_view",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Everything the driver app needs to show the onboarding checklist",
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/driver/onboarding/join": {
+      "post": {
+        "operationId": "DriverOnboardingController_join",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinPartnerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Join a transport partner with its join code",
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/driver/onboarding/profile": {
+      "put": {
+        "operationId": "DriverOnboardingController_profile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DriverProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/driver/onboarding/vehicle": {
+      "put": {
+        "operationId": "DriverOnboardingController_vehicle",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VehicleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/driver/onboarding/submit": {
+      "post": {
+        "operationId": "DriverOnboardingController_submit",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OnboardingView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send the application to the partner for review",
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/driver/documents": {
+      "post": {
+        "operationId": "DriverOnboardingController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file",
+                  "type"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "expiresAt": {
+                    "type": "string",
+                    "format": "date"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upload a document (JPG, PNG or PDF). Replaces the previous one of the same type.",
+        "tags": [
+          "driver: onboarding"
+        ]
+      }
+    },
+    "/v1/documents/{id}/file": {
+      "get": {
+        "operationId": "DocumentFilesController_file",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a document file (its driver, the partner’s staff, or a platform admin)",
+        "tags": [
+          "documents"
+        ]
+      }
+    },
+    "/v1/admin/drivers": {
+      "get": {
+        "operationId": "AdminDriversController_list",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "submitted",
+                "approved",
+                "rejected"
+              ]
+            }
+          },
+          {
+            "name": "hold",
+            "required": false,
+            "in": "query",
+            "description": "Only drivers on compliance hold",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 20,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverPage"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Drivers of the partner; applications waiting for review come first",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/drivers/{id}": {
+      "get": {
+        "operationId": "AdminDriversController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/drivers/{id}/approve": {
+      "post": {
+        "operationId": "AdminDriversController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve the application and accept its pending documents",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/drivers/{id}/reject": {
+      "post": {
+        "operationId": "AdminDriversController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send the application back with reasons",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/documents/{id}": {
+      "patch": {
+        "operationId": "AdminDriversController_reviewDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDocumentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DriverDetail"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept or reject one document (for renewals after approval)",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/compliance/expiring": {
+      "get": {
+        "operationId": "AdminDriversController_expiring",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 30,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ExpiringItem"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approved drivers’ documents expiring within N days, expired ones included",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/compliance/scan": {
+      "post": {
+        "operationId": "AdminDriversController_scan",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Run the daily compliance scan now",
+        "tags": [
+          "admin: drivers"
+        ]
+      }
+    },
+    "/v1/admin/zones": {
+      "get": {
+        "operationId": "AdminZonesController_list",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZoneView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: zones and plans"
+        ]
+      },
+      "post": {
+        "operationId": "AdminZonesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateZoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Draw a service area (GeoJSON polygon)",
+        "tags": [
+          "admin: zones and plans"
+        ]
+      }
+    },
+    "/v1/admin/zones/{id}": {
+      "patch": {
+        "operationId": "AdminZonesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateZoneDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZoneView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: zones and plans"
+        ]
+      }
+    },
+    "/v1/admin/plans": {
+      "get": {
+        "operationId": "AdminZonesController_plans",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PlanView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: zones and plans"
+        ]
+      },
+      "post": {
+        "operationId": "AdminZonesController_createPlan",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: zones and plans"
+        ]
+      }
+    },
+    "/v1/admin/plans/{id}": {
+      "patch": {
+        "operationId": "AdminZonesController_updatePlan",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePlanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlanView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: zones and plans"
+        ]
+      }
+    },
+    "/v1/coverage": {
+      "get": {
+        "operationId": "CoverageController_coverage",
+        "parameters": [
+          {
+            "name": "lat",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 24.835,
+              "type": "number"
+            }
+          },
+          {
+            "name": "lng",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": 46.73,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CoverageView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Is this location served? Returns the areas covering it and their plans",
+        "tags": [
+          "coverage"
+        ]
+      }
     }
   },
   "info": {
@@ -939,6 +1868,11 @@
               "suspended"
             ]
           },
+          "joinCode": {
+            "type": "string",
+            "example": "K7M2QX",
+            "description": "Drivers enter this code in the driver app to join"
+          },
           "staffCount": {
             "type": "number"
           },
@@ -957,6 +1891,7 @@
           "contactPhone",
           "commissionBps",
           "status",
+          "joinCode",
           "staffCount",
           "createdAt"
         ]
@@ -1039,6 +1974,873 @@
             ]
           }
         }
+      },
+      "VehicleView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "plateLetters": {
+            "type": "string",
+            "example": "ABJ"
+          },
+          "plateNumbers": {
+            "type": "string",
+            "example": "1234"
+          },
+          "make": {
+            "type": "string"
+          },
+          "model": {
+            "type": "string"
+          },
+          "year": {
+            "type": "number"
+          },
+          "color": {
+            "type": "string"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "eligibleUntil": {
+            "type": "string",
+            "description": "Last day the vehicle may serve under the age rule (exclusive)"
+          }
+        },
+        "required": [
+          "id",
+          "plateLetters",
+          "plateNumbers",
+          "make",
+          "model",
+          "year",
+          "color",
+          "seats",
+          "eligibleUntil"
+        ]
+      },
+      "DocumentView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "national_id",
+              "driving_license",
+              "driver_photo",
+              "vehicle_registration",
+              "vehicle_insurance",
+              "periodic_inspection"
+            ]
+          },
+          "mime": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "fileUrl": {
+            "type": "string",
+            "description": "Authenticated download path"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "mime",
+          "sizeBytes",
+          "expiresAt",
+          "status",
+          "rejectionReason",
+          "fileUrl",
+          "createdAt"
+        ]
+      },
+      "RequirementView": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "national_id",
+              "driving_license",
+              "driver_photo",
+              "vehicle_registration",
+              "vehicle_insurance",
+              "periodic_inspection"
+            ]
+          },
+          "expiryRequired": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "pending",
+              "accepted",
+              "rejected"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "expiryRequired",
+          "status"
+        ]
+      },
+      "OnboardingView": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "not_joined",
+              "draft",
+              "submitted",
+              "approved",
+              "rejected"
+            ]
+          },
+          "partner": {
+            "type": "object",
+            "nullable": true
+          },
+          "profile": {
+            "type": "object",
+            "nullable": true
+          },
+          "vehicle": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VehicleView"
+              }
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          },
+          "requirements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RequirementView"
+            }
+          },
+          "missing": {
+            "example": [
+              "profile",
+              "vehicle",
+              "document.driving_license"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "canSubmit": {
+            "type": "boolean"
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "complianceHold": {
+            "type": "boolean"
+          },
+          "complianceReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "partner",
+          "profile",
+          "vehicle",
+          "documents",
+          "requirements",
+          "missing",
+          "canSubmit",
+          "rejectionReason",
+          "complianceHold",
+          "complianceReason"
+        ]
+      },
+      "JoinPartnerDto": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "K7M2QX"
+          }
+        },
+        "required": [
+          "code"
+        ]
+      },
+      "DriverProfileDto": {
+        "type": "object",
+        "properties": {
+          "fullName": {
+            "type": "string",
+            "example": "محمد عبدالله الشهري"
+          },
+          "nationalId": {
+            "type": "string",
+            "example": "1012345678",
+            "description": "Saudi national ID (10 digits, starts with 1)"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "example": "1995-04-12"
+          },
+          "saudiConfirmed": {
+            "type": "boolean",
+            "description": "The driver confirms Saudi citizenship (TGA requirement for private cars)"
+          }
+        },
+        "required": [
+          "fullName",
+          "nationalId",
+          "dateOfBirth",
+          "saudiConfirmed"
+        ]
+      },
+      "VehicleDto": {
+        "type": "object",
+        "properties": {
+          "plateLetters": {
+            "type": "string",
+            "example": "ا ب ح",
+            "description": "Plate letters, Arabic or Latin"
+          },
+          "plateNumbers": {
+            "type": "string",
+            "example": "1234"
+          },
+          "make": {
+            "type": "string",
+            "example": "Toyota"
+          },
+          "model": {
+            "type": "string",
+            "example": "Camry"
+          },
+          "year": {
+            "type": "number",
+            "example": 2023
+          },
+          "color": {
+            "type": "string",
+            "example": "أبيض"
+          },
+          "seats": {
+            "type": "number",
+            "example": 4,
+            "description": "Passenger seats, not counting the driver"
+          }
+        },
+        "required": [
+          "plateLetters",
+          "plateNumbers",
+          "make",
+          "model",
+          "year",
+          "color",
+          "seats"
+        ]
+      },
+      "DriverListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "accountStatus": {
+            "type": "string"
+          },
+          "onboardingStatus": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "vehicle": {
+            "type": "string",
+            "nullable": true
+          },
+          "complianceHold": {
+            "type": "boolean"
+          },
+          "submittedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "pendingDocuments": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "fullName",
+          "accountStatus",
+          "onboardingStatus",
+          "partnerId",
+          "vehicle",
+          "complianceHold",
+          "submittedAt",
+          "pendingDocuments"
+        ]
+      },
+      "DriverPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DriverListItem"
+            }
+          },
+          "total": {
+            "type": "number"
+          },
+          "page": {
+            "type": "number"
+          },
+          "pageSize": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
+        ]
+      },
+      "DriverDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "accountStatus": {
+            "type": "string"
+          },
+          "onboardingStatus": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string",
+            "nullable": true
+          },
+          "fullName": {
+            "type": "string",
+            "nullable": true
+          },
+          "nationalId": {
+            "type": "string",
+            "nullable": true,
+            "description": "Full number for partner admins, masked for dispatchers"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "nullable": true
+          },
+          "vehicle": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VehicleView"
+              }
+            ]
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentView"
+            }
+          },
+          "rejectionReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "submittedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "reviewedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "complianceHold": {
+            "type": "boolean"
+          },
+          "complianceReason": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "accountStatus",
+          "onboardingStatus",
+          "partnerId",
+          "fullName",
+          "nationalId",
+          "dateOfBirth",
+          "vehicle",
+          "documents",
+          "rejectionReason",
+          "submittedAt",
+          "reviewedAt",
+          "complianceHold",
+          "complianceReason"
+        ]
+      },
+      "DocumentRejection": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "example": "الصورة غير واضحة"
+          }
+        },
+        "required": [
+          "documentId",
+          "reason"
+        ]
+      },
+      "RejectDriverDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "example": "صورة الرخصة غير واضحة"
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentRejection"
+            }
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ReviewDocumentDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "rejected"
+            ]
+          },
+          "rejectionReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ExpiringItem": {
+        "type": "object",
+        "properties": {
+          "documentId": {
+            "type": "string"
+          },
+          "driverId": {
+            "type": "string"
+          },
+          "driverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "national_id",
+              "driving_license",
+              "driver_photo",
+              "vehicle_registration",
+              "vehicle_insurance",
+              "periodic_inspection"
+            ]
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "daysLeft": {
+            "type": "number",
+            "description": "Negative when already expired"
+          },
+          "complianceHold": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "documentId",
+          "driverId",
+          "driverName",
+          "phone",
+          "type",
+          "expiresAt",
+          "daysLeft",
+          "complianceHold"
+        ]
+      },
+      "GeoJsonPolygon": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "Polygon"
+          },
+          "coordinates": {
+            "description": "One outer ring of [longitude, latitude] pairs (no holes)",
+            "example": [
+              [
+                [
+                  46.71,
+                  24.82
+                ],
+                [
+                  46.75,
+                  24.82
+                ],
+                [
+                  46.75,
+                  24.85
+                ],
+                [
+                  46.71,
+                  24.85
+                ],
+                [
+                  46.71,
+                  24.82
+                ]
+              ]
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "coordinates"
+        ]
+      },
+      "ZoneView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "area": {
+            "$ref": "#/components/schemas/GeoJsonPolygon"
+          },
+          "areaKm2": {
+            "type": "number",
+            "example": 6.4
+          },
+          "planCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "nameAr",
+          "nameEn",
+          "active",
+          "area",
+          "areaKm2",
+          "planCount"
+        ]
+      },
+      "CreateZoneDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "حي الرمال"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Al Rimal"
+          },
+          "area": {
+            "$ref": "#/components/schemas/GeoJsonPolygon"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Super admins only"
+          }
+        },
+        "required": [
+          "nameAr",
+          "nameEn",
+          "area"
+        ]
+      },
+      "UpdateZoneDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "حي الرمال"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Al Rimal"
+          },
+          "area": {
+            "$ref": "#/components/schemas/GeoJsonPolygon"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "PlanView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "tripType": {
+            "type": "string",
+            "enum": [
+              "round_trip",
+              "one_way"
+            ]
+          },
+          "daysPerWeek": {
+            "type": "number"
+          },
+          "priceHalalas": {
+            "type": "number"
+          },
+          "maxDistanceKm": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "zoneId",
+          "nameAr",
+          "nameEn",
+          "tripType",
+          "daysPerWeek",
+          "priceHalalas",
+          "maxDistanceKm",
+          "active"
+        ]
+      },
+      "CreatePlanDto": {
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "ذهاب وعودة - 5 أيام"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Round trip - 5 days"
+          },
+          "tripType": {
+            "type": "string",
+            "enum": [
+              "round_trip",
+              "one_way"
+            ]
+          },
+          "daysPerWeek": {
+            "type": "number",
+            "example": 5
+          },
+          "priceHalalas": {
+            "type": "number",
+            "example": 120000,
+            "description": "Monthly price in halalas, VAT included (120000 = 1,200 SAR)"
+          },
+          "maxDistanceKm": {
+            "type": "number",
+            "example": 15
+          }
+        },
+        "required": [
+          "zoneId",
+          "nameAr",
+          "nameEn",
+          "tripType",
+          "daysPerWeek",
+          "priceHalalas",
+          "maxDistanceKm"
+        ]
+      },
+      "UpdatePlanDto": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string",
+            "example": "ذهاب وعودة - 5 أيام"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Round trip - 5 days"
+          },
+          "tripType": {
+            "type": "string",
+            "enum": [
+              "round_trip",
+              "one_way"
+            ]
+          },
+          "daysPerWeek": {
+            "type": "number",
+            "example": 5
+          },
+          "priceHalalas": {
+            "type": "number",
+            "example": 120000,
+            "description": "Monthly price in halalas, VAT included (120000 = 1,200 SAR)"
+          },
+          "maxDistanceKm": {
+            "type": "number",
+            "example": 15
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "CoverageView": {
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": "string"
+          },
+          "zoneNameAr": {
+            "type": "string"
+          },
+          "zoneNameEn": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "partnerNameAr": {
+            "type": "string"
+          },
+          "partnerNameEn": {
+            "type": "string"
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PlanView"
+            }
+          }
+        },
+        "required": [
+          "zoneId",
+          "zoneNameAr",
+          "zoneNameEn",
+          "partnerId",
+          "partnerNameAr",
+          "partnerNameEn",
+          "plans"
+        ]
       }
     }
   }

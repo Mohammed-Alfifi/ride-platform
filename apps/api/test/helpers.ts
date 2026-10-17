@@ -6,6 +6,8 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { SMS_PROVIDER, SmsProvider } from '../src/auth/sms/sms.provider';
 import { configureApp } from '../src/bootstrap';
+import { joinCode } from '../src/common/crypto';
+import { isValidSaudiNationalId } from '../src/common/saudi';
 import { loadEnv } from '../src/config/env';
 import { DB, Database } from '../src/database/database.module';
 import { runMigrations } from '../src/database/migrate';
@@ -77,7 +79,7 @@ export function newPhone(): string {
 export async function createPartner(ctx: TestContext, name = 'Partner'): Promise<string> {
   const [p] = await ctx.db
     .insert(partners)
-    .values({ nameAr: `${name} ع`, nameEn: name })
+    .values({ nameAr: `${name} ع`, nameEn: name, joinCode: joinCode() })
     .returning({ id: partners.id });
   return p.id;
 }
@@ -119,3 +121,27 @@ export async function signIn(
 }
 
 export const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
+/** Smallest byte sequences each format is recognised by, padded to look like a real file. */
+export const FILES = {
+  jpeg: Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(2048, 1)]),
+  png: Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(2048, 2)]),
+  pdf: Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(2048, 3)]),
+  text: Buffer.from('this is not a document'),
+};
+
+/** A date N days from today in Riyadh, as YYYY-MM-DD. */
+export function daysFromToday(days: number): string {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
+  const d = new Date(`${today}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Builds a valid Saudi national ID from 9 leading digits by computing the check digit. */
+export function withCheckDigit(first9: string): string {
+  for (let d = 0; d <= 9; d++) {
+    if (isValidSaudiNationalId(first9 + d)) return first9 + d;
+  }
+  throw new Error('no check digit');
+}

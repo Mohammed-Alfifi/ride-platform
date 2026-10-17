@@ -16,6 +16,11 @@ import { PartnersModule } from './partners/partners.module';
 import Redis from 'ioredis';
 import { REDIS, RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
+import { DriversModule } from './drivers/drivers.module';
+import { JobsModule } from './jobs/jobs.module';
+import { NotificationsModule } from './notifications/notifications.service';
+import { StorageModule } from './storage/storage.service';
+import { ZonesModule } from './zones/zones.controller';
 
 const env = loadEnv();
 
@@ -52,9 +57,14 @@ const env = loadEnv();
         storage: new RedisThrottlerStorage(redis),
       }),
     }),
+    StorageModule,
+    NotificationsModule,
     AuthModule,
     UsersModule,
     PartnersModule,
+    DriversModule,
+    ZonesModule,
+    JobsModule,
   ],
   controllers: [HealthController],
   providers: [

@@ -5,6 +5,7 @@ const base = {
   REDIS_URL: 'redis://localhost:6379',
   JWT_ACCESS_SECRET: 'x'.repeat(32),
   HASH_PEPPER: 'y'.repeat(16),
+  DATA_ENCRYPTION_KEY: Buffer.alloc(32, 1).toString('base64'),
 };
 
 describe('loadEnv', () => {
@@ -13,6 +14,15 @@ describe('loadEnv', () => {
     expect(env.PORT).toBe(3000);
     expect(env.OTP_LENGTH).toBe(6);
     expect(env.CORS_ORIGINS).toEqual([]);
+  });
+
+  it('rejects an encryption key of the wrong size', () => {
+    expect(() => loadEnv({ ...base, DATA_ENCRYPTION_KEY: 'c2hvcnQ=' })).toThrow(/DATA_ENCRYPTION_KEY/);
+  });
+
+  it('parses compliance warning days', () => {
+    expect(loadEnv({ ...base }).COMPLIANCE_WARN_DAYS).toEqual([30, 7, 1]);
+    expect(loadEnv({ ...base, COMPLIANCE_WARN_DAYS: '14,3' }).COMPLIANCE_WARN_DAYS).toEqual([14, 3]);
   });
 
   it('rejects a short JWT secret', () => {

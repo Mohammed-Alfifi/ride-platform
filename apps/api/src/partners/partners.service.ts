@@ -3,6 +3,7 @@ import { and, asc, count, eq, inArray, isNull } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../auth/auth.types';
 import { TokensService } from '../auth/tokens.service';
+import { joinCode } from '../common/crypto';
 import { AppError } from '../common/errors';
 import { assertPartnerAccess } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
@@ -39,7 +40,10 @@ export class PartnersService {
   async create(actor: AuthUser, dto: CreatePartnerDto, ip?: string): Promise<PartnerView> {
     try {
       return await this.db.transaction(async (tx) => {
-        const [created] = await tx.insert(partners).values(dto).returning();
+        const [created] = await tx
+          .insert(partners)
+          .values({ ...dto, joinCode: joinCode() })
+          .returning();
         await this.audit.record(
           {
             actorId: actor.id,

@@ -45,6 +45,28 @@ export const envSchema = z
     SUPER_ADMIN_NAME: z.string().optional().default('Platform Owner'),
 
     SENTRY_DSN: z.string().optional().default(''),
+
+    // Encrypts identity numbers at rest (AES-256-GCM). 32 bytes, base64.
+    DATA_ENCRYPTION_KEY: z
+      .string()
+      .refine((v) => Buffer.from(v, 'base64').length === 32, 'DATA_ENCRYPTION_KEY must be 32 bytes in base64'),
+
+    STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    STORAGE_DIR: z.string().default('./var/uploads'),
+    S3_BUCKET: z.string().optional().default(''),
+    S3_REGION: z.string().optional().default('me-central-1'),
+    S3_ENDPOINT: z.string().optional().default(''),
+    S3_ACCESS_KEY_ID: z.string().optional().default(''),
+    S3_SECRET_ACCESS_KEY: z.string().optional().default(''),
+    UPLOAD_MAX_MB: z.coerce.number().positive().default(10),
+
+    /** TGA rule: a private car may serve for this many years from January of its model year. */
+    VEHICLE_MAX_AGE_YEARS: z.coerce.number().int().min(1).default(5),
+    COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
+    JOBS_ENABLED: z
+      .string()
+      .optional()
+      .transform((v) => v !== 'false' && v !== '0'),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV === 'production' && env.SMS_PROVIDER === 'console') {
@@ -53,6 +75,9 @@ export const envSchema = z
         path: ['SMS_PROVIDER'],
         message: 'The console SMS provider prints codes to logs and is not allowed in production',
       });
+    }
+    if (env.STORAGE_DRIVER === 's3' && !env.S3_BUCKET) {
+      ctx.addIssue({ code: 'custom', path: ['S3_BUCKET'], message: 'S3_BUCKET is required when STORAGE_DRIVER=s3' });
     }
     if (env.OTP_TEST_PHONES.length > 0 && !/^\d{4,8}$/.test(env.OTP_TEST_CODE)) {
       ctx.addIssue({

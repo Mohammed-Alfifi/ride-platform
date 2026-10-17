@@ -61,6 +61,8 @@ export class PartnerView {
   @ApiProperty({ nullable: true, type: String }) contactPhone!: string | null;
   @ApiProperty() commissionBps!: number;
   @ApiProperty({ enum: ['active', 'suspended'] }) status!: Partner['status'];
+  @ApiProperty({ example: 'K7M2QX', description: 'Drivers enter this code in the driver app to join' })
+  joinCode!: string;
   @ApiProperty() staffCount!: number;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
 }
@@ -76,6 +78,7 @@ export function presentPartner(p: Partner, staffCount = 0): PartnerView {
     contactPhone: p.contactPhone,
     commissionBps: p.commissionBps,
     status: p.status,
+    joinCode: p.joinCode,
     staffCount,
     createdAt: p.createdAt.toISOString(),
   };

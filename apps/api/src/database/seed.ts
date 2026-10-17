@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { normalizeSaudiMobile } from '../common/phone';
@@ -46,6 +46,7 @@ async function seed(): Promise<void> {
             nameEn: 'Demo Transport Partner',
             crNumber: '1010000001',
             commissionBps: 1500,
+            joinCode: 'DEMO26',
           })
           .returning();
       }
@@ -62,7 +63,33 @@ async function seed(): Promise<void> {
           name: 'مدير الشريك التجريبي',
         });
       }
-      console.warn(`Demo partner ready; partner admin ${demoPhone}`);
+      const existingZone = await db.query.zones.findFirst({ where: eq(schema.zones.partnerId, partner.id) });
+      if (!existingZone) {
+        const area = JSON.stringify({
+          type: 'Polygon',
+          coordinates: [[[46.82, 24.86], [46.835, 24.86], [46.835, 24.875], [46.82, 24.875], [46.82, 24.86]]],
+        });
+        const [zone] = await db
+          .insert(schema.zones)
+          .values({
+            partnerId: partner.id,
+            nameAr: 'حي الرمال',
+            nameEn: 'Al Rimal',
+            area: sql`ST_SetSRID(ST_GeomFromGeoJSON(${area}), 4326)` as unknown as string,
+          })
+          .returning();
+        await db.insert(schema.plans).values({
+          partnerId: partner.id,
+          zoneId: zone.id,
+          nameAr: 'ذهاب وعودة - 5 أيام',
+          nameEn: 'Round trip - 5 days',
+          tripType: 'round_trip',
+          daysPerWeek: 5,
+          priceHalalas: 120000,
+          maxDistanceKm: 15,
+        });
+      }
+      console.warn(`Demo partner ready (join code DEMO26); partner admin ${demoPhone}`);
     }
   } finally {
     await pool.end();
