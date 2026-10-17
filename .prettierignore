@@ -1,0 +1,9 @@
+node_modules
+dist
+.next
+coverage
+apps/api/drizzle
+apps/rider_app
+apps/driver_app
+packages/mobile_core
+pnpm-lock.yaml

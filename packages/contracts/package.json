@@ -1,0 +1,8 @@
+{
+  "name": "@ride/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The API contract (OpenAPI) generated from the server. Regenerate with `pnpm --filter @ride/api openapi`.",
+  "main": "openapi.json",
+  "files": ["openapi.json"]
+}
