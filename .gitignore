@@ -23,3 +23,5 @@ android/local.properties
 android/key.properties
 *.jks
 *.keystore
+next-env.d.ts
+*.tsbuildinfo
