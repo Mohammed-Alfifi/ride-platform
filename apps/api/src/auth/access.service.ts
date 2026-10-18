@@ -240,7 +240,8 @@ export class AccessService {
   /** The WhatsApp text the team sends: where to get the app, the phone to type, and the code. */
   private message(invite: AccessInvite, code: string): string {
     const local = invite.phone.replace(/^\+966/, '0');
-    const hello = invite.name ? `أهلا ${invite.name.split(' ')[0]}،` : 'أهلا،';
+    // The whole name: «أم عبدالله» and «أبو فهد» lose their meaning when cut to the first word.
+    const hello = invite.name ? `أهلا ${invite.name}،` : 'أهلا،';
     const web = this.env.RIDER_WEB_URL;
     const download = `${this.env.PUBLIC_WEB_URL}/download`;
     const lines =

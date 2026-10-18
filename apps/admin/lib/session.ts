@@ -55,10 +55,22 @@ export async function readSessionCookies(): Promise<{ access?: string; refresh?:
   return { access: jar.get(ACCESS_COOKIE)?.value, refresh: jar.get(REFRESH_COOKIE)?.value };
 }
 
-export async function callApi(path: string, init: RequestInit & { lang?: string } = {}): Promise<Response> {
+/**
+ * The visitor's address as the proxy in front of this server reported it (Caddy sets
+ * X-Forwarded-For and ignores values sent by browsers). The last entry is the one it added.
+ */
+export function clientIp(req: Request): string | undefined {
+  const forwarded = req.headers.get('x-forwarded-for');
+  const ip = forwarded?.split(',').pop()?.trim() || req.headers.get('x-real-ip')?.trim();
+  return ip && /^[0-9a-fA-F:.]{3,45}$/.test(ip) ? ip : undefined;
+}
+
+export async function callApi(path: string, init: RequestInit & { lang?: string; ip?: string } = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
   if (init.lang) headers.set('Accept-Language', init.lang);
+  // The API trusts one proxy hop (this server), so rate limits apply per visitor, not to the dashboard as a whole.
+  if (init.ip) headers.set('X-Forwarded-For', init.ip);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   return fetch(`${API_URL}${path}`, { ...init, headers, cache: 'no-store' });
 }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ApiError, DriverPage } from '@/lib/client';
 import { useApp } from '@/components/Providers';
-import { LoadState, useLoad } from '@/components/ui';
+import { FormDialog, LoadState, useLoad } from '@/components/ui';
 import { AdminSubscription, api, Page, SubscriptionStatus } from '@/lib/client';
 import { formatDay, formatSar, formatSaudiPhone } from '@/lib/format';
 import { fill } from '@/lib/i18n';
@@ -20,7 +20,9 @@ const TONE: Record<SubscriptionStatus, 'active' | 'pending' | 'suspended'> = {
 };
 
 export default function SubscriptionsPage() {
-  const { t, lang, notify } = useApp();
+  const { t, lang, notify, profile } = useApp();
+  const [paying, setPaying] = useState<AdminSubscription | null>(null);
+  const canRecord = profile?.role !== 'dispatcher';
   const [tab, setTab] = useState<SubscriptionStatus | 'all'>('active');
   const [page, setPage] = useState(1);
   const list = useLoad(() => {
@@ -38,6 +40,18 @@ export default function SubscriptionsPage() {
     } catch (err) {
       notify(err instanceof ApiError && err.message ? err.message : t.common.networkError, 'error');
     }
+  }
+
+  async function recordPayment(form: FormData) {
+    if (!paying) return;
+    const reference = String(form.get('reference') ?? '').trim();
+    await api(`admin/subscriptions/${paying.id}/payments/manual`, {
+      method: 'POST',
+      body: { method: String(form.get('method')), reference: reference || undefined },
+    });
+    setPaying(null);
+    notify(t.subscriptions.recorded);
+    await list.reload();
   }
 
   const pages = list.data ? Math.max(1, Math.ceil(list.data.total / PAGE_SIZE)) : 1;
@@ -81,6 +95,11 @@ export default function SubscriptionsPage() {
                   <th scope="col">{t.subscriptions.periodEnd}</th>
                   <th scope="col">{t.subscriptions.driver}</th>
                   <th scope="col">{t.subscriptions.status}</th>
+                  {canRecord && (
+                    <th scope="col">
+                      <span className="visually-hidden">{t.subscriptions.recordPayment}</span>
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -132,6 +151,19 @@ export default function SubscriptionsPage() {
                           <span className="sub">{fill(t.subscriptions.pausedUntil, { date: formatDay(s.pausedUntil, lang) })}</span>
                         )}
                       </td>
+                      {canRecord && (
+                        <td className="actions">
+                          {['pending_payment', 'past_due', 'active'].includes(s.status) && (
+                            <button
+                              type="button"
+                              className={`btn btn-sm${s.status === 'active' ? ' btn-quiet' : ''}`}
+                              onClick={() => setPaying(s)}
+                            >
+                              {t.subscriptions.recordPayment}
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -153,6 +185,38 @@ export default function SubscriptionsPage() {
           </div>
         )}
       </section>
+      <FormDialog
+        open={paying !== null}
+        title={t.subscriptions.recordTitle}
+        submitLabel={t.subscriptions.recordPayment}
+        onClose={() => setPaying(null)}
+        onSubmit={recordPayment}
+      >
+        {paying && (
+          <>
+            <p className="hint">{t.subscriptions.recordIntro}</p>
+            <p className="pay-who">
+              <strong>{paying.riderName ?? formatSaudiPhone(paying.riderPhone)}</strong>
+              <span className="tabnum">{fill(t.subscriptions.amountDue, {
+                  amount: formatSar(paying.priceHalalas - (paying.status === 'pending_payment' ? (paying.discountHalalas ?? 0) : 0), lang),
+                })}</span>
+            </p>
+          </>
+        )}
+        <div className="field">
+          <label htmlFor="method">{t.subscriptions.method}</label>
+          <select id="method" name="method" className="select" defaultValue="bank_transfer">
+            <option value="bank_transfer">{t.subscriptions.methods.bank_transfer}</option>
+            <option value="cash">{t.subscriptions.methods.cash}</option>
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="reference">
+            {t.subscriptions.reference} ({t.common.optional})
+          </label>
+          <input id="reference" name="reference" className="input num" maxLength={80} dir="ltr" />
+        </div>
+      </FormDialog>
     </>
   );
 }

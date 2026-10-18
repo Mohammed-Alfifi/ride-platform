@@ -334,6 +334,7 @@ export class AdminBillingController {
           outboundTime: subscriptions.outboundTime,
           returnTime: subscriptions.returnTime,
           priceHalalas: subscriptions.priceHalalas,
+          discountHalalas: subscriptions.discountHalalas,
           currentPeriodEnd: subscriptions.currentPeriodEnd,
           cancelAtPeriodEnd: subscriptions.cancelAtPeriodEnd,
           pausedFrom: subscriptions.pausedFrom,

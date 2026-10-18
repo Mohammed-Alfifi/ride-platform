@@ -18,6 +18,8 @@ function LoginForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [resendIn, setResendIn] = useState(0);
+  // access_code: no SMS on this server; the team gave the person an 8-digit code.
+  const [channel, setChannel] = useState<'sms' | 'access_code'>('sms');
   const codeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -38,7 +40,8 @@ function LoginForm() {
     setBusy(true);
     setError('');
     try {
-      const res = await postJson<{ resendAfter: number }>('/api/auth/request', { phone });
+      const res = await postJson<{ resendAfter: number; channel?: 'sms' | 'access_code' }>('/api/auth/request', { phone });
+      setChannel(res.channel ?? 'sms');
       setStep('code');
       setCode('');
       setResendIn(res.resendAfter);
@@ -104,9 +107,9 @@ function LoginForm() {
           </form>
         ) : (
           <form className="login-form" onSubmit={verify} noValidate>
-            <h1>{t.login.code}</h1>
+            <h1>{channel === 'access_code' ? t.login.accessCode : t.login.code}</h1>
             <p>
-              {t.login.codeSentTo} <span className="num">{phone}</span>
+              {channel === 'access_code' ? t.login.accessIntro : t.login.codeSentTo} <span className="num">{phone}</span>
             </p>
             <div className="field">
               <label htmlFor="code" className="visually-hidden">
@@ -139,7 +142,7 @@ function LoginForm() {
               >
                 {t.login.changeNumber}
               </button>
-              {resendIn > 0 ? (
+              {channel === 'access_code' ? null : resendIn > 0 ? (
                 <span className="hint" style={{ color: 'var(--ink-faint)' }}>
                   {fill(t.login.resendIn, { s: resendIn })}
                 </span>

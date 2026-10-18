@@ -16,6 +16,6 @@ export function middleware(req: NextRequest): NextResponse {
 }
 
 export const config = {
-  // /t/<token> is the public page a family member opens from a shared trip link.
-  matcher: ['/((?!api|t/|_next/static|_next/image|favicon.ico|icon.svg).*)'],
+  // Public pages: /t/<token> (shared trip), /join, /download, /terms, /privacy, /delete-account.
+  matcher: ['/((?!api|t/|join$|download$|terms$|privacy$|delete-account$|_next/static|_next/image|favicon.ico|icon.svg).*)'],
 };

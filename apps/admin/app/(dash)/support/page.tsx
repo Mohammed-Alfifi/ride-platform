@@ -15,6 +15,7 @@ interface TicketRow {
   category: Category;
   subject: string;
   status: Status;
+  urgent?: boolean;
   tripId: string | null;
   lastMessageAt: string;
   requester?: { name: string | null; phone: string; role: string };
@@ -79,9 +80,16 @@ export default function SupportPage() {
           <ul className="ticket-list">
             {list.data?.map((x) => (
               <li key={x.id}>
-                <button type="button" aria-current={x.id === selected} onClick={() => setSelected(x.id)}>
+                <button
+                  type="button"
+                  aria-current={x.id === selected}
+                  className={x.urgent && x.status !== 'closed' ? 'ticket-urgent' : undefined}
+                  onClick={() => setSelected(x.id)}
+                >
                   <span className="ticket-head">
-                    <strong>{x.subject}</strong>
+                    <strong>
+                      {x.urgent && <span className="badge badge-urgent">{t.support.urgent}</span>} {x.subject}
+                    </strong>
                     <span className={`badge badge-${TONE[x.status]}`}>{t.support.states[x.status]}</span>
                   </span>
                   <span className="sub">

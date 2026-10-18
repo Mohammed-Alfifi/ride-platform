@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LANG_COOKIE, parseLang } from '@/lib/i18n';
-import { callApi, networkErrorResponse, setSession } from '@/lib/session';
+import { callApi, clientIp, networkErrorResponse, setSession } from '@/lib/session';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const lang = parseLang(req.cookies.get(LANG_COOKIE)?.value);
@@ -9,6 +9,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const res = await callApi('/v1/auth/otp/verify', {
       method: 'POST',
       lang,
+      ip: clientIp(req),
       headers: { 'User-Agent': req.headers.get('user-agent') ?? 'admin-dashboard' },
       body: JSON.stringify({ phone: phone ?? '', code: code ?? '', app: 'admin' }),
     });

@@ -219,6 +219,7 @@ export interface AdminSubscription {
   outboundTime: string;
   returnTime: string | null;
   priceHalalas: number;
+  discountHalalas?: number;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   pausedFrom: string | null;

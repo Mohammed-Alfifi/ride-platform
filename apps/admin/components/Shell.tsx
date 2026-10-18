@@ -15,6 +15,8 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/drivers', label: t.nav.drivers },
     { href: '/zones', label: t.nav.zones },
     { href: '/plans', label: t.nav.plans },
+    { href: '/join-requests', label: t.nav.joinRequests },
+    { href: '/access', label: t.nav.access },
     { href: '/subscriptions', label: t.nav.subscriptions },
     { href: '/payments', label: t.nav.payments },
     { href: '/reports', label: t.nav.reports },
@@ -23,7 +25,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/compliance', label: t.nav.compliance },
     { href: '/partners', label: t.nav.partners },
     { href: '/users', label: t.nav.users },
-  ].filter((i) => !(['/payments', '/reports', '/promos'].includes(i.href) && profile?.role === 'dispatcher'));
+  ].filter((i) => !(['/payments', '/reports', '/promos', '/join-requests', '/access'].includes(i.href) && profile?.role === 'dispatcher'));
 
   // On phones the menu is one scrolling row; bring the current page into view.
   useEffect(() => {
