@@ -12,7 +12,9 @@ export function configureApp(app: INestApplication, env: Env): void {
   express.disable('x-powered-by');
 
   app.useLogger(app.get(Logger));
-  app.use(helmet());
+  // Locally the API is plain http; asking browsers to upgrade to https would break the test payment page.
+  const local = env.NODE_ENV === 'development' || env.NODE_ENV === 'test';
+  app.use(helmet({ contentSecurityPolicy: { directives: { upgradeInsecureRequests: local ? null : [] } } }));
   app.enableCors({
     origin: env.CORS_ORIGINS.length > 0 ? env.CORS_ORIGINS : false,
     credentials: false,
