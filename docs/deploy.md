@@ -25,15 +25,15 @@
 ```bash
 git clone https://github.com/Mohammed-Alfifi/ride-platform.git   # أو ارفع الملف المضغوط بـ scp
 cd ride-platform/infra/server
-bash setup.sh ride-api.duckdns.org ride-admin.duckdns.org you@email.com +9665XXXXXXXX
+bash setup.sh ride-api.duckdns.org ride-admin.duckdns.org you@email.com
 ```
-السكربت يثبت Docker، ويفتح المنفذين، وينشئ `server.env` بأسرار جديدة، ويبني ويشغل كل شيء، ويطبع رمز الدخول الثابت لرقمك.
+السكربت يثبت Docker، ويفتح المنفذين، وينشئ `server.env` بأسرار جديدة، ويبني ويشغل كل شيء.
 
 ثم أنشئ حساب مدير المنصة بالرقم نفسه:
 ```bash
 bash admin.sh +9665XXXXXXXX "اسمك"
 ```
-افتح `https://ride-admin.duckdns.org` وادخل برقمك والرمز المطبوع.
+يطبع الأمر رمز دخول من 8 أرقام. افتح `https://ride-admin.duckdns.org` وادخل برقمك وهذا الرمز. لرمز جديد في أي وقت: `bash code.sh 05XXXXXXXX`.
 
 ### 4. بعد التشغيل
 - **تحديث الكود:** `bash update.sh` (يسحب الكود، يعيد البناء، والترحيلات تُطبق تلقائيا).
@@ -41,21 +41,21 @@ bash admin.sh +9665XXXXXXXX "اسمك"
 - **احتفظ بنسخة من `server.env`:** فقد `DATA_ENCRYPTION_KEY` يجعل أرقام الهويات المحفوظة غير قابلة للقراءة.
 - **السجلات:** `sudo docker compose logs -f api`
 
-## وضع التشغيل: تجريبي (staging)
+## وضع التشغيل: تجربة مغلقة دون تكاليف
 
-الخادم يعمل بـ `NODE_ENV=staging` لأن الإنتاج يرفض شيئين غير جاهزين بعد:
-| | الآن (مجاني) | للإطلاق |
+الإعدادات الافتراضية تشغّل الخادم بوضع الإنتاج (`NODE_ENV=production`) دون أي خدمة مدفوعة:
+
+| | الآن (مجاني) | عند التوسع |
 | --- | --- | --- |
-| رموز الدخول SMS | أرقام تجربة برمز ثابت (`OTP_TEST_PHONES`)؛ وأي رقم آخر يظهر رمزه في سجل الخادم | مزوّد رسائل سعودي (مدفوع بالرسالة) |
-| الدفع | صفحة الدفع التجريبية؛ أو مفاتيح Tap التجريبية `sk_test` لصفحات بطاقات حقيقية دون مال حقيقي | مفاتيح Tap الحية بعد حساب التاجر |
+| الدخول | بالدعوة فقط، برمز من 8 أرقام ترسله من اللوحة بالواتساب | مزوّد SMS سعودي: `SMS_PROVIDER=taqnyat` |
+| الدفع | تحويل بنكي أو نقدا، تسجله من اللوحة فتصدر الفاتورة | Tap: `PAYMENT_PROVIDER=tap` مع المفاتيح |
 
-لإضافة مختبرين: أضف أرقامهم إلى `OTP_TEST_PHONES` في `server.env` (مفصولة بفواصل) ثم `bash update.sh`.
+التفاصيل وإجراءات التشغيل اليومي في [`pilot.md`](pilot.md).
 
 ## تطبيقا الجوال
 
-- **أندرويد (مجاني):** بعد رفع الكود إلى GitHub: Actions → «Android test builds» → Run workflow، وأدخل عنوان الـ API (`https://ride-api.duckdns.org`). بعد دقائق تجد ملفي APK للراكب والسائق في Artifacts؛ أرسلهما للمختبرين للتثبيت مباشرة.
-- **آيفون:** يحتاج حساب Apple Developer (رسوم سنوية) للتوزيع عبر TestFlight.
-- **المتاجر:** حساب Google Play برسوم لمرة واحدة، و App Store بالاشتراك السنوي أعلاه.
+- **أندرويد والآيفون (مجاني):** من GitHub: Actions → «Release builds» → Run workflow، وأدخل عنوان الـ API (`https://ride-api.duckdns.org`). يُنشر إصدار فيه تطبيقا أندرويد موقّعان ونسخة الويب للآيفون. ثم على الخادم `bash update.sh` لتنزيل نسخة الويب، فتعمل على `https://ride-api.duckdns.org/app/`. صفحة `https://ride-admin.duckdns.org/download` تشرح التثبيت للعملاء.
+- **المتاجر لاحقا:** حساب Google Play برسوم لمرة واحدة، و App Store باشتراك سنوي.
 
 ## بديل دون بطاقة: خدمات مجانية متفرقة (للعرض فقط)
 

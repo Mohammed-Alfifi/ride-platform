@@ -19,6 +19,10 @@ on:
       api_url:
         description: 'API address the apps talk to (e.g. https://ride-api.duckdns.org)'
         required: true
+      publish:
+        description: 'Publish as the latest release (untick to only test the builds)'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
@@ -126,6 +130,7 @@ jobs:
 
   publish:
     needs: [android, web]
+    if: inputs.publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v4
