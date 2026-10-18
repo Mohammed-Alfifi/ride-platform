@@ -1,0 +1,17 @@
+# HTTPS certificates are issued and renewed automatically (Let's Encrypt).
+{
+	email {$ACME_EMAIL}
+}
+
+{$API_DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 15MB
+	}
+	reverse_proxy api:3000
+}
+
+{$ADMIN_DOMAIN} {
+	encode gzip
+	reverse_proxy admin:3001
+}

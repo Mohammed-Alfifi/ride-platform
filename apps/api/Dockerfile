@@ -11,7 +11,7 @@ RUN pnpm --filter @ride/api build && pnpm --filter @ride/api deploy --prod --leg
 FROM node:22-alpine
 ENV NODE_ENV=production
 WORKDIR /app
-RUN addgroup -S app && adduser -S app -G app
+RUN addgroup -S app && adduser -S app -G app && mkdir -p /app/var/uploads && chown -R app:app /app/var
 COPY --from=build /out/node_modules ./node_modules
 COPY --from=build /out/package.json ./package.json
 COPY --from=build /repo/apps/api/dist ./dist

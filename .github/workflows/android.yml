@@ -1,0 +1,45 @@
+# Builds installable Android test builds (APK) of the rider and driver apps.
+# Run it from GitHub: Actions -> "Android test builds" -> Run workflow, and enter the API address.
+# The APKs appear under the run's "Artifacts"; send them to testers to install.
+name: Android test builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API address the apps talk to (e.g. https://ride-api.duckdns.org)'
+        required: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [rider_app, driver_app]
+    defaults:
+      run:
+        working-directory: apps/${{ matrix.app }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      # The repository keeps only Dart code; generate the Android project around it.
+      - run: flutter create --platforms=android --org sa.ride --project-name ${{ matrix.app }} .
+      - name: Allow internet access in release builds
+        run: |
+          manifest=android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.INTERNET' "$manifest" || \
+            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$manifest"
+      - run: flutter pub get
+      - run: flutter build apk --release --dart-define=API_URL=${{ inputs.api_url }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-apk
+          path: apps/${{ matrix.app }}/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30

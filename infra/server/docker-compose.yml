@@ -1,0 +1,93 @@
+# The whole platform on one server: database, Redis, API, dashboard, and Caddy for HTTPS.
+# Usage (from this folder):  docker compose up -d --build
+# Settings come from ./server.env (copy server.env.example; setup.sh fills the secrets).
+name: ride
+
+services:
+  db:
+    build:
+      context: .
+      dockerfile: postgres.Dockerfile
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ride
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in server.env}
+      POSTGRES_DB: ride
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ride']
+      interval: 5s
+      retries: 20
+    shm_size: 256mb
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Saved to disk: the daily job schedules and queues live here.
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      retries: 20
+
+  api:
+    build:
+      context: ../..
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file: server.env
+    environment:
+      DATABASE_URL: postgres://ride:${DB_PASSWORD}@db:5432/ride
+      REDIS_URL: redis://redis:6379
+      PUBLIC_API_URL: https://${API_DOMAIN}
+      CORS_ORIGINS: https://${ADMIN_DOMAIN}
+      STORAGE_DRIVER: local
+      STORAGE_DIR: /app/var/uploads
+      PORT: '3000'
+    volumes:
+      - uploads:/app/var/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  admin:
+    build:
+      context: ../..
+      dockerfile: apps/admin/Dockerfile
+    restart: unless-stopped
+    environment:
+      API_URL: http://api:3000
+      COOKIE_SECURE: 'true'
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      API_DOMAIN: ${API_DOMAIN}
+      ADMIN_DOMAIN: ${ADMIN_DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - admin
+
+volumes:
+  db_data:
+  redis_data:
+  uploads:
+  caddy_data:
+  caddy_config:
