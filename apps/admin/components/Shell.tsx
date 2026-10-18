@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { useApp } from './Providers';
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -20,6 +20,11 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/partners', label: t.nav.partners },
     { href: '/users', label: t.nav.users },
   ].filter((i) => !(i.href === '/payments' && profile?.role === 'dispatcher'));
+
+  // On phones the menu is one scrolling row; bring the current page into view.
+  useEffect(() => {
+    document.querySelector('.nav a[aria-current="page"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [pathname]);
 
   async function signOut() {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => undefined);
@@ -46,7 +51,7 @@ export function Shell({ children }: { children: ReactNode }) {
           {profile && (
             <>
               <span className="who">{profile.name ?? '—'}</span>
-              <span>{t.roles[profile.role]}</span>
+              <span className="role">{t.roles[profile.role]}</span>
             </>
           )}
           <button type="button" className="btn btn-link" onClick={switchLang}>
