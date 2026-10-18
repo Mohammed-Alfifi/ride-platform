@@ -82,6 +82,11 @@
 ### على جهازك (أسهل طريقة)
 ثبّت Docker Desktop، ثم شغّل `start.bat` (ويندوز) أو `bash start.sh` (ماك ولينكس). افتح `http://localhost:3001` وادخل بالرقم `0500000000` والرمز `123456`. توثيق الـ API على `http://localhost:3000/docs`.
 
+### نسخة مجانية على الإنترنت بضغطة واحدة
+[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Mohammed-Alfifi/ride-platform)
+
+تنشئ الخادم واللوحة وقاعدة البيانات ونسخة الويب على خطة Render المجانية من الملف `render.yaml`. الخطوات في [`docs/deploy.md`](docs/deploy.md#نسخة-مجانية-على-render-بضغطة-واحدة).
+
 ### على خادم
 خادم مجاني (Oracle Cloud) أو أي خادم Ubuntu، بأمر واحد مع شهادة HTTPS تلقائية. الخطوات في [`docs/deploy.md`](docs/deploy.md).
 

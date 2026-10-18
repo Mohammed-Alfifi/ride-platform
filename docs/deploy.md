@@ -41,6 +41,29 @@ bash admin.sh +9665XXXXXXXX "اسمك"
 - **احتفظ بنسخة من `server.env`:** فقد `DATA_ENCRYPTION_KEY` يجعل أرقام الهويات المحفوظة غير قابلة للقراءة.
 - **السجلات:** `sudo docker compose logs -f api`
 
+## نسخة مجانية على Render بضغطة واحدة
+
+أسرع طريقة لرابط يعمل على الإنترنت، دون خادم خاص بك:
+
+1. افتح [render.com/deploy?repo=https://github.com/Mohammed-Alfifi/ride-platform](https://render.com/deploy?repo=https://github.com/Mohammed-Alfifi/ride-platform) وسجّل الدخول بحساب GitHub.
+2. يطلب ثلاث قيم:
+   - `SUPER_ADMIN_PHONE`: جوالك بصيغة `+9665XXXXXXXX`.
+   - `OTP_TEST_PHONES`: نفس الجوال.
+   - `OTP_TEST_CODE`: رمز من 6 أرقام تختاره لدخولك.
+3. اضغط Apply وانتظر 10 إلى 15 دقيقة حتى تكتمل الخدمات الخمس.
+
+الروابط:
+- **اللوحة:** `https://mishwar-ride-admin.onrender.com`، وتدخلها بجوالك ورمزك.
+- **صفحة الانضمام:** `https://mishwar-ride-admin.onrender.com/join`.
+- **تطبيق الراكب في المتصفح:** `https://mishwar-ride-app.onrender.com`.
+
+حدود الخطة المجانية:
+- الخادم واللوحة ينامان بعد 15 دقيقة دون زيارات، وأول فتح بعدها يأخذ قرابة دقيقة.
+- قاعدة البيانات المجانية تُحذف بعد 30 يوما.
+- الملفات المرفوعة، مثل وثائق السائقين، تضيع عند إعادة التشغيل.
+
+هذه النسخة مناسبة للعرض والتجربة القصيرة. للتجربة الحقيقية استخدم خادم Oracle المجاني أدناه.
+
 ## وضع التشغيل: تجربة مغلقة دون تكاليف
 
 الإعدادات الافتراضية تشغّل الخادم بوضع الإنتاج (`NODE_ENV=production`) دون أي خدمة مدفوعة:

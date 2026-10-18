@@ -75,10 +75,7 @@ services:
         value: 'true'
       - key: SWAGGER_ENABLED
         value: 'false'
-      - key: SUPPORT_WHATSAPP
-        sync: false
-      - key: FCM_SERVICE_ACCOUNT
-        sync: false
+      # Add later in Render (Environment): SUPPORT_WHATSAPP, PAYMENT_INSTRUCTIONS_AR, FCM_SERVICE_ACCOUNT.
 
   - type: web
     name: mishwar-ride-admin
@@ -94,10 +91,7 @@ services:
         value: 'true'
       - key: RIDER_WEB_URL
         value: https://mishwar-ride-app.onrender.com/
-      - key: SUPPORT_WHATSAPP
-        sync: false
-      - key: OPERATOR_NAME
-        sync: false
+      # Add later in Render (Environment): SUPPORT_WHATSAPP, OPERATOR_NAME, OPERATOR_CR.
 
   # The rider app for iPhone and browsers. Built by GitHub Actions ("Web demo build") into the web-build branch.
   - type: web
