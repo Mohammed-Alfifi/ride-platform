@@ -66,14 +66,23 @@ jobs:
           FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
           FIREBASE_SENDER_ID: ${{ secrets.FIREBASE_SENDER_ID }}
           FIREBASE_APP_ID: ${{ matrix.app == 'rider_app' && secrets.FIREBASE_APP_ID_RIDER || secrets.FIREBASE_APP_ID_DRIVER }}
+        shell: bash
         run: |
+          set +e
           flutter build apk --release \
             --build-name=1.0.${{ github.run_number }} --build-number=${{ github.run_number }} \
             --dart-define=API_URL=${{ inputs.api_url }} \
             --dart-define=FIREBASE_API_KEY="$FIREBASE_API_KEY" \
             --dart-define=FIREBASE_PROJECT_ID="$FIREBASE_PROJECT_ID" \
             --dart-define=FIREBASE_SENDER_ID="$FIREBASE_SENDER_ID" \
-            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID"
+            --dart-define=FIREBASE_APP_ID="$FIREBASE_APP_ID" 2>&1 | tee build.txt
+          code=${PIPESTATUS[0]}
+          if [ $code -ne 0 ]; then
+            # Show the cause on the run page (annotations), not only in the long log.
+            grep -E "What went wrong|error:|Error:|e: |requires|minSdk|incompatible|Could not" build.txt | head -20 | while IFS= read -r line; do echo "::error::$line"; done
+            grep -A6 "What went wrong" build.txt | head -14 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
       - name: Sign with the project key
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
