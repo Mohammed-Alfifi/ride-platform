@@ -243,3 +243,104 @@ class Invoice {
   final int vatHalalas;
   final bool taxInvoice;
 }
+
+class TripSpot {
+  const TripSpot(this.lat, this.lng, this.name);
+  factory TripSpot.fromJson(Map<String, dynamic> j) => TripSpot(_double(j['lat']), _double(j['lng']), j['name'] as String);
+  final double lat;
+  final double lng;
+  final String name;
+}
+
+class TripDriver {
+  const TripDriver({required this.name, this.phone, this.plate, this.vehicle});
+  factory TripDriver.fromJson(Map<String, dynamic> j) {
+    final v = j['vehicle'] as Map<String, dynamic>?;
+    return TripDriver(
+      name: _str(j['name']),
+      phone: _str(j['phone']),
+      plate: v == null ? null : v['plate'] as String,
+      vehicle: v == null ? null : '${v['make']} ${v['model']} · ${v['color']}',
+    );
+  }
+  final String? name;
+  final String? phone;
+  final String? plate;
+  final String? vehicle;
+}
+
+class Trip {
+  const Trip({
+    required this.id,
+    required this.subscriptionId,
+    required this.serviceDate,
+    required this.leg,
+    required this.scheduledAt,
+    required this.status,
+    required this.pickup,
+    required this.dropoff,
+    required this.driver,
+    this.startedAt,
+    this.arrivedAt,
+    this.pickedUpAt,
+    this.completedAt,
+  });
+
+  factory Trip.fromJson(Map<String, dynamic> j) {
+    DateTime? at(String k) => j[k] == null ? null : DateTime.parse(j[k] as String);
+    return Trip(
+      id: j['id'] as String,
+      subscriptionId: j['subscriptionId'] as String,
+      serviceDate: j['serviceDate'] as String,
+      leg: j['leg'] as String,
+      scheduledAt: DateTime.parse(j['scheduledAt'] as String),
+      status: j['status'] as String,
+      pickup: TripSpot.fromJson(j['pickup'] as Map<String, dynamic>),
+      dropoff: TripSpot.fromJson(j['dropoff'] as Map<String, dynamic>),
+      driver: j['driver'] is Map<String, dynamic> ? TripDriver.fromJson(j['driver'] as Map<String, dynamic>) : null,
+      startedAt: at('startedAt'),
+      arrivedAt: at('arrivedAt'),
+      pickedUpAt: at('pickedUpAt'),
+      completedAt: at('completedAt'),
+    );
+  }
+
+  final String id;
+  final String subscriptionId;
+  final String serviceDate;
+  final String leg;
+  final DateTime scheduledAt;
+  final String status; // scheduled | en_route | arrived | on_board | completed | no_show | skipped | cancelled
+  final TripSpot pickup;
+  final TripSpot dropoff;
+  final TripDriver? driver;
+  final DateTime? startedAt;
+  final DateTime? arrivedAt;
+  final DateTime? pickedUpAt;
+  final DateTime? completedAt;
+
+  bool get active => status == 'en_route' || status == 'arrived' || status == 'on_board';
+  bool get upcoming => status == 'scheduled';
+  bool get open => upcoming || active;
+}
+
+class LiveTrip {
+  const LiveTrip({required this.trip, this.driverLat, this.driverLng, this.heading, this.etaMinutes, this.distanceMeters});
+  factory LiveTrip.fromJson(Map<String, dynamic> j) {
+    final loc = j['driverLocation'] as Map<String, dynamic>?;
+    return LiveTrip(
+      trip: Trip.fromJson(j['trip'] as Map<String, dynamic>),
+      driverLat: loc == null ? null : _double(loc['lat']),
+      driverLng: loc == null ? null : _double(loc['lng']),
+      heading: loc == null || loc['heading'] == null ? null : _double(loc['heading']),
+      etaMinutes: j['etaMinutes'] == null ? null : _int(j['etaMinutes']),
+      distanceMeters: j['distanceMeters'] == null ? null : _int(j['distanceMeters']),
+    );
+  }
+  final Trip trip;
+  final double? driverLat;
+  final double? driverLng;
+  final double? heading;
+  final int? etaMinutes;
+  final int? distanceMeters;
+}

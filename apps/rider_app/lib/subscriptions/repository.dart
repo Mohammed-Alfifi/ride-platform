@@ -82,6 +82,13 @@ class RiderRepository {
 
   Future<List<Invoice>> invoices() async => (await _api.getList('/v1/invoices')).map(Invoice.fromJson).toList();
 
+  Future<List<Trip>> trips({int days = 7}) async =>
+      (await _api.getList('/v1/trips', query: {'days': days})).map(Trip.fromJson).toList();
+
+  Future<LiveTrip> live(String tripId) async => LiveTrip.fromJson(await _api.get('/v1/trips/$tripId/live'));
+
+  Future<Trip> skip(String tripId) async => Trip.fromJson(await _api.post('/v1/trips/$tripId/skip'));
+
   /// The printable invoice is an authenticated page; the web view sends the token as a header.
   Future<(Uri, Map<String, String>)> invoicePage(String id, String baseUrl) async {
     final token = await _api.accessToken();
@@ -98,6 +105,8 @@ final subscriptionsProvider =
 
 final subscriptionProvider = FutureProvider.autoDispose
     .family<Subscription, String>((ref, id) => ref.watch(riderRepositoryProvider).subscription(id));
+
+final tripsProvider = FutureProvider.autoDispose<List<Trip>>((ref) => ref.watch(riderRepositoryProvider).trips());
 
 final cardsProvider = FutureProvider.autoDispose<List<SavedCard>>((ref) => ref.watch(riderRepositoryProvider).cards());
 

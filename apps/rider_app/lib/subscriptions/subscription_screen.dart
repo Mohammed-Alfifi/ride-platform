@@ -8,6 +8,7 @@ import 'new_subscription_screen.dart' show RepoErrors, showPaymentOutcome;
 import 'place_picker_screen.dart';
 import 'repository.dart';
 import 'strings.dart';
+import 'trip_widgets.dart';
 
 /// One subscription: where and when, what is paid, and the rider's controls
 /// (pay, pause for a trip, resume, stop renewing, keep).
@@ -168,6 +169,7 @@ class _BodyState extends ConsumerState<_Body> {
           subtitle: s.card == null ? t.noCard : '${s.card!.brand} •••• ${s.card!.last4}',
         ),
         _Row(icon: Icons.apartment_outlined, title: t.serviceBy, subtitle: t.ar ? s.partnerNameAr : s.partnerNameEn),
+        if (s.live) ...[const SizedBox(height: 16), UpcomingTrips(subscriptionId: s.id)],
         const SizedBox(height: 20),
         if (s.status == 'active' && !pauseOpen && !pausedThisPeriod) ...[
           OutlinedButton.icon(onPressed: _busy ? null : _pause, icon: const Icon(Icons.pause), label: Text(t.pause)),

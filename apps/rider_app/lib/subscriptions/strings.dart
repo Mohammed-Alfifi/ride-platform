@@ -150,6 +150,48 @@ class RiderStrings {
   String get receipt => _s('إيصال', 'Receipt');
   String expires(int m, int y) => _s('تنتهي ${m.toString().padLeft(2, '0')}/${y % 100}', 'Expires ${m.toString().padLeft(2, '0')}/${y % 100}');
 
+  // Trips
+  String get nextTrip => _s('رحلتك القادمة', 'Your next trip');
+  String get tripNow => _s('رحلتك الآن', 'Your trip now');
+  String get follow => _s('تابع السائق', 'Follow your driver');
+  String get upcomingTrips => _s('الرحلات القادمة', 'Upcoming trips');
+  String get noUpcoming => _s('ستظهر رحلاتك هنا قبل موعدها بيوم.', 'Your trips appear here a day ahead.');
+  String get skipTrip => _s('لا أحتاج هذه الرحلة', "I don't need this trip");
+  String get skipConfirm => _s('سنبلغ السائق ألا يأتي لهذه الرحلة فقط. بقية الرحلات كما هي.', 'We will tell the driver not to come for this trip only. Other trips stay as they are.');
+  String get skipped => _s('تم إبلاغ السائق', 'Your driver has been told');
+  String get outbound => _s('ذهاب', 'Outbound');
+  String get returnLeg => _s('عودة', 'Return');
+  String get today => _s('اليوم', 'Today');
+  String get tomorrow => _s('غدا', 'Tomorrow');
+  String tripScheduled(String time) => _s('رحلتك الساعة $time', 'Your trip is at $time');
+  String get tripScheduledBody => _s('سنرسل لك إشعارا عندما يتحرك السائق إليك.', 'We will notify you when your driver sets off.');
+  String get driverOnWay => _s('السائق في الطريق', 'Your driver is on the way');
+  String arrivesIn(int m) => _s('يصل خلال $m دقيقة', 'Arrives in $m min');
+  String get getReady => _s('استعد عند مكان الركوب.', 'Get ready at the pick-up point.');
+  String get driverArrived => _s('السائق وصل', 'Your driver is here');
+  String driverWaiting(String place) => _s('ينتظرك عند $place', 'Waiting at $place');
+  String reachIn(int m) => _s('الوصول خلال $m دقيقة', 'Arriving in $m min');
+  String onTheWayTo(String place) => _s('في الطريق إلى $place', 'On the way to $place');
+  String get arrivedSafely => _s('وصل بالسلامة', 'Arrived safely');
+  String arrivedAt(String place) => _s('تم الوصول إلى $place', 'Arrived at $place');
+  String get yourDriver => _s('سائقك', 'Your driver');
+  String get callDriver => _s('اتصل بالسائق', 'Call the driver');
+  String get noDriverYet => _s('سيُحدد السائق قريبا', 'Driver to be confirmed');
+  String get stepOnWay => _s('في الطريق', 'On the way');
+  String get stepArrived => _s('وصل', 'Arrived');
+  String get stepOnBoard => _s('ركبت', 'On board');
+  String get stepDone => _s('وصلت', 'Dropped off');
+  String tripStatus(String s) => switch (s) {
+        'scheduled' => _s('مجدولة', 'Scheduled'),
+        'en_route' => _s('السائق في الطريق', 'Driver on the way'),
+        'arrived' => _s('السائق وصل', 'Driver arrived'),
+        'on_board' => _s('في الطريق', 'On the way'),
+        'completed' => _s('مكتملة', 'Completed'),
+        'no_show' => _s('لم تحضر', 'Missed'),
+        'skipped' => _s('ألغيتها', 'You cancelled'),
+        _ => _s('ملغاة', 'Cancelled'),
+      };
+
   String sar(int halalas) => NumberFormat.decimalPatternDigits(locale: 'en', decimalDigits: halalas % 100 == 0 ? 0 : 2).format(halalas / 100);
 
   String day(String iso) {

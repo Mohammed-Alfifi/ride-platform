@@ -15,6 +15,9 @@ dependencies:
   dio: ^5.7.0
   image_picker: ^1.1.2
   file_picker: ^8.1.4
+  geolocator: ^13.0.2
+  intl: any
+  url_launcher: ^6.3.1
   mobile_core:
     path: ../../packages/mobile_core
 

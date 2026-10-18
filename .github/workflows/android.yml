@@ -31,11 +31,15 @@ jobs:
           cache: true
       # The repository keeps only Dart code; generate the Android project around it.
       - run: flutter create --platforms=android --org sa.ride --project-name ${{ matrix.app }} .
-      - name: Allow internet access in release builds
+      - name: Permissions (internet; location for the driver app)
         run: |
           manifest=android/app/src/main/AndroidManifest.xml
-          grep -q 'android.permission.INTERNET' "$manifest" || \
-            sed -i 's|<application|<uses-permission android:name="android.permission.INTERNET"/>\n    <application|' "$manifest"
+          perms='<uses-permission android:name="android.permission.INTERNET"/>'
+          if [ "${{ matrix.app }}" = "driver_app" ]; then
+            perms="$perms"'<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>'
+          fi
+          sed -i "s|<application|$perms\n    <application|" "$manifest"
+          grep -c 'uses-permission' "$manifest"
       - run: flutter pub get
       - run: flutter build apk --release --dart-define=API_URL=${{ inputs.api_url }}
       - uses: actions/upload-artifact@v4

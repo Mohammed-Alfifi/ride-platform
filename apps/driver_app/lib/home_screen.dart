@@ -3,23 +3,35 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mobile_core/mobile_core.dart';
 
+import 'onboarding/onboarding_controller.dart';
 import 'onboarding/onboarding_screen.dart';
 import 'onboarding/strings.dart';
+import 'trips/today_screen.dart';
 
-/// Phase 2 home: the application checklist until approval; afterwards the driver's status,
-/// compliance warnings and documents (for renewals). The day's route arrives in phase 4.
-class DriverHomeScreen extends ConsumerWidget {
+/// Until approval: the application checklist. Once approved: the day's trips, with the
+/// account (documents and renewals) one tap away.
+class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DriverHomeScreen> createState() => _DriverHomeScreenState();
+}
+
+class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final user = ref.watch(sessionProvider).valueOrNull;
     if (user == null) return const SizedBox.shrink();
     final t = OnboardingStrings.of(context);
+    final tt = TripStrings.of(context);
+    final approved = ref.watch(onboardingProvider).valueOrNull?.status == 'approved';
+    final showTrips = approved && _tab == 0;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user.needsName ? t.title : user.name!),
+        title: Text(showTrips ? tt.today : (user.needsName ? t.title : user.name!)),
         actions: [
           IconButton(
             tooltip: Strings.of(context).profile,
@@ -28,7 +40,17 @@ class DriverHomeScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: const OnboardingView(),
+      body: showTrips ? const TodayView() : const OnboardingView(),
+      bottomNavigationBar: approved
+          ? NavigationBar(
+              selectedIndex: _tab,
+              onDestinationSelected: (i) => setState(() => _tab = i),
+              destinations: [
+                NavigationDestination(icon: const Icon(Icons.route_outlined), selectedIcon: const Icon(Icons.route), label: tt.today),
+                NavigationDestination(icon: const Icon(Icons.badge_outlined), selectedIcon: const Icon(Icons.badge), label: tt.account),
+              ],
+            )
+          : null,
     );
   }
 }

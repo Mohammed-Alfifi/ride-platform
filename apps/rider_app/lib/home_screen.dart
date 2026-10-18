@@ -9,6 +9,7 @@ import 'subscriptions/new_subscription_screen.dart';
 import 'subscriptions/repository.dart';
 import 'subscriptions/strings.dart';
 import 'subscriptions/subscription_screen.dart';
+import 'subscriptions/trip_widgets.dart';
 
 /// Home: the rider's subscriptions, or an invitation to start one. Asks for a name on first
 /// sign-in, since the name goes on invoices and is what the driver sees.
@@ -45,12 +46,16 @@ class RiderHomeScreen extends ConsumerWidget {
           ? null
           : FloatingActionButton.extended(onPressed: openNew, icon: const Icon(Icons.add), label: Text(t.addSubscription)),
       body: RefreshIndicator(
-        onRefresh: () => ref.refresh(subscriptionsProvider.future),
+        onRefresh: () async {
+          ref.invalidate(tripsProvider);
+          await ref.refresh(subscriptionsProvider.future);
+        },
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
             if (user.needsName) const _NameCard(),
             const SizedBox(height: 8),
+            const NextTripCard(),
             if (subs.isLoading && !subs.hasValue) const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator())),
             if (subs.hasError && !subs.hasValue)
               Text(describeError(context, subs.error!), textAlign: TextAlign.center),
