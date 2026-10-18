@@ -64,6 +64,7 @@ jobs:
     name: Mobile - analyze and test
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         package: [packages/mobile_core, apps/rider_app, apps/driver_app]
     defaults:
@@ -76,5 +77,29 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get
-      - run: flutter analyze --no-fatal-infos
-      - run: flutter test
+      # Problems are also posted as annotations, so they show on the commit page.
+      - name: flutter analyze
+        shell: bash
+        run: |
+          set +e
+          flutter analyze --no-fatal-infos > analyze.txt 2>&1
+          code=$?
+          cat analyze.txt
+          grep -E '^ *(error|warning) •' analyze.txt | while IFS= read -r line; do
+            msg=$(echo "$line" | awk -F' • ' '{print $2}')
+            loc=$(echo "$line" | awk -F' • ' '{print $3}')
+            rule=$(echo "$line" | awk -F' • ' '{print $4}')
+            echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
+          done
+          exit $code
+      - name: flutter test
+        shell: bash
+        run: |
+          set +e
+          flutter test > test.txt 2>&1
+          code=$?
+          cat test.txt
+          if [ $code -ne 0 ]; then
+            grep -E 'Error:|Expected:|Actual:|EXCEPTION|\[E\]|Some tests failed' test.txt | head -20 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
