@@ -26,3 +26,6 @@ android/key.properties
 next-env.d.ts
 *.tsbuildinfo
 var/
+
+# Local Redis snapshot
+dump.rdb
