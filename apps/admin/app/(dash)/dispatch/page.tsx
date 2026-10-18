@@ -164,7 +164,7 @@ export default function DispatchPage() {
                       <span className="trip-time tabnum">{time(x.scheduledAt)}</span>
                       <span className="trip-body">
                         <span className="trip-rider">
-                          {x.rider.name ?? formatSaudiPhone(x.rider.phone)}
+                          {x.passengerName ?? x.rider.name ?? formatSaudiPhone(x.rider.phone)}
                           <span className="leg">{x.leg === 'outbound' ? t.dispatch.outbound : t.dispatch.return}</span>
                         </span>
                         <span className="trip-route">
@@ -257,7 +257,7 @@ function TripCard({ trip, live, time }: { trip: TripView; live: TripLive | null;
   return (
     <div className="trip-card">
       <div className="trip-card-head">
-        <strong>{trip.rider.name ?? formatSaudiPhone(trip.rider.phone)}</strong>
+        <strong>{trip.passengerName ?? trip.rider.name ?? formatSaudiPhone(trip.rider.phone)}</strong>
         <a className="btn btn-link" href={`tel:${trip.rider.phone}`}>
           {t.dispatch.call}
         </a>

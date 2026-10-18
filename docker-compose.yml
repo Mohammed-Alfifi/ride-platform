@@ -25,6 +25,7 @@ x-api-env: &api-env
   STORAGE_DIR: /app/var/uploads
   JOBS_ENABLED: 'true'
   PUBLIC_API_URL: http://localhost:3000
+  PUBLIC_WEB_URL: http://localhost:3001
   PAYMENT_PROVIDER: sandbox
 
 services:

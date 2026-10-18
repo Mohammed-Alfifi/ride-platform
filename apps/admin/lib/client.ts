@@ -273,6 +273,7 @@ export interface TripView {
   pickup: Spot;
   dropoff: Spot;
   rider: { id: string; name: string | null; phone: string };
+  passengerName: string | null;
   driver: {
     id: string;
     name: string | null;

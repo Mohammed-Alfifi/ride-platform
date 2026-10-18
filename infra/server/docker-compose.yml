@@ -43,6 +43,7 @@ services:
       DATABASE_URL: postgres://ride:${DB_PASSWORD}@db:5432/ride
       REDIS_URL: redis://redis:6379
       PUBLIC_API_URL: https://${API_DOMAIN}
+      PUBLIC_WEB_URL: https://${ADMIN_DOMAIN}
       CORS_ORIGINS: https://${ADMIN_DOMAIN}
       STORAGE_DRIVER: local
       STORAGE_DIR: /app/var/uploads
