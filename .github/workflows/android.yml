@@ -39,6 +39,8 @@ jobs:
             perms="$perms"'<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>'
           fi
           sed -i "s|<application|$perms\n    <application|" "$manifest"
+          if [ "${{ matrix.app }}" = "driver_app" ]; then label='مشوار للسائقين'; else label='مشوار'; fi
+          sed -i "s|android:label=\"[^\"]*\"|android:label=\"$label\"|" "$manifest"
           grep -c 'uses-permission' "$manifest"
       - run: flutter pub get
       - run: flutter build apk --release --dart-define=API_URL=${{ inputs.api_url }}

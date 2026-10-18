@@ -28,7 +28,14 @@ class RiderHomeScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(user.needsName ? t.welcome : t.hello(user.name!)),
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(t.greeting, style: Theme.of(context).textTheme.bodyMedium),
+            Text(user.needsName ? t.welcome : user.name!, style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 24)),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: t.invoicesAndCards,
@@ -82,38 +89,94 @@ class _SubscriptionCard extends StatelessWidget {
     final t = RiderStrings.of(context);
     final theme = Theme.of(context);
     final attention = sub.needsPayment;
+    final tone = switch (sub.status) {
+      'active' => 'ok',
+      'pending_payment' || 'past_due' => 'wait',
+      _ => 'bad',
+    };
+    Widget stop(String name, String? time, {required bool filled}) => Row(
+          children: [
+            Container(
+              width: 12,
+              height: 12,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: filled ? Brand.route : Colors.white,
+                border: Border.all(color: Brand.route, width: 3),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(name, style: theme.textTheme.bodyLarge?.copyWith(fontSize: 15))),
+            if (time != null)
+              Text(time, textDirection: TextDirection.ltr, style: theme.textTheme.titleMedium?.copyWith(fontFamily: theme.textTheme.titleLarge?.fontFamily)),
+          ],
+        );
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 14),
       child: Material(
         color: Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: attention ? Brand.amber : Brand.line),
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: attention ? Brand.amber : Brand.line, width: attention ? 1.5 : 1),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => SubscriptionScreen(id: sub.id))),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Row(
                   children: [
-                    Expanded(child: Text(t.ar ? sub.planNameAr : sub.planNameEn, style: theme.textTheme.titleMedium)),
-                    Text(t.status(sub.status), style: TextStyle(color: attention ? Brand.amber : Brand.route, fontWeight: FontWeight.w600)),
+                    Expanded(child: Text(t.ar ? sub.planNameAr : sub.planNameEn, style: theme.textTheme.titleMedium?.copyWith(fontSize: 17))),
+                    StatusPill(label: t.status(sub.status), tone: tone),
                   ],
                 ),
-                const SizedBox(height: 10),
-                Text('${sub.pickup.name}  ${t.ar ? '←' : '→'}  ${sub.dropoff.name}', style: theme.textTheme.bodyLarge),
-                const SizedBox(height: 4),
-                Text(
-                  '${t.daysList(sub.days)}  ·  ${sub.outboundTime}${sub.returnTime == null ? '' : ' / ${sub.returnTime}'}',
-                  style: theme.textTheme.bodyMedium,
+                const SizedBox(height: 14),
+                stop(sub.pickup.name, sub.outboundTime, filled: false),
+                Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Container(margin: const EdgeInsetsDirectional.only(start: 5), width: 2, height: 16, color: Brand.routeBright),
+                ),
+                stop(sub.dropoff.name, sub.returnTime, filled: true),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    for (var d = 0; d < 7; d++)
+                      Expanded(
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 2),
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          decoration: BoxDecoration(
+                            color: sub.days.contains(d) ? Brand.route : Brand.surface,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            t.weekDays[d],
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.fade,
+                            style: TextStyle(fontSize: 11, color: sub.days.contains(d) ? Colors.white : Brand.inkSoft, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 if (sub.currentPeriodEnd != null && sub.live) ...[
-                  const SizedBox(height: 4),
-                  Text(t.paidUntil(t.day(sub.currentPeriodEnd!)), style: theme.textTheme.bodySmall),
+                  const SizedBox(height: 14),
+                  Text(
+                    [
+                      sub.cancelAtPeriodEnd ? t.endsOn(t.day(sub.currentPeriodEnd!)) : t.paidUntil(t.day(sub.currentPeriodEnd!)),
+                      if (sub.card != null) '${sub.card!.brand} •••• ${sub.card!.last4}',
+                    ].join(' · '),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+                if (attention) ...[
+                  const SizedBox(height: 12),
+                  Text(sub.status == 'past_due' ? t.pastDueBody : t.pendingBody, style: const TextStyle(color: Brand.sunDeep, fontWeight: FontWeight.w600)),
                 ],
               ],
             ),

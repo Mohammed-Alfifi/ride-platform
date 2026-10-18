@@ -188,8 +188,33 @@ class _Panel extends StatelessWidget {
           children: [
             Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Brand.line, borderRadius: BorderRadius.circular(2)))),
             const SizedBox(height: 14),
-            Text(headline, style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700)),
-            if (detail.isNotEmpty) ...[const SizedBox(height: 4), Text(detail, style: theme.textTheme.bodyMedium)],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (detail.isNotEmpty) Text(detail, style: theme.textTheme.bodyMedium),
+                      Text(headline, style: theme.textTheme.headlineSmall?.copyWith(fontSize: 30)),
+                    ],
+                  ),
+                ),
+                if (live.etaMinutes != null && live.etaMinutes! > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(color: Brand.sunTint, borderRadius: BorderRadius.circular(14)),
+                    child: Column(children: [
+                      Text(
+                        DateFormat.Hm('en').format(DateTime.now().add(Duration(minutes: live.etaMinutes!))),
+                        textDirection: TextDirection.ltr,
+                        style: theme.textTheme.titleLarge?.copyWith(color: Brand.sunDeep, fontSize: 20),
+                      ),
+                      Text(t.expectedArrival, style: const TextStyle(fontSize: 11, color: Brand.sunDeep)),
+                    ]),
+                  ),
+              ],
+            ),
             const SizedBox(height: 14),
             _Progress(trip: trip),
             if (driver != null) ...[
@@ -207,7 +232,7 @@ class _Panel extends StatelessWidget {
                       ],
                     ),
                   ),
-                  if (driver.plate != null) _Plate(driver.plate!),
+                  if (driver.plate != null) PlateChip(driver.plate!),
                   if (driver.phone != null) ...[
                     const SizedBox(width: 8),
                     IconButton.filled(
@@ -257,19 +282,6 @@ class _Progress extends StatelessWidget {
       ],
     );
   }
-}
-
-/// The plate as it appears on the car: digits then Latin letters.
-class _Plate extends StatelessWidget {
-  const _Plate(this.value);
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(border: Border.all(color: Brand.ink, width: 2), borderRadius: BorderRadius.circular(4)),
-        child: Text(value, textDirection: TextDirection.ltr, style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: 1)),
-      );
 }
 
 class _Car extends StatelessWidget {

@@ -94,7 +94,7 @@ class _TodayViewState extends ConsumerState<TodayView> with WidgetsBindingObserv
               if (next != null) _NextTripCard(trip: next, busy: _busy == next.id, onAct: (a) => _act(next, a)),
               if (list.length > 1) ...[
                 const SizedBox(height: 24),
-                Text(t.restOfDay, style: Theme.of(context).textTheme.titleMedium),
+                Text(t.restOfDay, style: const TextStyle(color: Brand.nightSoft, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 for (final x in list)
                   if (x.id != next?.id) _TripRow(trip: x),
@@ -120,7 +120,28 @@ class _DayHeader extends StatelessWidget {
     return Row(
       children: [
         Expanded(
-          child: Text(t.progress(done, total), style: Theme.of(context).textTheme.bodyMedium),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(t.progress(done, total), style: const TextStyle(color: Brand.nightSoft)),
+              if (total > 0) ...[
+                const SizedBox(height: 8),
+                Row(children: [
+                  for (var i = 0; i < total; i++)
+                    Expanded(
+                      child: Container(
+                        height: 5,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: i < done ? Brand.routeBright : (i == done ? Brand.sun : Brand.nightLine),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                ]),
+              ],
+            ],
+          ),
         ),
         if (sharing == true)
           Row(mainAxisSize: MainAxisSize.min, children: [
@@ -356,11 +377,11 @@ class _TripRow extends StatelessWidget {
         leading: Text(
           DateFormat.Hm('en').format(trip.scheduledAt.toLocal()),
           textDirection: TextDirection.ltr,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
+          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
         ),
-        title: Text(trip.riderName ?? trip.riderPhone),
-        subtitle: Text('${trip.pickup.name} ${t.arrow} ${trip.dropoff.name}'),
-        trailing: Text(t.status(trip.status), style: TextStyle(color: finished ? Brand.inkSoft : Brand.route, fontSize: 13)),
+        title: Text(trip.riderName ?? trip.riderPhone, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        subtitle: Text('${trip.pickup.name} ${t.arrow} ${trip.dropoff.name}', style: const TextStyle(color: Brand.nightSoft)),
+        trailing: Text(t.status(trip.status), style: TextStyle(color: finished ? Brand.nightSoft : Brand.routeBright, fontSize: 13)),
       ),
     );
   }
@@ -376,7 +397,7 @@ class _Empty extends StatelessWidget {
         child: Column(children: [
           const RouteMark(),
           const SizedBox(height: 16),
-          Text(text, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge),
+          Text(text, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 16)),
         ]),
       );
 }

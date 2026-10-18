@@ -12,6 +12,7 @@ class RiderStrings {
 
   // Home
   String get welcome => _s('أهلا بك', 'Welcome');
+  String get greeting => _s('مرحبا', 'Hello');
   String hello(String name) => _s('مرحبا، $name', 'Hello, $name');
   String get noSubscriptionTitle => _s('لا يوجد اشتراك بعد', 'No subscription yet');
   String get noSubscriptionBody => _s(
@@ -174,6 +175,7 @@ class RiderStrings {
   String onTheWayTo(String place) => _s('في الطريق إلى $place', 'On the way to $place');
   String get arrivedSafely => _s('وصل بالسلامة', 'Arrived safely');
   String arrivedAt(String place) => _s('تم الوصول إلى $place', 'Arrived at $place');
+  String get expectedArrival => _s('الوصول المتوقع', 'Expected');
   String get yourDriver => _s('سائقك', 'Your driver');
   String get callDriver => _s('اتصل بالسائق', 'Call the driver');
   String get noDriverYet => _s('سيُحدد السائق قريبا', 'Driver to be confirmed');

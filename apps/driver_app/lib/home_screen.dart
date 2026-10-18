@@ -30,7 +30,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     final showTrips = approved && _tab == 0;
 
     return Scaffold(
+      // Trips are shown on a dark ground: easier to read at a glance in the car, day or night.
+      backgroundColor: showTrips ? Brand.night : null,
       appBar: AppBar(
+        backgroundColor: showTrips ? Brand.night : null,
+        foregroundColor: showTrips ? Colors.white : null,
+        titleTextStyle: showTrips ? Theme.of(context).appBarTheme.titleTextStyle?.copyWith(color: Colors.white) : null,
         title: Text(showTrips ? tt.today : (user.needsName ? t.title : user.name!)),
         actions: [
           IconButton(
