@@ -7,6 +7,7 @@ import { DB, Database } from '../database/database.module';
 import { paymentMethods, payments, Subscription, subscriptions } from '../database/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { BillingService } from '../payments/billing.service';
+import { TripGenerator } from '../trips/trip.generator';
 
 export interface RenewalResult {
   renewed: number;
@@ -33,6 +34,7 @@ export class RenewalsService {
     @Inject(ENV) private readonly env: Env,
     private readonly billing: BillingService,
     private readonly notifications: NotificationsService,
+    private readonly tripGenerator: TripGenerator,
   ) {}
 
   async run(now = new Date()): Promise<RenewalResult> {
@@ -70,6 +72,7 @@ export class RenewalsService {
 
       if (sub.status === 'past_due' && today > addDays(periodEnd, this.env.RENEWAL_GRACE_DAYS)) {
         await this.db.update(subscriptions).set({ status: 'expired' }).where(eq(subscriptions.id, sub.id));
+        await this.tripGenerator.cancelFuture(sub.id, { from: today, reason: 'subscription expired' });
         await this.notifyExpired(sub);
         result.expired++;
         continue;

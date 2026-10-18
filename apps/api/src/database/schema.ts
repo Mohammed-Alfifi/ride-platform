@@ -450,10 +450,13 @@ export const subscriptions = pgTable(
     pausedUntil: date('paused_until'),
     renewalAttempts: integer('renewal_attempts').notNull().default(0),
     paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id, { onDelete: 'set null' }),
+    /** The rider's regular driver, chosen by the partner's dispatcher. Copied onto each new trip. */
+    driverId: uuid('driver_id').references(() => users.id, { onDelete: 'set null' }),
     ...timestamps,
   },
   (t) => [
     index('subscriptions_rider_idx').on(t.riderId),
+    index('subscriptions_driver_idx').on(t.driverId),
     index('subscriptions_partner_idx').on(t.partnerId, t.status),
     index('subscriptions_renewal_idx').on(t.status, t.currentPeriodEnd),
   ],
@@ -529,6 +532,77 @@ export const invoiceSequences = pgTable('invoice_sequences', {
   year: integer('year').primaryKey(),
   last: integer('last').notNull(),
 });
+
+// ---------------------------------------------------------------- trips (phase 4)
+
+export const TRIP_STATUSES = [
+  'scheduled', // generated, waiting for its day
+  'en_route', // driver on the way to the pick-up
+  'arrived', // driver waiting at the pick-up
+  'on_board', // rider picked up
+  'completed',
+  'no_show', // rider did not come out
+  'skipped', // rider said they do not need this trip
+  'cancelled', // cancelled by the partner, or the subscription paused
+] as const;
+export type TripStatus = (typeof TRIP_STATUSES)[number];
+export const tripStatusEnum = pgEnum('trip_status', TRIP_STATUSES);
+export const tripLegEnum = pgEnum('trip_leg', ['outbound', 'return']);
+
+export const trips = pgTable(
+  'trips',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    subscriptionId: uuid('subscription_id')
+      .notNull()
+      .references(() => subscriptions.id, { onDelete: 'cascade' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'restrict' }),
+    driverId: uuid('driver_id').references(() => users.id, { onDelete: 'set null' }),
+    /** Riyadh calendar day of the trip. */
+    serviceDate: date('service_date').notNull(),
+    leg: tripLegEnum('leg').notNull(),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }).notNull(),
+    pickup: point('pickup').notNull(),
+    pickupName: varchar('pickup_name', { length: 80 }).notNull(),
+    dropoff: point('dropoff').notNull(),
+    dropoffName: varchar('dropoff_name', { length: 80 }).notNull(),
+    status: tripStatusEnum('status').notNull().default('scheduled'),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    arrivedAt: timestamp('arrived_at', { withTimezone: true }),
+    pickedUpAt: timestamp('picked_up_at', { withTimezone: true }),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+    endedReason: varchar('ended_reason', { length: 200 }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('trips_subscription_day_leg_uq').on(t.subscriptionId, t.serviceDate, t.leg),
+    index('trips_partner_day_idx').on(t.partnerId, t.serviceDate),
+    index('trips_driver_day_idx').on(t.driverId, t.serviceDate),
+    index('trips_rider_day_idx').on(t.riderId, t.serviceDate),
+  ],
+);
+
+/** Where the driver was during a trip, sampled; kept for disputes and safety reviews. */
+export const tripPoints = pgTable(
+  'trip_points',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tripId: uuid('trip_id')
+      .notNull()
+      .references(() => trips.id, { onDelete: 'cascade' }),
+    location: point('location').notNull(),
+    speedKmh: integer('speed_kmh'),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('trip_points_trip_idx').on(t.tripId, t.recordedAt)],
+);
+
+export type Trip = typeof trips.$inferSelect;
 
 export type Partner = typeof partners.$inferSelect;
 export type User = typeof users.$inferSelect;

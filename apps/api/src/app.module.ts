@@ -22,6 +22,7 @@ import { NotificationsModule } from './notifications/notifications.service';
 import { StorageModule } from './storage/storage.service';
 import { ZonesModule } from './zones/zones.controller';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { TripsModule } from './trips/trips.module';
 
 const env = loadEnv();
 
@@ -76,6 +77,7 @@ function hasPrettyLogs(): boolean {
     DriversModule,
     ZonesModule,
     SubscriptionsModule,
+    TripsModule,
     JobsModule,
   ],
   controllers: [HealthController],

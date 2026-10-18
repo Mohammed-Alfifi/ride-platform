@@ -17,6 +17,7 @@ import {
   RiderController,
 } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
+import { TripsModule } from '../trips/trips.module';
 
 /** Picks the payment provider from PAYMENT_PROVIDER. Switching provider is a config change. */
 export function createGateway(env: Env, redis: Redis): PaymentGateway {
@@ -31,6 +32,7 @@ export function createGateway(env: Env, redis: Redis): PaymentGateway {
 }
 
 @Module({
+  imports: [TripsModule],
   controllers: [RiderController, InvoicesController, PaymentCallbacksController, AdminBillingController],
   providers: [
     { provide: PAYMENT_GATEWAY, inject: [ENV, REDIS], useFactory: createGateway },

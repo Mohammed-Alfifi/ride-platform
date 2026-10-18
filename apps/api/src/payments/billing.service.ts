@@ -19,6 +19,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutResult, PAYMENT_GATEWAY, PaymentGateway, SavedCard } from './gateway';
 import { InvoicesService } from './invoices.service';
+import { TripGenerator } from '../trips/trip.generator';
 
 export interface PaymentView {
   id: string;
@@ -48,6 +49,7 @@ export class BillingService {
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
     private readonly invoices: InvoicesService,
     private readonly notifications: NotificationsService,
+    private readonly tripGenerator: TripGenerator,
   ) {}
 
   get supportsSavedCards(): boolean {
@@ -148,6 +150,8 @@ export class BillingService {
     const sub = (await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, paid.subscriptionId) })) as Subscription;
     const cardId = result.savedCard ? await this.saveCard(paid.riderId, result.savedCard) : null;
     await this.applyPaidPeriod(sub, paid, cardId);
+    // Trips for the paid days that fall within the next two days, without waiting for the nightly run.
+    await this.tripGenerator.generate({ subscriptionId: sub.id });
     await this.invoices.issue(paid, await this.description(sub));
     await this.notifications.notify([paid.riderId], {
       kind: 'payment_paid',

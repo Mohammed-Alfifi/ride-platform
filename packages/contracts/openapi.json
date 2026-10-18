@@ -2242,6 +2242,475 @@
           "admin: billing"
         ]
       }
+    },
+    "/v1/driver/trips": {
+      "get": {
+        "operationId": "DriverTripsController_list",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "Riyadh calendar day; today when omitted",
+            "schema": {
+              "example": "2026-10-19",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The driver's trips for a day, in order",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/trips/{id}/start": {
+      "post": {
+        "operationId": "DriverTripsController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "On the way to the pick-up (up to 90 minutes early)",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/trips/{id}/arrive": {
+      "post": {
+        "operationId": "DriverTripsController_arrive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "At the pick-up (within 300 m when the location is known)",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/trips/{id}/pickup": {
+      "post": {
+        "operationId": "DriverTripsController_pickup",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rider on board",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/trips/{id}/complete": {
+      "post": {
+        "operationId": "DriverTripsController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dropped off (within 500 m of the drop-off when the location is known)",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/trips/{id}/no-show": {
+      "post": {
+        "operationId": "DriverTripsController_noShow",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rider did not come out (after waiting 5 minutes)",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/driver/location": {
+      "post": {
+        "operationId": "DriverTripsController_location",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LocationReport"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Location updates while the app is open (every 5-10 seconds)",
+        "tags": [
+          "driver: trips"
+        ]
+      }
+    },
+    "/v1/trips": {
+      "get": {
+        "operationId": "RiderTripsController_list",
+        "parameters": [
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-19",
+              "type": "string"
+            }
+          },
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 7,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Upcoming trips (today and the next days)",
+        "tags": [
+          "rider: trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/live": {
+      "get": {
+        "operationId": "RiderTripsController_live",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Trip with the driver location and arrival estimate; poll every 5 seconds",
+        "tags": [
+          "rider: trips"
+        ]
+      }
+    },
+    "/v1/trips/{id}/skip": {
+      "post": {
+        "operationId": "RiderTripsController_skip",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Do not need this trip (up to 30 minutes before it)",
+        "tags": [
+          "rider: trips"
+        ]
+      }
+    },
+    "/v1/admin/dispatch": {
+      "get": {
+        "operationId": "DispatchController_board",
+        "parameters": [
+          {
+            "name": "date",
+            "required": false,
+            "in": "query",
+            "description": "Riyadh calendar day; today when omitted",
+            "schema": {
+              "example": "2026-10-19",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "The day's trips, drivers and their live positions; poll every 10 seconds",
+        "tags": [
+          "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/admin/trips/{id}/live": {
+      "get": {
+        "operationId": "DispatchController_live",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/admin/trips/{id}/driver": {
+      "patch": {
+        "operationId": "DispatchController_assignTrip",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Give one trip to another driver (a substitute for the day)",
+        "tags": [
+          "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/admin/subscriptions/{id}/driver": {
+      "patch": {
+        "operationId": "DispatchController_assignSubscription",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AssignDriverDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the rider's regular driver",
+        "tags": [
+          "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/admin/trips/generate": {
+      "post": {
+        "operationId": "DispatchController_generate",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create today and tomorrow trips now (normally nightly at 00:10)",
+        "tags": [
+          "admin: dispatch"
+        ]
+      }
     }
   },
   "info": {
@@ -4002,6 +4471,60 @@
           "expMonth",
           "expYear",
           "isDefault"
+        ]
+      },
+      "LocationPoint": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "heading": {
+            "type": "number"
+          },
+          "speedKmh": {
+            "type": "number"
+          },
+          "at": {
+            "type": "string",
+            "description": "When the phone recorded it"
+          }
+        },
+        "required": [
+          "lat",
+          "lng"
+        ]
+      },
+      "LocationReport": {
+        "type": "object",
+        "properties": {
+          "points": {
+            "description": "Points collected since the last report, oldest first",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LocationPoint"
+            }
+          }
+        },
+        "required": [
+          "points"
+        ]
+      },
+      "AssignDriverDto": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "null removes the driver"
+          }
+        },
+        "required": [
+          "driverId"
         ]
       }
     }

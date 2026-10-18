@@ -16,6 +16,7 @@ import {
   subscriptions,
   zones,
 } from '../database/schema';
+import { TripGenerator } from '../trips/trip.generator';
 import { BillingService, PaymentView } from '../payments/billing.service';
 import { InvoicesService, InvoiceView } from '../payments/invoices.service';
 import { vatIncluded } from '../payments/zatca';
@@ -42,6 +43,7 @@ export class SubscriptionsService {
     @Inject(ENV) private readonly env: Env,
     private readonly billing: BillingService,
     private readonly invoiceService: InvoicesService,
+    private readonly tripGenerator: TripGenerator,
   ) {}
 
   // ------------------------------------------------------------------ places
@@ -238,6 +240,7 @@ export class SubscriptionsService {
       .update(subscriptions)
       .set({ pausedFrom: dto.from, pausedUntil: dto.until, currentPeriodEnd: addDays(sub.currentPeriodEnd, length) })
       .where(eq(subscriptions.id, sub.id));
+    await this.tripGenerator.cancelFuture(sub.id, { from: dto.from, until: dto.until, reason: 'paused' });
     return this.view(riderId, id);
   }
 
@@ -259,6 +262,7 @@ export class SubscriptionsService {
         currentPeriodEnd: addDays(sub.currentPeriodEnd, -unused),
       })
       .where(eq(subscriptions.id, sub.id));
+    await this.tripGenerator.restorePaused(sub.id);
     return this.view(riderId, id);
   }
 
