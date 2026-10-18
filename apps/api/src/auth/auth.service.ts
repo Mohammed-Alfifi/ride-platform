@@ -37,7 +37,10 @@ export class AuthService {
     if (!(await this.access.mayEnter(phone, app))) throw new AppError('AUTH_NOT_INVITED');
     // Eight digits: an access code from the team. Shorter: an SMS code.
     if (code.length === ACCESS_CODE_LENGTH) await this.access.verifyCode(phone, app, code);
-    else if (this.access.codesOnly) throw new AppError('AUTH_OTP_INVALID');
+    else if (this.access.codesOnly) {
+      // No SMS: only the fixed test code of OTP_TEST_PHONES (store reviewers, the first admin of a demo).
+      if (!this.otp.isTestCode(phone, code)) throw new AppError('AUTH_OTP_INVALID');
+    }
     else await this.otp.verify(phone, app, code);
 
     let user = await this.findAccount(phone, app);

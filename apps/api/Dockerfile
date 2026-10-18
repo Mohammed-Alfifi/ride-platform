@@ -19,5 +19,5 @@ COPY --from=build /repo/apps/api/drizzle ./drizzle
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=6 CMD wget -qO- http://127.0.0.1:3000/health/live || exit 1
-# Apply pending migrations, then start.
-CMD ["sh", "-c", "node dist/database/migrate.js && node dist/main.js"]
+# Apply pending migrations (and, for a hosted demo with SEED_DEMO=true, the demo data), then start.
+CMD ["sh", "-c", "node dist/database/migrate.js && if [ \"$SEED_DEMO\" = true ]; then node dist/database/seed.js --demo; fi && node dist/main.js"]

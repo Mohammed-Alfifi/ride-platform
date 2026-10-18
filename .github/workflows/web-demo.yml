@@ -1,0 +1,49 @@
+# Builds the rider app for browsers (iPhone users) and puts the files in the web-build branch,
+# which the free Render static site (render.yaml: mishwar-ride-app) publishes.
+# Runs on every change to the apps on main, or by hand from Actions -> "Web demo build".
+name: Web demo build
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API address'
+        required: false
+        default: 'https://mishwar-ride-api.onrender.com'
+  push:
+    branches: [main]
+    paths:
+      - 'apps/rider_app/**'
+      - 'packages/mobile_core/**'
+
+permissions:
+  contents: write
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/rider_app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - run: flutter create --platforms=web --org sa.ride --project-name rider_app .
+      - name: App name, colours and Arabic
+        run: |
+          sed -i 's|"name": "[^"]*"|"name": "مشوار"|; s|"short_name": "[^"]*"|"short_name": "مشوار"|; s|"background_color": "[^"]*"|"background_color": "#18263A"|; s|"theme_color": "[^"]*"|"theme_color": "#18263A"|' web/manifest.json
+          sed -i 's|<title>[^<]*</title>|<title>مشوار</title>|; s|<html>|<html lang="ar" dir="rtl">|; s|content="rider_app"|content="مشوار"|g' web/index.html
+      - run: flutter pub get
+      - run: flutter build web --release --base-href / --dart-define=API_URL=${{ inputs.api_url || 'https://mishwar-ride-api.onrender.com' }}
+      - name: Publish to the web-build branch
+        working-directory: apps/rider_app/build/web
+        run: |
+          git init -q -b web-build
+          git config user.name "Mohammed Alfifi"
+          git config user.email "alfifi115@gmail.com"
+          git add -A
+          git commit -qm "Rider web app build ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" web-build

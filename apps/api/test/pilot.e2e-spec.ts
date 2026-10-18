@@ -153,6 +153,16 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
     await http().post('/v1/auth/otp/verify').send({ phone, app: 'rider', code: again.body.code }).expect(200);
   });
 
+  it('lets a configured test phone sign in with its fixed code when there is no SMS', async () => {
+    await ctx.db.insert(users).values({ phone: '+966500000099', role: 'super_admin', audience: 'admin', name: 'Demo owner' });
+    await http().post('/v1/auth/otp/verify').send({ phone: '0500000099', app: 'admin', code: '111111' }).expect(401);
+    const ok = await http().post('/v1/auth/otp/verify').send({ phone: '0500000099', app: 'admin', code: '246810' }).expect(200);
+    expect(ok.body.user.role).toBe('super_admin');
+    // Any other phone still needs an access code.
+    const staff = await createStaff(ctx, 'super_admin');
+    await http().post('/v1/auth/otp/verify').send({ phone: staff.phone, app: 'admin', code: '246810' }).expect(401);
+  });
+
   it('locks an access code after five wrong tries', async () => {
     const phone = newPhone();
     const inv = await http().post('/v1/admin/access').set(bearer(admin.accessToken)).send({ phone, audience: 'driver' }).expect(200);

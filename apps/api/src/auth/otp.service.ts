@@ -106,6 +106,13 @@ export class OtpService {
     if (deleted !== 1) throw new AppError('AUTH_OTP_EXPIRED');
   }
 
+  /** The fixed code of a configured test phone (OTP_TEST_PHONES / OTP_TEST_CODE). */
+  isTestCode(phone: string, code: string): boolean {
+    const expected = this.env.OTP_TEST_CODE;
+    if (!expected || !this.env.OTP_TEST_PHONES.includes(phone)) return false;
+    return safeEqualHex(this.hash('admin', phone, code), this.hash('admin', phone, expected));
+  }
+
   private codeKey(audience: Audience, phone: string): string {
     return `otp:code:${audience}:${phone}`;
   }
