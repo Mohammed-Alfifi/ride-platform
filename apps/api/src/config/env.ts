@@ -65,6 +65,8 @@ export const envSchema = z
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
     /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
+    /** Where the dashboard is served; shared trip links point here (/t/<token>). */
+    PUBLIC_WEB_URL: z.string().url().default('http://localhost:3001'),
     PAYMENT_PROVIDER: z.enum(['sandbox', 'tap', 'moyasar']).default('sandbox'),
     TAP_SECRET_KEY: z.string().optional().default(''),
     TAP_MERCHANT_ID: z.string().optional().default(''),

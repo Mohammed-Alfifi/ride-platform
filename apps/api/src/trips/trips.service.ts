@@ -39,6 +39,8 @@ export interface TripView {
   pickup: Spot;
   dropoff: Spot;
   rider: { id: string; name: string | null; phone: string };
+  /** Who rides when it is not the account holder (a child); shown to the driver first. */
+  passengerName: string | null;
   driver: {
     id: string;
     name: string | null;
@@ -133,6 +135,7 @@ export class TripsService {
       pickup: { lat: Number(r.pickupLat), lng: Number(r.pickupLng), name: t.pickupName },
       dropoff: { lat: Number(r.dropoffLat), lng: Number(r.dropoffLng), name: t.dropoffName },
       rider: { id: t.riderId, name: r.riderName, phone: r.riderPhone },
+      passengerName: t.passengerName,
       driver: t.driverId
         ? {
             id: t.driverId,

@@ -20,6 +20,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutResult, PAYMENT_GATEWAY, PaymentGateway, SavedCard } from './gateway';
 import { InvoicesService } from './invoices.service';
 import { TripGenerator } from '../trips/trip.generator';
+import { PromosService } from '../services/promos.service';
 
 export interface PaymentView {
   id: string;
@@ -50,6 +51,7 @@ export class BillingService {
     private readonly invoices: InvoicesService,
     private readonly notifications: NotificationsService,
     private readonly tripGenerator: TripGenerator,
+    private readonly promos: PromosService,
   ) {}
 
   get supportsSavedCards(): boolean {
@@ -150,6 +152,7 @@ export class BillingService {
     const sub = (await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, paid.subscriptionId) })) as Subscription;
     const cardId = result.savedCard ? await this.saveCard(paid.riderId, result.savedCard) : null;
     await this.applyPaidPeriod(sub, paid, cardId);
+    if (paid.discountHalalas > 0 && sub.promoCodeId) await this.promos.markUsed(sub.promoCodeId);
     // Trips for the paid days that fall within the next two days, without waiting for the nightly run.
     await this.tripGenerator.generate({ subscriptionId: sub.id });
     await this.invoices.issue(paid, await this.description(sub));
@@ -251,7 +254,10 @@ export class BillingService {
     idempotencyKey: string | null,
   ): Promise<PaymentRow> {
     const partner = await this.db.query.partners.findFirst({ where: eq(partners.id, sub.partnerId) });
-    const fee = Math.round((sub.priceHalalas * (partner?.commissionBps ?? 0)) / 10_000);
+    // A discount code applies to the first payment only.
+    const discount = purpose === 'start' ? sub.discountHalalas : 0;
+    const amount = sub.priceHalalas - discount;
+    const fee = Math.round((amount * (partner?.commissionBps ?? 0)) / 10_000);
     const [row] = await this.db
       .insert(payments)
       .values({
@@ -260,9 +266,10 @@ export class BillingService {
         subscriptionId: sub.id,
         purpose,
         provider: this.gateway.name,
-        amountHalalas: sub.priceHalalas,
+        amountHalalas: amount,
+        discountHalalas: discount,
         platformFeeHalalas: fee,
-        partnerShareHalalas: sub.priceHalalas - fee,
+        partnerShareHalalas: amount - fee,
         periodStart,
         idempotencyKey,
       })

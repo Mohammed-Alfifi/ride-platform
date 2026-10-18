@@ -1984,6 +1984,98 @@
         ]
       }
     },
+    "/v1/family": {
+      "get": {
+        "operationId": "RiderController_family",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "People this account rides for (children, relatives)",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "RiderController_addMember",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
+    "/v1/family/{id}": {
+      "delete": {
+        "operationId": "RiderController_removeMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
     "/v1/invoices": {
       "get": {
         "operationId": "RiderController_invoices",
@@ -2709,6 +2801,659 @@
         "summary": "Create today and tomorrow trips now (normally nightly at 00:10)",
         "tags": [
           "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/trips/{id}/share": {
+      "post": {
+        "operationId": "TripExtrasController_share",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A link to follow this trip live without the app (for a parent or relative)",
+        "tags": [
+          "rider: trip extras"
+        ]
+      },
+      "delete": {
+        "operationId": "TripExtrasController_unshare",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "rider: trip extras"
+        ]
+      }
+    },
+    "/v1/trips/{id}/rating": {
+      "post": {
+        "operationId": "TripExtrasController_rate",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Rate a completed trip (can be changed later)",
+        "tags": [
+          "rider: trip extras"
+        ]
+      }
+    },
+    "/v1/shared/{token}": {
+      "get": {
+        "operationId": "SharedTripController_shared",
+        "parameters": [
+          {
+            "name": "token",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "A shared trip, for the tracking page. No phone numbers; first names only.",
+        "tags": [
+          "public: shared trip"
+        ]
+      }
+    },
+    "/v1/support/tickets": {
+      "get": {
+        "operationId": "SupportController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      },
+      "post": {
+        "operationId": "SupportController_open",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TicketDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/v1/support/tickets/{id}": {
+      "get": {
+        "operationId": "SupportController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/v1/support/tickets/{id}/messages": {
+      "post": {
+        "operationId": "SupportController_message",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/v1/support/tickets/{id}/close": {
+      "post": {
+        "operationId": "SupportController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "support"
+        ]
+      }
+    },
+    "/v1/admin/support/tickets": {
+      "get": {
+        "operationId": "AdminServiceController_tickets",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "answered",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/support/tickets/{id}": {
+      "get": {
+        "operationId": "AdminServiceController_ticket",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/support/tickets/{id}/reply": {
+      "post": {
+        "operationId": "AdminServiceController_reply",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/support/tickets/{id}/close": {
+      "post": {
+        "operationId": "AdminServiceController_close",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/ratings": {
+      "get": {
+        "operationId": "AdminServiceController_ratings",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          },
+          {
+            "name": "driverId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Recent ratings and each driver average (lowest first)",
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/promo-codes": {
+      "get": {
+        "operationId": "AdminServiceController_promoList",
+        "parameters": [
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "answered",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      },
+      "post": {
+        "operationId": "AdminServiceController_promoCreate",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/promo-codes/{id}": {
+      "patch": {
+        "operationId": "AdminServiceController_promoActive",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PromoActiveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/analytics": {
+      "get": {
+        "operationId": "AdminServiceController_report",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Revenue, subscriptions, trips, punctuality and ratings for a date range (last 30 days by default)",
+        "tags": [
+          "admin: service"
+        ]
+      }
+    },
+    "/v1/admin/payments.csv": {
+      "get": {
+        "operationId": "AdminServiceController_csv",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": "2026-10-31",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: service"
         ]
       }
     }
@@ -4177,6 +4922,11 @@
           "dropoffPlaceId": {
             "type": "string",
             "format": "uuid"
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SCHOOL25",
+            "description": "Discount code for the first month"
           }
         },
         "required": [
@@ -4225,6 +4975,17 @@
               "round_trip",
               "one_way"
             ]
+          },
+          "promoCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "discountHalalas": {
+            "type": "number",
+            "description": "Taken off the first month"
+          },
+          "firstPaymentHalalas": {
+            "type": "number"
           }
         },
         "required": [
@@ -4236,7 +4997,10 @@
           "priceHalalas",
           "vatHalalas",
           "daysPerWeek",
-          "tripType"
+          "tripType",
+          "promoCode",
+          "discountHalalas",
+          "firstPaymentHalalas"
         ]
       },
       "SubscriptionView": {
@@ -4324,6 +5088,15 @@
             "type": "string",
             "nullable": true
           },
+          "member": {
+            "type": "object",
+            "nullable": true,
+            "description": "Who rides, when not the account holder"
+          },
+          "driver": {
+            "type": "object",
+            "nullable": true
+          },
           "createdAt": {
             "type": "string"
           }
@@ -4352,6 +5125,8 @@
           "card",
           "payUrl",
           "pendingPaymentId",
+          "member",
+          "driver",
           "createdAt"
         ]
       },
@@ -4369,6 +5144,11 @@
           "dropoffPlaceId": {
             "type": "string",
             "format": "uuid"
+          },
+          "promoCode": {
+            "type": "string",
+            "example": "SCHOOL25",
+            "description": "Discount code for the first month"
           },
           "days": {
             "example": [
@@ -4392,6 +5172,11 @@
             "type": "string",
             "example": "13:30",
             "description": "Required for round-trip plans"
+          },
+          "memberId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Family member who rides (a child); the account holder when omitted"
           },
           "saveCard": {
             "type": "boolean",
@@ -4473,6 +5258,56 @@
           "isDefault"
         ]
       },
+      "MemberView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "relation",
+          "note"
+        ]
+      },
+      "CreateMemberDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "سارة"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "child",
+              "spouse",
+              "parent",
+              "other"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "example": "مدارس الأندلس، الصف الرابع"
+          }
+        },
+        "required": [
+          "name",
+          "relation"
+        ]
+      },
       "LocationPoint": {
         "type": "object",
         "properties": {
@@ -4525,6 +5360,129 @@
         },
         "required": [
           "driverId"
+        ]
+      },
+      "RatingDto": {
+        "type": "object",
+        "properties": {
+          "stars": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "on_time",
+                "safe_driving",
+                "clean_car",
+                "polite",
+                "late",
+                "unsafe_driving",
+                "unclean_car",
+                "rude"
+              ]
+            }
+          },
+          "comment": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stars"
+        ]
+      },
+      "TicketDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "driver",
+              "payment",
+              "app",
+              "other"
+            ]
+          },
+          "subject": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "category",
+          "subject",
+          "message"
+        ]
+      },
+      "MessageDto": {
+        "type": "object",
+        "properties": {
+          "body": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ]
+      },
+      "PromoDto": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Platform admins only"
+          },
+          "code": {
+            "type": "string",
+            "example": "SCHOOL25"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "percent",
+              "amount"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "description": "percent: 1-100; amount: halalas"
+          },
+          "maxUses": {
+            "type": "number"
+          },
+          "validFrom": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "kind",
+          "value"
+        ]
+      },
+      "PromoActiveDto": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "active"
         ]
       }
     }

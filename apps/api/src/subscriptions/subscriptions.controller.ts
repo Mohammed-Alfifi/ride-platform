@@ -28,7 +28,9 @@ import { InvoicesService, InvoiceView } from '../payments/invoices.service';
 import { SandboxGateway } from '../payments/sandbox.gateway';
 import {
   AdminListQuery,
+  CreateMemberDto,
   CreatePlaceDto,
+  MemberView,
   CreateSubscriptionDto,
   PauseDto,
   PaymentMethodView,
@@ -146,6 +148,25 @@ export class RiderController {
   @HttpCode(204)
   async removeCard(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.subs.removeCard(u.id, id);
+  }
+
+  @Get('family')
+  @ApiOperation({ summary: 'People this account rides for (children, relatives)' })
+  @ApiOkResponse({ type: [MemberView] })
+  family(@CurrentUser() u: AuthUser): Promise<MemberView[]> {
+    return this.subs.members(u.id);
+  }
+
+  @Post('family')
+  @ApiOkResponse({ type: MemberView })
+  addMember(@CurrentUser() u: AuthUser, @Body() dto: CreateMemberDto): Promise<MemberView> {
+    return this.subs.addMember(u.id, dto);
+  }
+
+  @Delete('family/:id')
+  @HttpCode(204)
+  async removeMember(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    await this.subs.removeMember(u.id, id);
   }
 
   @Get('invoices')

@@ -15,8 +15,12 @@ import {
   Subscription,
   subscriptions,
   zones,
+  familyMembers,
+  driverProfiles,
+  vehicles,
 } from '../database/schema';
 import { TripGenerator } from '../trips/trip.generator';
+import { discountFor, PromosService } from '../services/promos.service';
 import { BillingService, PaymentView } from '../payments/billing.service';
 import { InvoicesService, InvoiceView } from '../payments/invoices.service';
 import { vatIncluded } from '../payments/zatca';
@@ -30,6 +34,8 @@ import {
   QuoteView,
   SubscribeResult,
   SubscriptionView,
+  CreateMemberDto,
+  MemberView,
 } from './subscriptions.dto';
 
 /** Road distance is estimated from the straight line until routing arrives in phase 4. */
@@ -44,6 +50,7 @@ export class SubscriptionsService {
     private readonly billing: BillingService,
     private readonly invoiceService: InvoicesService,
     private readonly tripGenerator: TripGenerator,
+    private readonly promos: PromosService,
   ) {}
 
   // ------------------------------------------------------------------ places
@@ -99,6 +106,8 @@ export class SubscriptionsService {
     const { inside, meters } = geo.rows[0];
     const distanceKm = Math.max(1, Math.ceil((Number(meters) / 1000) * ROAD_FACTOR));
     const reason = !inside ? 'PLACE_OUTSIDE_ZONE' : distanceKm > plan.plan.maxDistanceKm ? 'PLAN_DISTANCE_EXCEEDED' : null;
+    const promo = dto.promoCode ? await this.promos.resolve(dto.promoCode, plan.plan.partnerId) : null;
+    const discount = promo ? discountFor(promo, plan.plan.priceHalalas) : 0;
 
     return {
       planId: plan.plan.id,
@@ -110,6 +119,9 @@ export class SubscriptionsService {
       vatHalalas: vatIncluded(plan.plan.priceHalalas, this.env.VAT_RATE_BPS),
       daysPerWeek: plan.plan.daysPerWeek,
       tripType: plan.plan.tripType,
+      promoCode: promo?.code ?? null,
+      discountHalalas: discount,
+      firstPaymentHalalas: plan.plan.priceHalalas - discount,
     };
   }
 
@@ -134,6 +146,8 @@ export class SubscriptionsService {
     }
 
     const plan = (await this.db.query.plans.findFirst({ where: eq(plans.id, dto.planId) }))!;
+    if (dto.memberId) await this.ownMember(riderId, dto.memberId);
+    const promo = quote.promoCode ? await this.promos.resolve(quote.promoCode, plan.partnerId) : null;
     const [sub] = await this.db
       .insert(subscriptions)
       .values({
@@ -148,6 +162,9 @@ export class SubscriptionsService {
         distanceKm: quote.distanceKm,
         priceHalalas: plan.priceHalalas,
         autoRenew: dto.saveCard !== false,
+        memberId: dto.memberId ?? null,
+        promoCodeId: promo?.id ?? null,
+        discountHalalas: quote.discountHalalas,
       })
       .returning();
 
@@ -198,9 +215,20 @@ export class SubscriptionsService {
             orderBy: desc(payments.createdAt),
           })
         : undefined;
+    const member = sub.memberId ? await this.db.query.familyMembers.findFirst({ where: eq(familyMembers.id, sub.memberId) }) : undefined;
+    const driver = sub.driverId
+      ? await this.db
+          .select({ name: driverProfiles.fullName, letters: vehicles.plateLetters, numbers: vehicles.plateNumbers })
+          .from(driverProfiles)
+          .leftJoin(vehicles, eq(vehicles.driverId, driverProfiles.userId))
+          .where(eq(driverProfiles.userId, sub.driverId))
+          .then((r) => r[0])
+      : undefined;
     return {
       id: sub.id,
       status: sub.status,
+      member: member ? { id: member.id, name: member.name } : null,
+      driver: driver ? { name: driver.name, plate: driver.numbers ? `${driver.numbers} ${driver.letters}` : null } : null,
       planId: plan.id,
       planNameAr: plan.nameAr,
       planNameEn: plan.nameEn,
@@ -324,6 +352,37 @@ export class SubscriptionsService {
   }
 
   // ------------------------------------------------------------------ helpers
+
+  // ------------------------------------------------------------------ family
+
+  async members(riderId: string): Promise<MemberView[]> {
+    const rows = await this.db
+      .select()
+      .from(familyMembers)
+      .where(and(eq(familyMembers.ownerId, riderId), isNull(familyMembers.deletedAt)))
+      .orderBy(familyMembers.createdAt);
+    return rows.map((m) => ({ id: m.id, name: m.name, relation: m.relation, note: m.note }));
+  }
+
+  async addMember(riderId: string, dto: CreateMemberDto): Promise<MemberView> {
+    const [m] = await this.db
+      .insert(familyMembers)
+      .values({ ownerId: riderId, name: dto.name.trim(), relation: dto.relation, note: dto.note?.trim() || null })
+      .returning();
+    return { id: m.id, name: m.name, relation: m.relation, note: m.note };
+  }
+
+  async removeMember(riderId: string, id: string): Promise<void> {
+    await this.ownMember(riderId, id);
+    await this.db.update(familyMembers).set({ deletedAt: new Date() }).where(eq(familyMembers.id, id));
+  }
+
+  private async ownMember(riderId: string, id: string): Promise<void> {
+    const m = await this.db.query.familyMembers.findFirst({
+      where: and(eq(familyMembers.id, id), eq(familyMembers.ownerId, riderId), isNull(familyMembers.deletedAt)),
+    });
+    if (!m) throw new AppError('MEMBER_NOT_FOUND');
+  }
 
   private async own(riderId: string, id: string): Promise<Subscription> {
     const sub = await this.db.query.subscriptions.findFirst({ where: and(eq(subscriptions.id, id), eq(subscriptions.riderId, riderId)) });

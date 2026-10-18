@@ -17,6 +17,7 @@ import {
   RiderController,
 } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
+import { PromosService } from '../services/promos.service';
 import { TripsModule } from '../trips/trips.module';
 
 /** Picks the payment provider from PAYMENT_PROVIDER. Switching provider is a config change. */
@@ -40,7 +41,8 @@ export function createGateway(env: Env, redis: Redis): PaymentGateway {
     BillingService,
     SubscriptionsService,
     RenewalsService,
+    PromosService,
   ],
-  exports: [RenewalsService, BillingService],
+  exports: [RenewalsService, BillingService, PromosService],
 })
 export class SubscriptionsModule {}

@@ -452,6 +452,11 @@ export const subscriptions = pgTable(
     paymentMethodId: uuid('payment_method_id').references(() => paymentMethods.id, { onDelete: 'set null' }),
     /** The rider's regular driver, chosen by the partner's dispatcher. Copied onto each new trip. */
     driverId: uuid('driver_id').references(() => users.id, { onDelete: 'set null' }),
+    /** Who actually rides, when the account holder subscribes for a child or relative. */
+    memberId: uuid('member_id').references(() => familyMembers.id, { onDelete: 'set null' }),
+    promoCodeId: uuid('promo_code_id').references(() => promoCodes.id, { onDelete: 'set null' }),
+    /** Taken off the first payment only. */
+    discountHalalas: integer('discount_halalas').notNull().default(0),
     ...timestamps,
   },
   (t) => [
@@ -481,6 +486,7 @@ export const payments = pgTable(
     checkoutUrl: varchar('checkout_url', { length: 500 }),
     amountHalalas: integer('amount_halalas').notNull(),
     /** The platform's commission and the partner's share, fixed when the payment is created. */
+    discountHalalas: integer('discount_halalas').notNull().default(0),
     platformFeeHalalas: integer('platform_fee_halalas').notNull(),
     partnerShareHalalas: integer('partner_share_halalas').notNull(),
     status: paymentStatusEnum('status').notNull().default('initiated'),
@@ -571,6 +577,8 @@ export const trips = pgTable(
     pickupName: varchar('pickup_name', { length: 80 }).notNull(),
     dropoff: point('dropoff').notNull(),
     dropoffName: varchar('dropoff_name', { length: 80 }).notNull(),
+    /** The person riding when it is not the account holder (a child, a relative). */
+    passengerName: varchar('passenger_name', { length: 80 }),
     status: tripStatusEnum('status').notNull().default('scheduled'),
     startedAt: timestamp('started_at', { withTimezone: true }),
     arrivedAt: timestamp('arrived_at', { withTimezone: true }),
@@ -603,6 +611,146 @@ export const tripPoints = pgTable(
 );
 
 export type Trip = typeof trips.$inferSelect;
+
+// ---------------------------------------------------------------- family, sharing, ratings, support, promotions
+
+/** People an account holder rides for: a parent managing their children's school rides. */
+export const familyMembers = pgTable(
+  'family_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: varchar('name', { length: 80 }).notNull(),
+    relation: varchar('relation', { length: 20 }).notNull(), // child | spouse | parent | other
+    /** School, class or workplace: helps the driver at the gate. */
+    note: varchar('note', { length: 120 }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('family_members_owner_idx').on(t.ownerId)],
+);
+
+/** A link that lets someone without the app follow one trip live, until shortly after it ends. */
+export const tripShares = pgTable(
+  'trip_shares',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    tripId: uuid('trip_id')
+      .notNull()
+      .references(() => trips.id, { onDelete: 'cascade' }),
+    createdBy: uuid('created_by')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** SHA-256 of the token in the link; the token itself is never stored. */
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('trip_shares_token_uq').on(t.tokenHash), index('trip_shares_trip_idx').on(t.tripId)],
+);
+
+export const tripRatings = pgTable(
+  'trip_ratings',
+  {
+    tripId: uuid('trip_id')
+      .primaryKey()
+      .references(() => trips.id, { onDelete: 'cascade' }),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    driverId: uuid('driver_id').references(() => users.id, { onDelete: 'set null' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    stars: integer('stars').notNull(),
+    /** Quick reasons: on_time, clean_car, safe_driving, polite, late, unsafe, rude ... */
+    tags: varchar('tags', { length: 30 }).array().notNull().default(sql`'{}'::varchar[]`),
+    comment: varchar('comment', { length: 500 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('trip_ratings_driver_idx').on(t.driverId),
+    index('trip_ratings_partner_idx').on(t.partnerId, t.createdAt),
+    check('trip_ratings_stars_ck', sql`${t.stars} BETWEEN 1 AND 5`),
+  ],
+);
+
+export const ticketCategoryEnum = pgEnum('ticket_category', ['trip', 'driver', 'payment', 'app', 'other']);
+export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'answered', 'closed']);
+
+export const supportTickets = pgTable(
+  'support_tickets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    number: integer('number').generatedAlwaysAsIdentity().notNull(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    /** The partner who should answer; null goes to the platform team. */
+    partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'set null' }),
+    tripId: uuid('trip_id').references(() => trips.id, { onDelete: 'set null' }),
+    category: ticketCategoryEnum('category').notNull(),
+    subject: varchar('subject', { length: 120 }).notNull(),
+    status: ticketStatusEnum('status').notNull().default('open'),
+    lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('support_tickets_number_uq').on(t.number),
+    index('support_tickets_user_idx').on(t.userId),
+    index('support_tickets_partner_idx').on(t.partnerId, t.status),
+  ],
+);
+
+export const ticketMessages = pgTable(
+  'ticket_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ticketId: uuid('ticket_id')
+      .notNull()
+      .references(() => supportTickets.id, { onDelete: 'cascade' }),
+    authorId: uuid('author_id').references(() => users.id, { onDelete: 'set null' }),
+    fromStaff: boolean('from_staff').notNull(),
+    body: varchar('body', { length: 2000 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('ticket_messages_ticket_idx').on(t.ticketId, t.createdAt)],
+);
+
+export const promoKindEnum = pgEnum('promo_kind', ['percent', 'amount']);
+
+/** Discount codes a partner runs (first month only). */
+export const promoCodes = pgTable(
+  'promo_codes',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    code: varchar('code', { length: 20 }).notNull(),
+    kind: promoKindEnum('kind').notNull(),
+    /** percent: 1-100; amount: halalas. */
+    value: integer('value').notNull(),
+    maxUses: integer('max_uses'),
+    usedCount: integer('used_count').notNull().default(0),
+    validFrom: date('valid_from'),
+    validUntil: date('valid_until'),
+    active: boolean('active').notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('promo_codes_code_uq').on(t.code),
+    index('promo_codes_partner_idx').on(t.partnerId),
+    check('promo_codes_value_ck', sql`${t.value} > 0 AND (${t.kind} <> 'percent' OR ${t.value} <= 100)`),
+  ],
+);
+
+export type FamilyMember = typeof familyMembers.$inferSelect;
+export type PromoCode = typeof promoCodes.$inferSelect;
+export type SupportTicket = typeof supportTickets.$inferSelect;
 
 export type Partner = typeof partners.$inferSelect;
 export type User = typeof users.$inferSelect;

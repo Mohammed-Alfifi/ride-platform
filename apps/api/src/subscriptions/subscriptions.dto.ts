@@ -69,6 +69,12 @@ export class QuoteDto {
   @ApiProperty({ format: 'uuid' })
   @IsUUID()
   dropoffPlaceId!: string;
+
+  @ApiPropertyOptional({ example: 'SCHOOL25', description: 'Discount code for the first month' })
+  @IsOptional()
+  @IsString()
+  @Length(3, 20)
+  promoCode?: string;
 }
 
 export class QuoteView {
@@ -82,6 +88,9 @@ export class QuoteView {
   @ApiProperty() vatHalalas!: number;
   @ApiProperty() daysPerWeek!: number;
   @ApiProperty({ enum: ['round_trip', 'one_way'] }) tripType!: string;
+  @ApiProperty({ nullable: true, type: String }) promoCode!: string | null;
+  @ApiProperty({ description: 'Taken off the first month' }) discountHalalas!: number;
+  @ApiProperty() firstPaymentHalalas!: number;
 }
 
 export class CreateSubscriptionDto extends QuoteDto {
@@ -103,6 +112,11 @@ export class CreateSubscriptionDto extends QuoteDto {
   @IsOptional()
   @Matches(TIME)
   returnTime?: string;
+
+  @ApiPropertyOptional({ format: 'uuid', description: 'Family member who rides (a child); the account holder when omitted' })
+  @IsOptional()
+  @IsUUID()
+  memberId?: string;
 
   @ApiPropertyOptional({ description: 'Keep the card for automatic monthly renewal', default: true })
   @IsOptional()
@@ -146,6 +160,9 @@ export class SubscriptionView {
   @ApiProperty({ nullable: true, type: String, description: 'Open payment page when payment is due' })
   payUrl!: string | null;
   @ApiProperty({ nullable: true, type: String }) pendingPaymentId!: string | null;
+  @ApiProperty({ nullable: true, type: Object, description: 'Who rides, when not the account holder' })
+  member!: { id: string; name: string } | null;
+  @ApiProperty({ nullable: true, type: Object }) driver!: { name: string | null; plate: string | null } | null;
   @ApiProperty() createdAt!: string;
 }
 
@@ -200,4 +217,28 @@ export class AdminListQuery {
   @Min(1)
   @Max(100)
   pageSize = 20;
+}
+
+export class CreateMemberDto {
+  @ApiProperty({ example: 'سارة' })
+  @IsString()
+  @Length(2, 80)
+  name!: string;
+
+  @ApiProperty({ enum: ['child', 'spouse', 'parent', 'other'] })
+  @IsIn(['child', 'spouse', 'parent', 'other'])
+  relation!: 'child' | 'spouse' | 'parent' | 'other';
+
+  @ApiPropertyOptional({ example: 'مدارس الأندلس، الصف الرابع' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  note?: string;
+}
+
+export class MemberView {
+  @ApiProperty() id!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() relation!: string;
+  @ApiProperty({ nullable: true, type: String }) note!: string | null;
 }
