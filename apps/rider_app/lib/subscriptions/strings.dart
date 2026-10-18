@@ -1,5 +1,5 @@
 import 'package:flutter/widgets.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' show DateFormat, NumberFormat;
 
 /// Rider app copy in Arabic (default) and English.
 class RiderStrings {

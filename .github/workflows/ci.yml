@@ -79,20 +79,68 @@ jobs:
       - run: flutter pub get
       # Problems are also posted as annotations, so they show on the commit page.
       - name: flutter analyze
+        id: analyze
         shell: bash
         run: |
           set +e
           flutter analyze --no-fatal-infos > analyze.txt 2>&1
           code=$?
           cat analyze.txt
-          grep -E '^ *(error|warning) •' analyze.txt | while IFS= read -r line; do
+          grep -E '^ *(error|warning) •' analyze.txt > problems.txt
+          echo "count=$(wc -l < problems.txt)" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: analyzer problems (batch 1)
+        if: steps.analyze.outputs.count > 0
+        shell: bash
+        run: |
+          sed -n '1,10p' problems.txt | while IFS= read -r line; do
             msg=$(echo "$line" | awk -F' • ' '{print $2}')
             loc=$(echo "$line" | awk -F' • ' '{print $3}')
             rule=$(echo "$line" | awk -F' • ' '{print $4}')
             echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
           done
-          exit $code
+      - name: analyzer problems (batch 2)
+        if: steps.analyze.outputs.count > 10
+        shell: bash
+        run: |
+          sed -n '11,20p' problems.txt | while IFS= read -r line; do
+            msg=$(echo "$line" | awk -F' • ' '{print $2}')
+            loc=$(echo "$line" | awk -F' • ' '{print $3}')
+            rule=$(echo "$line" | awk -F' • ' '{print $4}')
+            echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
+          done
+      - name: analyzer problems (batch 3)
+        if: steps.analyze.outputs.count > 20
+        shell: bash
+        run: |
+          sed -n '21,30p' problems.txt | while IFS= read -r line; do
+            msg=$(echo "$line" | awk -F' • ' '{print $2}')
+            loc=$(echo "$line" | awk -F' • ' '{print $3}')
+            rule=$(echo "$line" | awk -F' • ' '{print $4}')
+            echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
+          done
+      - name: analyzer problems (batch 4)
+        if: steps.analyze.outputs.count > 30
+        shell: bash
+        run: |
+          sed -n '31,40p' problems.txt | while IFS= read -r line; do
+            msg=$(echo "$line" | awk -F' • ' '{print $2}')
+            loc=$(echo "$line" | awk -F' • ' '{print $3}')
+            rule=$(echo "$line" | awk -F' • ' '{print $4}')
+            echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
+          done
+      - name: analyzer problems (batch 5)
+        if: steps.analyze.outputs.count > 40
+        shell: bash
+        run: |
+          sed -n '41,50p' problems.txt | while IFS= read -r line; do
+            msg=$(echo "$line" | awk -F' • ' '{print $2}')
+            loc=$(echo "$line" | awk -F' • ' '{print $3}')
+            rule=$(echo "$line" | awk -F' • ' '{print $4}')
+            echo "::error file=${{ matrix.package }}/${loc%%:*},line=$(echo "$loc" | cut -d: -f2)::$msg ($rule)"
+          done
       - name: flutter test
+        if: always()
         shell: bash
         run: |
           set +e
@@ -103,3 +151,6 @@ jobs:
             grep -E 'Error:|Expected:|Actual:|EXCEPTION|\[E\]|Some tests failed' test.txt | head -20 | while IFS= read -r line; do echo "::error::$line"; done
           fi
           exit $code
+      - name: fail on analyzer problems
+        if: always() && steps.analyze.outputs.count > 0
+        run: exit 1

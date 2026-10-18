@@ -8,6 +8,7 @@ import '../config.dart';
 import '../l10n/strings.dart';
 import '../phone.dart';
 import 'app_shell.dart';
+import 'otp_screen.dart';
 
 class PhoneScreen extends ConsumerStatefulWidget {
   const PhoneScreen({super.key});

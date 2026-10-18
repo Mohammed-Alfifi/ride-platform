@@ -46,9 +46,9 @@ class RiderHomeScreen extends ConsumerWidget {
           ? null
           : FloatingActionButton.extended(onPressed: openNew, icon: const Icon(Icons.add), label: Text(t.addSubscription)),
       body: RefreshIndicator(
-        onRefresh: () async {
+        onRefresh: () {
           ref.invalidate(tripsProvider);
-          await ref.refresh(subscriptionsProvider.future);
+          return ref.refresh(subscriptionsProvider.future);
         },
         child: ListView(
           padding: const EdgeInsets.all(20),
