@@ -45,8 +45,12 @@
 | التشغيل اليومي: رحلات اليوم ومواقع السيارات | التقارير اليومية وتقييمات السائقين |
 | ![الدعم](docs/screenshots/13-support.png) | ![رموز الخصم](docs/screenshots/14-promos.png) |
 | صندوق طلبات الدعم | رموز الخصم |
-| ![تتبع الرحلة](docs/screenshots/15-shared-trip.png) | |
-| صفحة التتبع التي تصل للأهل | |
+| ![تتبع الرحلة](docs/screenshots/15-shared-trip.png) | ![صفحة التحميل](docs/screenshots/19-download.png) |
+| صفحة التتبع التي تصل للأهل | صفحة التحميل: أندرويد والآيفون |
+| ![صفحة الانضمام](docs/screenshots/16-join.png) | ![إرسال الدعوة](docs/screenshots/17-invite.png) |
+| صفحة الانضمام العامة للعملاء والسائقين | دعوة برمز دخول تُرسل بالواتساب |
+| ![تسجيل دفعة](docs/screenshots/18-record-payment.png) | |
+| تسجيل تحويل بنكي أو دفعة نقدية | |
 | ![الفاتورة](docs/screenshots/08-invoice.png) | ![على الجوال](docs/screenshots/10-mobile.png) |
 | فاتورة ضريبية مبسطة برمز QR | اللوحة على شاشة الجوال |
 
