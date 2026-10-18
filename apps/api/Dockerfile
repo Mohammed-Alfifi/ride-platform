@@ -18,6 +18,6 @@ COPY --from=build /repo/apps/api/dist ./dist
 COPY --from=build /repo/apps/api/drizzle ./drizzle
 USER app
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3000/health/live || exit 1
+HEALTHCHECK --interval=10s --timeout=3s --start-period=60s --retries=6 CMD wget -qO- http://127.0.0.1:3000/health/live || exit 1
 # Apply pending migrations, then start.
 CMD ["sh", "-c", "node dist/database/migrate.js && node dist/main.js"]

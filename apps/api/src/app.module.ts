@@ -25,6 +25,16 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 
 const env = loadEnv();
 
+/** Readable logs need pino-pretty, a dev tool that is not in the Docker image. */
+function hasPrettyLogs(): boolean {
+  try {
+    require.resolve('pino-pretty');
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 @Module({
   imports: [
     ConfigModule,
@@ -43,7 +53,7 @@ const env = loadEnv();
         },
         autoLogging: { ignore: (req) => (req.url ?? '').startsWith('/health') },
         transport:
-          env.NODE_ENV === 'development'
+          env.NODE_ENV === 'development' && hasPrettyLogs()
             ? { target: 'pino-pretty', options: { singleLine: true, colorize: true } }
             : undefined,
       },
