@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizeSaudiMobile } from '../common/phone';
 
 const bool = z
   .string()
@@ -48,8 +49,17 @@ export const envSchema = z
     /** open: anyone may create a rider or driver account. invite: only phones the team invited. */
     ACCESS_MODE: z.enum(['open', 'invite']).default('open'),
     ACCESS_CODE_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
-    OTP_TEST_PHONES: csv,
-    OTP_TEST_CODE: z.string().optional().default(''),
+    // Written in any common format (05..., 9665..., +9665...); compared as +9665XXXXXXXX.
+    OTP_TEST_PHONES: csv.transform((list) =>
+      list.map((p) => {
+        try {
+          return normalizeSaudiMobile(p);
+        } catch {
+          return p;
+        }
+      }),
+    ),
+    OTP_TEST_CODE: z.string().trim().optional().default(''),
 
     SUPER_ADMIN_PHONE: z.string().optional().default(''),
     SUPER_ADMIN_NAME: z.string().optional().default('Platform Owner'),

@@ -50,6 +50,12 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...base, OTP_LENGTH: '8' })).toThrow(/OTP_LENGTH/);
   });
 
+  it('accepts test phones in local format', () => {
+    const env = loadEnv({ ...base, OTP_TEST_PHONES: '0551234567, 966551234568', OTP_TEST_CODE: ' 4321 ' });
+    expect(env.OTP_TEST_PHONES).toEqual(['+966551234567', '+966551234568']);
+    expect(env.OTP_TEST_CODE).toBe('4321');
+  });
+
   it('requires a numeric test code when test phones are set', () => {
     expect(() => loadEnv({ ...base, OTP_TEST_PHONES: '+966500000000' })).toThrow(/OTP_TEST_CODE/);
     expect(loadEnv({ ...base, OTP_TEST_PHONES: '+966500000000', OTP_TEST_CODE: '1234' }).OTP_TEST_PHONES).toEqual([
