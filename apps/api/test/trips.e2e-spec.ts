@@ -201,6 +201,18 @@ describe('Trips, live tracking and dispatch (e2e)', () => {
     expect(d.location).toMatchObject({ lat: SCHOOL.lat, lng: SCHOOL.lng });
     expect(board.body.drivers.some((x: { id: string }) => x.id === pendingDriverId)).toBe(false);
 
+    expect(board.body).toMatchObject({ view: 'all', tripsInView: 2 });
+    expect(board.body.trips).toHaveLength(2);
+
+    // A tab lists only its trips; the counters still cover the whole day.
+    const done = await ctx.http().get('/v1/admin/dispatch?view=done').set(bearer(admin.accessToken)).expect(200);
+    expect(done.body.summary.total).toBe(2);
+    expect(done.body.tripsInView).toBe(2);
+    const active = await ctx.http().get('/v1/admin/dispatch?view=active').set(bearer(admin.accessToken)).expect(200);
+    expect(active.body.trips).toHaveLength(0);
+    expect(active.body.tripsInView).toBe(0);
+    await ctx.http().get('/v1/admin/dispatch?view=everything').set(bearer(admin.accessToken)).expect(400);
+
     const theirs = await ctx.http().get('/v1/admin/dispatch').set(bearer(otherAdmin.accessToken)).expect(200);
     expect(theirs.body.summary.total).toBe(0);
   });

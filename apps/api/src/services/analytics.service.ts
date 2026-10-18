@@ -1,9 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { sql } from 'drizzle-orm';
+import Redis from 'ioredis';
 import type { AuthUser } from '../auth/auth.types';
 import { addDays, daysBetween, riyadhToday } from '../common/saudi';
 import { partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
+import { REDIS } from '../redis/redis.module';
+
+const REPORT_CACHE_SECONDS = 60;
 
 export interface DayPoint {
   date: string;
@@ -13,29 +17,45 @@ export interface DayPoint {
 /** Numbers for the dashboard's reports. Every figure is computed in Riyadh calendar days. */
 @Injectable()
 export class AnalyticsService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    @Inject(REDIS) private readonly redis: Redis,
+  ) {}
 
+  /**
+   * Cached for a minute per partner and date range: the reports page and several admins opening it
+   * at once cost one computation, and the numbers are at most a minute old.
+   */
   async report(actor: AuthUser, q: { partnerId?: string; from?: string; to?: string }) {
     const scope = partnerScope(actor, q.partnerId) ?? null;
     const to = q.to ?? riyadhToday();
     const from = q.from ?? addDays(to, -29);
+    const key = `analytics:${scope ?? 'all'}:${from}:${to}`;
+    const cached = await this.redis.get(key);
+    if (cached) return JSON.parse(cached) as Awaited<ReturnType<AnalyticsService['compute']>>;
+    const result = await this.compute(scope, from, to);
+    await this.redis.set(key, JSON.stringify(result), 'EX', REPORT_CACHE_SECONDS);
+    return result;
+  }
+
+  private async compute(scope: string | null, from: string, to: string) {
     const days = Math.min(Math.max(daysBetween(from, to) + 1, 1), 366);
     const p = (col: string) => (scope ? sql`AND ${sql.raw(col)} = ${scope}` : sql``);
     const day = (col: string) => sql.raw(`(${col} AT TIME ZONE 'Asia/Riyadh')::date`);
 
-    const revenue = await this.db.execute<{ d: string; amount: string; fee: string; n: string }>(sql`
+    const revenueQ = this.db.execute<{ d: string; amount: string; fee: string; n: string }>(sql`
       SELECT ${day('paid_at')} AS d, sum(amount_halalas) AS amount, sum(platform_fee_halalas) AS fee, count(*) AS n
       FROM payments
       WHERE status = 'paid' AND ${day('paid_at')} BETWEEN ${from}::date AND ${to}::date ${p('partner_id')}
       GROUP BY 1`);
 
-    const newSubs = await this.db.execute<{ d: string; n: string }>(sql`
+    const newSubsQ = this.db.execute<{ d: string; n: string }>(sql`
       SELECT ${day('paid_at')} AS d, count(*) AS n
       FROM payments
       WHERE status = 'paid' AND purpose = 'start' AND ${day('paid_at')} BETWEEN ${from}::date AND ${to}::date ${p('partner_id')}
       GROUP BY 1`);
 
-    const tripStats = await this.db.execute<{ status: string; n: string; on_time: string; arrived: string }>(sql`
+    const tripStatsQ = this.db.execute<{ status: string; n: string; on_time: string; arrived: string }>(sql`
       SELECT status, count(*) AS n,
              count(*) FILTER (WHERE arrived_at IS NOT NULL AND arrived_at <= scheduled_at + interval '5 minutes') AS on_time,
              count(*) FILTER (WHERE arrived_at IS NOT NULL) AS arrived
@@ -43,7 +63,7 @@ export class AnalyticsService {
       WHERE service_date BETWEEN ${from}::date AND ${to}::date ${p('partner_id')}
       GROUP BY status`);
 
-    const tripsByDay = await this.db.execute<{ d: string; done: string; missed: string }>(sql`
+    const tripsByDayQ = this.db.execute<{ d: string; done: string; missed: string }>(sql`
       SELECT service_date::text AS d,
              count(*) FILTER (WHERE status = 'completed') AS done,
              count(*) FILTER (WHERE status = 'no_show') AS missed
@@ -51,18 +71,29 @@ export class AnalyticsService {
       WHERE service_date BETWEEN ${from}::date AND ${to}::date ${p('partner_id')}
       GROUP BY 1`);
 
-    const subs = await this.db.execute<{ active: string; past_due: string; ended: string }>(sql`
+    const subsQ = this.db.execute<{ active: string; past_due: string; ended: string }>(sql`
       SELECT count(*) FILTER (WHERE status = 'active') AS active,
              count(*) FILTER (WHERE status = 'past_due') AS past_due,
              count(*) FILTER (WHERE status IN ('cancelled', 'expired') AND updated_at >= ${from}::date) AS ended
       FROM subscriptions WHERE true ${p('partner_id')}`);
 
-    const rating = await this.db.execute<{ avg: string | null; n: string }>(sql`
+    const ratingQ = this.db.execute<{ avg: string | null; n: string }>(sql`
       SELECT avg(stars) AS avg, count(*) AS n FROM trip_ratings
       WHERE ${day('created_at')} BETWEEN ${from}::date AND ${to}::date ${p('partner_id')}`);
 
-    const tickets = await this.db.execute<{ open: string }>(sql`
+    const ticketsQ = this.db.execute<{ open: string }>(sql`
       SELECT count(*) FILTER (WHERE status <> 'closed') AS open FROM support_tickets WHERE true ${p('partner_id')}`);
+
+    // The seven queries are independent: run them together on the pool.
+    const [revenue, newSubs, tripStats, tripsByDay, subs, rating, tickets] = await Promise.all([
+      revenueQ,
+      newSubsQ,
+      tripStatsQ,
+      tripsByDayQ,
+      subsQ,
+      ratingQ,
+      ticketsQ,
+    ]);
 
     const fill = (rows: { d: string }[], pick: (r: never) => number): DayPoint[] => {
       const map = new Map(rows.map((r) => [String(r.d).slice(0, 10), pick(r as never)]));

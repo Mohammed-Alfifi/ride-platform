@@ -321,6 +321,8 @@ export interface DispatchBoard {
     late: number;
   };
   trips: TripView[];
+  /** Trips matching the selected view; larger than trips.length when the list was capped. */
+  tripsInView: number;
   drivers: DispatchDriver[];
 }
 

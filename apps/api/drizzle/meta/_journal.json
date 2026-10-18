@@ -50,6 +50,13 @@
       "when": 1792329183550,
       "tag": "0006_pilot",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792353928014,
+      "tag": "0007_performance",
+      "breakpoints": true
     }
   ]
 }

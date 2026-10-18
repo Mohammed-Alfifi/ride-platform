@@ -1,7 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useApp } from '@/components/Providers';
 import { LoadState, useLoad } from '@/components/ui';
 import { api, ApiError, DispatchBoard, DispatchDriver, TripLive, TripStatus, TripView } from '@/lib/client';
@@ -39,7 +39,8 @@ export default function DispatchPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [live, setLive] = useState<TripLive | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  const board = useLoad(() => api<DispatchBoard>(`admin/dispatch?date=${date}`), [date]);
+  // The server filters by tab and caps the list, so a busy day stays light to refresh every 10 seconds.
+  const board = useLoad(() => api<DispatchBoard>(`admin/dispatch?date=${date}&view=${filter}`), [date, filter]);
 
   // Refresh while the page is visible.
   useEffect(() => {
@@ -67,26 +68,7 @@ export default function DispatchPage() {
     void loadLive(selectedId);
   }, [selectedId, board.data, loadLive]);
 
-  const filtered = useMemo(
-    () =>
-      trips.filter((x) => {
-        switch (filter) {
-          case 'unassigned':
-            return !x.driver && x.status === 'scheduled';
-          case 'late':
-            return minutesLate(x, now) > 0;
-          case 'active':
-            return ACTIVE.includes(x.status);
-          case 'done':
-            return ['completed', 'skipped', 'cancelled'].includes(x.status);
-          case 'problems':
-            return x.status === 'no_show' || minutesLate(x, now) > 10;
-          default:
-            return true;
-        }
-      }),
-    [trips, filter, now],
-  );
+  const filtered = trips;
 
   async function assign(trip: TripView, driverId: string) {
     try {
@@ -153,8 +135,10 @@ export default function DispatchPage() {
                 </button>
               ))}
             </div>
-            {trips.length === 0 && <p className="empty">{t.dispatch.empty}</p>}
-            {trips.length > 0 && filtered.length === 0 && <p className="empty">{t.dispatch.emptyFilter}</p>}
+            {trips.length === 0 && <p className="empty">{filter === 'all' ? t.dispatch.empty : t.dispatch.emptyFilter}</p>}
+            {board.data.tripsInView > trips.length && (
+              <p className="hint">{fill(t.dispatch.capped, { shown: trips.length, total: board.data.tripsInView })}</p>
+            )}
             <ol className="trip-list">
               {filtered.map((x) => {
                 const late = minutesLate(x, now);

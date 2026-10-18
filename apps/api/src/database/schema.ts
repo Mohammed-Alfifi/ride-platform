@@ -597,9 +597,14 @@ export const trips = pgTable(
   },
   (t) => [
     uniqueIndex('trips_subscription_day_leg_uq').on(t.subscriptionId, t.serviceDate, t.leg),
-    index('trips_partner_day_idx').on(t.partnerId, t.serviceDate),
     index('trips_driver_day_idx').on(t.driverId, t.serviceDate),
     index('trips_rider_day_idx').on(t.riderId, t.serviceDate),
+    // The driver's trip in progress: looked up on every location report (every 10 seconds per driver).
+    index('trips_driver_active_idx')
+      .on(t.driverId)
+      .where(sql`${t.status} IN ('en_route', 'arrived', 'on_board')`),
+    // Dispatch board counters and filters for one partner's day.
+    index('trips_partner_day_status_idx').on(t.partnerId, t.serviceDate, t.status),
   ],
 );
 

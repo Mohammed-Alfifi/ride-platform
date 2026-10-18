@@ -21,6 +21,10 @@ export const NO_SHOW_WAIT_MINUTES = 5;
 /** Riders can cancel a single trip up to this long before it. */
 export const SKIP_DEADLINE_MINUTES = 30;
 
+export const BOARD_VIEWS = ['all', 'unassigned', 'late', 'active', 'done', 'problems'] as const;
+export type BoardView = (typeof BOARD_VIEWS)[number];
+const BOARD_LIMIT = 300;
+
 const ACTIVE: TripStatus[] = ['en_route', 'arrived', 'on_board'];
 
 export interface Spot {
@@ -290,59 +294,93 @@ export class TripsService {
 
   // ------------------------------------------------------------------ dispatch
 
-  async board(actor: AuthUser, opts: { partnerId?: string; date?: string }) {
+  /**
+   * The dispatch board. Counters and per-driver numbers are computed in the database; only the trips
+   * of the selected view travel to the browser (at most BOARD_LIMIT), so a partner with thousands of
+   * trips a day still gets a small, fast answer every 10 seconds.
+   */
+  async board(actor: AuthUser, opts: { partnerId?: string; date?: string; view?: BoardView }) {
     const scope = partnerScope(actor, opts.partnerId);
     const date = opts.date ?? riyadhToday();
-    const rows = await this.rows(and(eq(trips.serviceDate, date), scope ? eq(trips.partnerId, scope) : undefined));
-    const list = rows.map((r) => this.present(r, { driverPhone: true }));
+    const view = opts.view ?? 'all';
+    const day = and(eq(trips.serviceDate, date), scope ? eq(trips.partnerId, scope) : undefined) as SQL;
+    const now = new Date().toISOString();
+    const late = sql`${trips.status} = 'scheduled' AND ${trips.scheduledAt} < ${now}::timestamptz`;
+    const viewWhere: Record<BoardView, SQL | undefined> = {
+      all: undefined,
+      unassigned: sql`${trips.driverId} IS NULL AND ${trips.status} = 'scheduled'`,
+      late,
+      active: inArray(trips.status, ACTIVE),
+      done: inArray(trips.status, ['completed', 'skipped', 'cancelled']),
+      problems: sql`(${trips.status} = 'no_show' OR (${late} AND ${trips.scheduledAt} < ${now}::timestamptz - interval '10 minutes'))`,
+    };
+    const where = viewWhere[view] ? (and(day, viewWhere[view]) as SQL) : day;
 
-    // Approved drivers of the partner(s), with their live position.
-    const drivers = await this.db
-      .select({
-        id: driverProfiles.userId,
-        name: driverProfiles.fullName,
-        phone: users.phone,
-        partnerId: driverProfiles.partnerId,
-        hold: driverProfiles.complianceHold,
-        plateLetters: vehicles.plateLetters,
-        plateNumbers: vehicles.plateNumbers,
-        seats: vehicles.seats,
-      })
-      .from(driverProfiles)
-      .innerJoin(users, eq(users.id, driverProfiles.userId))
-      .leftJoin(vehicles, eq(vehicles.driverId, driverProfiles.userId))
-      .where(and(eq(driverProfiles.status, 'approved'), scope ? eq(driverProfiles.partnerId, scope) : undefined))
-      .orderBy(asc(driverProfiles.fullName));
+    const [counts, list, perDriver, drivers] = await Promise.all([
+      this.db
+        .select({
+          total: sql<number>`count(*)::int`,
+          unassigned: sql<number>`count(*) FILTER (WHERE ${trips.driverId} IS NULL AND ${trips.status} = 'scheduled')::int`,
+          upcoming: sql<number>`count(*) FILTER (WHERE ${trips.status} = 'scheduled')::int`,
+          active: sql<number>`count(*) FILTER (WHERE ${inArray(trips.status, ACTIVE)})::int`,
+          completed: sql<number>`count(*) FILTER (WHERE ${trips.status} = 'completed')::int`,
+          problems: sql<number>`count(*) FILTER (WHERE ${trips.status} = 'no_show')::int`,
+          skipped: sql<number>`count(*) FILTER (WHERE ${trips.status} IN ('skipped', 'cancelled'))::int`,
+          late: sql<number>`count(*) FILTER (WHERE ${late})::int`,
+          inView: viewWhere[view] ? sql<number>`count(*) FILTER (WHERE ${viewWhere[view]})::int` : sql<number>`count(*)::int`,
+        })
+        .from(trips)
+        .where(day),
+      this.rows(where, BOARD_LIMIT),
+      this.db
+        .select({
+          driverId: trips.driverId,
+          n: sql<number>`count(*)::int`,
+          current: sql<string | null>`(array_agg(${trips.id}) FILTER (WHERE ${inArray(trips.status, ACTIVE)}))[1]`,
+        })
+        .from(trips)
+        .where(and(day, sql`${trips.driverId} IS NOT NULL`))
+        .groupBy(trips.driverId),
+      // Approved drivers of the partner(s), with their live position.
+      this.db
+        .select({
+          id: driverProfiles.userId,
+          name: driverProfiles.fullName,
+          phone: users.phone,
+          partnerId: driverProfiles.partnerId,
+          hold: driverProfiles.complianceHold,
+          plateLetters: vehicles.plateLetters,
+          plateNumbers: vehicles.plateNumbers,
+          seats: vehicles.seats,
+        })
+        .from(driverProfiles)
+        .innerJoin(users, eq(users.id, driverProfiles.userId))
+        .leftJoin(vehicles, eq(vehicles.driverId, driverProfiles.userId))
+        .where(and(eq(driverProfiles.status, 'approved'), scope ? eq(driverProfiles.partnerId, scope) : undefined))
+        .orderBy(asc(driverProfiles.fullName)),
+    ]);
     const positions = await this.live.many(drivers.map((d) => d.id));
+    const byDriver = new Map(perDriver.map((r) => [r.driverId as string, r]));
+    const { inView, ...summary } = counts[0];
 
-    const count = (s: TripStatus[]) => list.filter((t) => s.includes(t.status)).length;
     return {
       date,
-      summary: {
-        total: list.length,
-        unassigned: list.filter((t) => !t.driver && t.status === 'scheduled').length,
-        upcoming: count(['scheduled']),
-        active: count(ACTIVE),
-        completed: count(['completed']),
-        problems: count(['no_show']),
-        skipped: count(['skipped', 'cancelled']),
-        late: list.filter((t) => t.status === 'scheduled' && Date.parse(t.scheduledAt) < Date.now()).length,
-      },
-      trips: list,
-      drivers: drivers.map((d) => {
-        const current = list.find((t) => t.driver?.id === d.id && ACTIVE.includes(t.status));
-        return {
-          id: d.id,
-          name: d.name,
-          phone: d.phone,
-          onHold: d.hold,
-          plate: d.plateNumbers ? `${d.plateNumbers} ${d.plateLetters}` : null,
-          seats: d.seats,
-          tripsToday: list.filter((t) => t.driver?.id === d.id).length,
-          currentTripId: current?.id ?? null,
-          location: positions.get(d.id) ?? null,
-        };
-      }),
+      view,
+      summary,
+      trips: list.map((r) => this.present(r, { driverPhone: true })),
+      /** Trips matching the view; more than trips.length when the list was cut at the limit. */
+      tripsInView: inView,
+      drivers: drivers.map((d) => ({
+        id: d.id,
+        name: d.name,
+        phone: d.phone,
+        onHold: d.hold,
+        plate: d.plateNumbers ? `${d.plateNumbers} ${d.plateLetters}` : null,
+        seats: d.seats,
+        tripsToday: byDriver.get(d.id)?.n ?? 0,
+        currentTripId: byDriver.get(d.id)?.current ?? null,
+        location: positions.get(d.id) ?? null,
+      })),
     };
   }
 

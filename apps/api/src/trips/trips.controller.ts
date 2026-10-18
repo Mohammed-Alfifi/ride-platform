@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Que
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsIn,
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
@@ -20,7 +21,7 @@ import {
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { TripGenerator } from './trip.generator';
-import { LiveView, TripsService, TripView } from './trips.service';
+import { BOARD_VIEWS, BoardView, LiveView, TripsService, TripView } from './trips.service';
 
 class DayQuery {
   @ApiPropertyOptional({ example: '2026-10-19', description: 'Riyadh calendar day; today when omitted' })
@@ -49,6 +50,11 @@ class BoardQuery extends DayQuery {
   @IsOptional()
   @IsUUID()
   partnerId?: string;
+
+  @ApiPropertyOptional({ enum: BOARD_VIEWS, description: 'Which trips to list (the counters always cover the whole day)' })
+  @IsOptional()
+  @IsIn(BOARD_VIEWS as unknown as string[])
+  view?: BoardView;
 }
 
 class LocationPoint {
