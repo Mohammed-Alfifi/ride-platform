@@ -224,6 +224,7 @@ export interface AdminSubscription {
   pausedFrom: string | null;
   pausedUntil: string | null;
   partnerId: string;
+  driverId: string | null;
 }
 
 export interface Page<T> {
@@ -252,4 +253,79 @@ export interface AdminPayment {
 
 export interface PaymentPage extends Page<AdminPayment> {
   totals: { paidCount: number; collectedHalalas: number; platformFeeHalalas: number; partnerShareHalalas: number };
+}
+
+export type TripStatus = 'scheduled' | 'en_route' | 'arrived' | 'on_board' | 'completed' | 'no_show' | 'skipped' | 'cancelled';
+
+export interface Spot {
+  lat: number;
+  lng: number;
+  name: string;
+}
+
+export interface TripView {
+  id: string;
+  subscriptionId: string;
+  serviceDate: string;
+  leg: 'outbound' | 'return';
+  scheduledAt: string;
+  status: TripStatus;
+  pickup: Spot;
+  dropoff: Spot;
+  rider: { id: string; name: string | null; phone: string };
+  driver: {
+    id: string;
+    name: string | null;
+    phone: string | null;
+    vehicle: { plate: string; make: string; model: string; color: string } | null;
+  } | null;
+  startedAt: string | null;
+  arrivedAt: string | null;
+  pickedUpAt: string | null;
+  completedAt: string | null;
+  endedReason: string | null;
+}
+
+export interface LivePosition {
+  lat: number;
+  lng: number;
+  heading: number | null;
+  speedKmh: number | null;
+  at: string;
+}
+
+export interface DispatchDriver {
+  id: string;
+  name: string | null;
+  phone: string;
+  onHold: boolean;
+  plate: string | null;
+  seats: number | null;
+  tripsToday: number;
+  currentTripId: string | null;
+  location: LivePosition | null;
+}
+
+export interface DispatchBoard {
+  date: string;
+  summary: {
+    total: number;
+    unassigned: number;
+    upcoming: number;
+    active: number;
+    completed: number;
+    problems: number;
+    skipped: number;
+    late: number;
+  };
+  trips: TripView[];
+  drivers: DispatchDriver[];
+}
+
+export interface TripLive {
+  trip: TripView;
+  driverLocation: LivePosition | null;
+  etaMinutes: number | null;
+  distanceMeters: number | null;
+  route: { lat: number; lng: number }[];
 }

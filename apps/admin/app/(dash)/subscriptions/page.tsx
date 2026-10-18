@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { ApiError, DriverPage } from '@/lib/client';
 import { useApp } from '@/components/Providers';
 import { LoadState, useLoad } from '@/components/ui';
 import { AdminSubscription, api, Page, SubscriptionStatus } from '@/lib/client';
@@ -19,7 +20,7 @@ const TONE: Record<SubscriptionStatus, 'active' | 'pending' | 'suspended'> = {
 };
 
 export default function SubscriptionsPage() {
-  const { t, lang } = useApp();
+  const { t, lang, notify } = useApp();
   const [tab, setTab] = useState<SubscriptionStatus | 'all'>('active');
   const [page, setPage] = useState(1);
   const list = useLoad(() => {
@@ -27,6 +28,18 @@ export default function SubscriptionsPage() {
     if (tab !== 'all') params.set('status', tab);
     return api<Page<AdminSubscription>>(`admin/subscriptions?${params}`);
   }, [tab, page]);
+  const drivers = useLoad(() => api<DriverPage>('admin/drivers?status=approved&pageSize=100'), []);
+
+  async function setDriver(subId: string, driverId: string) {
+    try {
+      await api(`admin/subscriptions/${subId}/driver`, { method: 'PATCH', body: { driverId: driverId || null } });
+      notify(t.subscriptions.driverSaved);
+      await list.reload();
+    } catch (err) {
+      notify(err instanceof ApiError && err.message ? err.message : t.common.networkError, 'error');
+    }
+  }
+
   const pages = list.data ? Math.max(1, Math.ceil(list.data.total / PAGE_SIZE)) : 1;
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
 
@@ -66,6 +79,7 @@ export default function SubscriptionsPage() {
                   <th scope="col">{t.subscriptions.schedule}</th>
                   <th scope="col">{t.subscriptions.price}</th>
                   <th scope="col">{t.subscriptions.periodEnd}</th>
+                  <th scope="col">{t.subscriptions.driver}</th>
                   <th scope="col">{t.subscriptions.status}</th>
                 </tr>
               </thead>
@@ -90,6 +104,27 @@ export default function SubscriptionsPage() {
                       </td>
                       <td className="tabnum">{formatSar(s.priceHalalas, lang)}</td>
                       <td className="tabnum">{formatDay(s.currentPeriodEnd, lang)}</td>
+                      <td>
+                        {s.status === 'active' || s.status === 'past_due' ? (
+                          <select
+                            className={`select select-sm select-driver${s.driverId ? '' : ' select-missing'}`}
+                            value={s.driverId ?? ''}
+                            onChange={(e) => setDriver(s.id, e.target.value)}
+                            aria-label={t.subscriptions.driver}
+                          >
+                            <option value="">{t.subscriptions.noDriver}</option>
+                            {(drivers.data?.items ?? [])
+                              .filter((d) => !d.complianceHold && d.partnerId === s.partnerId)
+                              .map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.fullName ?? d.phone}
+                                </option>
+                              ))}
+                          </select>
+                        ) : (
+                          '—'
+                        )}
+                      </td>
                       <td>
                         <span className={`badge badge-${TONE[s.status]}`}>{t.subscriptions.states[s.status]}</span>
                         {s.cancelAtPeriodEnd && <span className="sub">{t.subscriptions.endsAtPeriodEnd}</span>}

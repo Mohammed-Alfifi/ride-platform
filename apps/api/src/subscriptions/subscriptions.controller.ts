@@ -296,6 +296,7 @@ export class AdminBillingController {
           pausedFrom: subscriptions.pausedFrom,
           pausedUntil: subscriptions.pausedUntil,
           partnerId: subscriptions.partnerId,
+          driverId: subscriptions.driverId,
         })
         .from(subscriptions)
         .innerJoin(users, eq(users.id, subscriptions.riderId))
