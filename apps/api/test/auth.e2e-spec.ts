@@ -165,7 +165,7 @@ describe('Auth (e2e)', () => {
       const phone = newPhone();
       const before = ctx.sms.sent.length;
       const res = await ctx.http().post('/v1/auth/otp/request').send({ phone, app: 'admin' }).expect(200);
-      expect(res.body).toEqual({ sent: true, expiresIn: 300, resendAfter: 60 });
+      expect(res.body).toEqual({ sent: true, channel: 'sms', expiresIn: 300, resendAfter: 60 });
       expect(ctx.sms.sent.length).toBe(before);
       await ctx.http().post('/v1/auth/otp/verify').send({ phone, app: 'admin', code: '123456' }).expect(401);
       const rows = await ctx.db.select().from(users).where(eq(users.phone, phone));

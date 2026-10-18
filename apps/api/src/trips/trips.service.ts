@@ -352,7 +352,10 @@ export class TripsService {
     if (!trip) throw new AppError('TRIP_NOT_FOUND');
     assertPartnerAccess(actor, trip.partnerId);
     if (trip.status !== 'scheduled') throw new AppError('TRIP_INVALID_STATE');
-    if (driverId) await this.assertAssignable(driverId, trip.partnerId);
+    if (driverId) {
+      await this.assertAssignable(driverId, trip.partnerId);
+      await this.assertTripSeat(driverId, trip);
+    }
     await this.db.update(trips).set({ driverId }).where(eq(trips.id, trip.id));
     if (driverId && driverId !== trip.driverId) {
       await this.notifications.notify([driverId], {
@@ -372,7 +375,10 @@ export class TripsService {
     const sub = await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, subscriptionId) });
     if (!sub) throw new AppError('SUBSCRIPTION_NOT_FOUND');
     assertPartnerAccess(actor, sub.partnerId);
-    if (driverId) await this.assertAssignable(driverId, sub.partnerId);
+    if (driverId) {
+      await this.assertAssignable(driverId, sub.partnerId);
+      if (driverId !== sub.driverId) await this.assertSubscriptionSeat(driverId, sub);
+    }
     await this.db.update(subscriptions).set({ driverId }).where(eq(subscriptions.id, sub.id));
     await this.generator.reassignFuture(sub.id, driverId);
     if (driverId && driverId !== sub.driverId) {
@@ -465,6 +471,39 @@ export class TripsService {
     if (!p || p.status !== 'approved' || p.partnerId !== partnerId || p.complianceHold) {
       throw new AppError('DRIVER_NOT_AVAILABLE');
     }
+  }
+
+  private async seatsOf(driverId: string): Promise<number> {
+    const v = await this.db.query.vehicles.findFirst({ columns: { seats: true }, where: eq(vehicles.driverId, driverId) });
+    return v?.seats ?? 0;
+  }
+
+  /**
+   * A regular rider takes a seat on every day they share with the driver's other riders, at pick-ups
+   * within 30 minutes of each other (the same school run). The car must have a seat for each.
+   */
+  private async assertSubscriptionSeat(driverId: string, sub: typeof subscriptions.$inferSelect): Promise<void> {
+    const seats = await this.seatsOf(driverId);
+    const near = (col: string, time: string | null) =>
+      time ? sql`(${sql.raw(col)} IS NOT NULL AND abs(extract(epoch from (${sql.raw(col)}::time - ${time}::time))) <= 1800)` : sql`false`;
+    const [row] = await this.db.execute<{ n: number }>(sql`
+      SELECT count(*)::int AS n FROM subscriptions
+      WHERE driver_id = ${driverId} AND id <> ${sub.id}
+        AND status IN ('active', 'past_due', 'paused', 'pending_payment')
+        AND days && ${sql.raw(`ARRAY[${sub.days.map(Number).join(',')}]::int[]`)}
+        AND (${near('outbound_time', sub.outboundTime)} OR ${near('return_time', sub.returnTime)})`).then((r) => r.rows);
+    if ((row?.n ?? 0) + 1 > seats) throw new AppError('DRIVER_FULL', { seats });
+  }
+
+  /** A substitute for one trip needs a free seat at that time on that day. */
+  private async assertTripSeat(driverId: string, trip: Trip): Promise<void> {
+    const seats = await this.seatsOf(driverId);
+    const [row] = await this.db.execute<{ n: number }>(sql`
+      SELECT count(*)::int AS n FROM trips
+      WHERE driver_id = ${driverId} AND id <> ${trip.id} AND service_date = ${trip.serviceDate}
+        AND status NOT IN ('cancelled', 'skipped', 'no_show', 'completed')
+        AND abs(extract(epoch from (scheduled_at - ${trip.scheduledAt.toISOString()}::timestamptz))) <= 1800`).then((r) => r.rows);
+    if ((row?.n ?? 0) + 1 > seats) throw new AppError('DRIVER_FULL', { seats });
   }
 
   private timeOf(trip: Pick<Trip, 'scheduledAt'>): string {

@@ -1,12 +1,13 @@
-import { Controller, Get, Global, HttpCode, Inject, Injectable, Module, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Global, HttpCode, Inject, Injectable, Module, Param, ParseUUIDPipe, Post, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser } from '../auth/decorators';
 import { DB, Database } from '../database/database.module';
-import { notifications, NotificationRow, users } from '../database/schema';
+import { deviceTokens, notifications, NotificationRow, users } from '../database/schema';
+import { PushService } from './push.service';
 
 export interface NotificationInput {
   kind: string;
@@ -25,7 +26,10 @@ export interface NotificationInput {
  */
 @Injectable()
 export class NotificationsService {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly push: PushService,
+  ) {}
 
   /** Returns how many were actually created (duplicates are skipped). */
   async notify(userIds: string[], input: NotificationInput): Promise<number> {
@@ -45,7 +49,9 @@ export class NotificationsService {
         })),
       )
       .onConflictDoNothing()
-      .returning({ id: notifications.id });
+      .returning({ id: notifications.id, userId: notifications.userId });
+    // Push to phones in the background; the inbox already has it if push is off or fails.
+    if (rows.length > 0) void this.push.toUsers([...new Set(rows.map((r) => r.userId))], input);
     return rows.length;
   }
 
@@ -81,6 +87,18 @@ export class NotificationsService {
       .where(and(eq(notifications.id, id), eq(notifications.userId, userId), isNull(notifications.readAt)));
   }
 
+  /** Keeps one row per device token; a token moving to another account follows the new account. */
+  async registerDevice(userId: string, token: string, platform: string): Promise<void> {
+    await this.db
+      .insert(deviceTokens)
+      .values({ userId, token, platform })
+      .onConflictDoUpdate({ target: deviceTokens.token, set: { userId, platform, updatedAt: new Date() } });
+  }
+
+  async removeDevice(userId: string, token: string): Promise<void> {
+    await this.db.delete(deviceTokens).where(and(eq(deviceTokens.userId, userId), eq(deviceTokens.token, token)));
+  }
+
   async markAllRead(userId: string): Promise<void> {
     await this.db
       .update(notifications)
@@ -96,6 +114,21 @@ class ListQuery {
   @Min(1)
   @Max(100)
   limit = 30;
+}
+
+class DeviceDto {
+  @ApiProperty({ description: 'Firebase Cloud Messaging registration token' })
+  @IsString()
+  @Length(20, 400)
+  token!: string;
+
+  @ApiProperty({ enum: ['android', 'ios', 'web'] })
+  @IsIn(['android', 'ios', 'web'])
+  platform!: string;
+}
+
+class DeviceRemoveDto {
+  @ApiProperty() @IsString() @Length(20, 400) token!: string;
 }
 
 class NotificationView {
@@ -140,6 +173,20 @@ export class NotificationsController {
     await this.notifications.markRead(user.id, id);
   }
 
+  @Post('devices')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Register this phone for push notifications (call after every sign-in and token refresh)' })
+  async device(@CurrentUser() user: AuthUser, @Body() dto: DeviceDto): Promise<void> {
+    await this.notifications.registerDevice(user.id, dto.token, dto.platform);
+  }
+
+  @Delete('devices')
+  @HttpCode(204)
+  @ApiOperation({ summary: 'Stop push notifications to this phone (call on sign-out)' })
+  async removeDevice(@CurrentUser() user: AuthUser, @Body() dto: DeviceRemoveDto): Promise<void> {
+    await this.notifications.removeDevice(user.id, dto.token);
+  }
+
   @Post('read-all')
   @HttpCode(204)
   async readAll(@CurrentUser() user: AuthUser): Promise<void> {
@@ -150,7 +197,7 @@ export class NotificationsController {
 @Global()
 @Module({
   controllers: [NotificationsController],
-  providers: [NotificationsService],
-  exports: [NotificationsService],
+  providers: [NotificationsService, PushService],
+  exports: [NotificationsService, PushService],
 })
 export class NotificationsModule {}

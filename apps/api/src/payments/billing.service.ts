@@ -1,11 +1,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { and, eq, isNull } from 'drizzle-orm';
+import { AuditService } from '../audit/audit.service';
+import type { AuthUser } from '../auth/auth.types';
 import { AppError } from '../common/errors';
+import { assertPartnerAccess } from '../common/tenant';
 import { addDays, monthlyPeriodEnd, riyadhToday } from '../common/saudi';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
 import {
+  invoices,
   partners,
   PaymentMethod,
   paymentMethods,
@@ -52,7 +56,12 @@ export class BillingService {
     private readonly notifications: NotificationsService,
     private readonly tripGenerator: TripGenerator,
     private readonly promos: PromosService,
+    private readonly audit: AuditService,
   ) {}
+
+  get manual(): boolean {
+    return this.gateway.name === 'manual';
+  }
 
   get supportsSavedCards(): boolean {
     return this.gateway.supportsSavedCards;
@@ -67,6 +76,13 @@ export class BillingService {
     if (opts.idempotencyKey) {
       const existing = await this.db.query.payments.findFirst({ where: eq(payments.idempotencyKey, opts.idempotencyKey) });
       if (existing) return existing;
+    }
+    if (this.manual) {
+      // Nothing to open: the rider pays the team. Keep one waiting payment per period.
+      const waiting = await this.db.query.payments.findFirst({
+        where: and(eq(payments.subscriptionId, sub.id), eq(payments.status, 'initiated'), eq(payments.purpose, purpose)),
+      });
+      if (waiting) return waiting;
     }
     const payment = await this.createRow(sub, purpose, opts.periodStart ?? null, opts.idempotencyKey ?? null);
     const rider = await this.db.query.users.findFirst({ where: eq(users.id, sub.riderId) });
@@ -149,8 +165,78 @@ export class BillingService {
       .returning();
     if (!paid) return (await this.db.query.payments.findFirst({ where: eq(payments.id, paymentId) })) as PaymentRow;
 
+    return this.afterPaid(paid, result.savedCard);
+  }
+
+  /**
+   * An admin confirms money received outside the gateway (bank transfer or cash). Pays what is due:
+   * the waiting payment, the first payment, or the next period of a running subscription.
+   */
+  async recordManual(
+    actor: AuthUser,
+    subscriptionId: string,
+    input: { method: 'cash' | 'bank_transfer'; reference?: string | null },
+    ip: string | null = null,
+  ): Promise<PaymentView> {
+    const sub = await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, subscriptionId) });
+    if (!sub) throw new AppError('SUBSCRIPTION_NOT_FOUND');
+    assertPartnerAccess(actor, sub.partnerId);
+
+    let payment = await this.db.query.payments.findFirst({
+      where: and(eq(payments.subscriptionId, sub.id), eq(payments.status, 'initiated')),
+      orderBy: (p, { desc }) => [desc(p.createdAt)],
+    });
+    if (payment && payment.provider !== 'manual') {
+      // A gateway page is still open: close it so the rider cannot pay twice.
+      await this.fail(payment, 'replaced_by_manual');
+      const replaced = payment;
+      payment = await this.createRow(sub, replaced.purpose, replaced.periodStart, null, 'manual');
+    }
+    if (!payment) {
+      if (sub.status === 'pending_payment') {
+        payment = await this.createRow(sub, 'start', null, null, 'manual');
+      } else if ((sub.status === 'active' || sub.status === 'past_due') && sub.currentPeriodEnd) {
+        const periodStart = addDays(sub.currentPeriodEnd, 1);
+        const key = `manual:${sub.id}:${periodStart}`;
+        const done = await this.db.query.payments.findFirst({ where: eq(payments.idempotencyKey, key) });
+        if (done) throw new AppError('PAYMENT_NOTHING_DUE');
+        payment = await this.createRow(sub, 'renewal', periodStart, key, 'manual');
+      } else {
+        throw new AppError('PAYMENT_NOTHING_DUE');
+      }
+    }
+
+    const [paid] = await this.db
+      .update(payments)
+      .set({
+        status: 'paid',
+        paidAt: new Date(),
+        method: input.method,
+        reference: input.reference?.trim() || null,
+        recordedBy: actor.id,
+        providerPaymentId: payment.providerPaymentId ?? `manual_${payment.id}`,
+      })
+      .where(and(eq(payments.id, payment.id), eq(payments.status, 'initiated')))
+      .returning();
+    if (!paid) throw new AppError('PAYMENT_NOTHING_DUE');
+    await this.audit.record({
+      actorId: actor.id,
+      partnerId: sub.partnerId,
+      action: 'payment.record_manual',
+      entity: 'payment',
+      entityId: paid.id,
+      after: { method: input.method, reference: paid.reference, amountHalalas: paid.amountHalalas },
+      ip,
+    });
+    await this.afterPaid(paid, null);
+    const invoice = await this.db.query.invoices.findFirst({ columns: { id: true }, where: eq(invoices.paymentId, paid.id) });
+    return this.presentPayment(paid, invoice?.id ?? null);
+  }
+
+  /** Everything that follows a confirmed payment: the period, trips, invoice and the rider's notice. */
+  private async afterPaid(paid: PaymentRow, savedCard: SavedCard | null): Promise<PaymentRow> {
     const sub = (await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, paid.subscriptionId) })) as Subscription;
-    const cardId = result.savedCard ? await this.saveCard(paid.riderId, result.savedCard) : null;
+    const cardId = savedCard ? await this.saveCard(paid.riderId, savedCard) : null;
     await this.applyPaidPeriod(sub, paid, cardId);
     if (paid.discountHalalas > 0 && sub.promoCodeId) await this.promos.markUsed(sub.promoCodeId);
     // Trips for the paid days that fall within the next two days, without waiting for the nightly run.
@@ -252,6 +338,7 @@ export class BillingService {
     purpose: 'start' | 'renewal',
     periodStart: string | null,
     idempotencyKey: string | null,
+    provider: string = this.gateway.name,
   ): Promise<PaymentRow> {
     const partner = await this.db.query.partners.findFirst({ where: eq(partners.id, sub.partnerId) });
     // A discount code applies to the first payment only.
@@ -265,7 +352,7 @@ export class BillingService {
         partnerId: sub.partnerId,
         subscriptionId: sub.id,
         purpose,
-        provider: this.gateway.name,
+        provider,
         amountHalalas: amount,
         discountHalalas: discount,
         platformFeeHalalas: fee,

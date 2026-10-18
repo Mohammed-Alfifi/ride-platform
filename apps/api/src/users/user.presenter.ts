@@ -11,6 +11,8 @@ export class UserView {
   @ApiProperty({ enum: ['ar', 'en'] }) locale!: User['locale'];
   @ApiProperty({ enum: ['active', 'pending', 'suspended'] }) status!: User['status'];
   @ApiProperty({ nullable: true, type: String, format: 'date-time' }) lastLoginAt!: string | null;
+  @ApiProperty({ nullable: true, type: String, description: 'Version of the terms the user accepted' })
+  termsVersion!: string | null;
   @ApiProperty({ format: 'date-time' }) createdAt!: string;
 }
 
@@ -25,6 +27,7 @@ export function presentUser(u: User): UserView {
     locale: u.locale,
     status: u.status,
     lastLoginAt: u.lastLoginAt ? u.lastLoginAt.toISOString() : null,
+    termsVersion: u.termsVersion,
     createdAt: u.createdAt.toISOString(),
   };
 }

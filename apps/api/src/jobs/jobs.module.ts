@@ -7,6 +7,7 @@ import { DriversModule } from '../drivers/drivers.module';
 import { RenewalsService } from '../subscriptions/renewals.service';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { TripGenerator } from '../trips/trip.generator';
+import { TripWatch } from '../trips/trip.watch';
 import { TripsModule } from '../trips/trips.module';
 
 const QUEUE = 'compliance';
@@ -25,7 +26,9 @@ function redisConnection(url: string) {
 }
 
 /**
- * Background jobs: trips for today and tomorrow at 00:10, subscription renewals at 05:00 and the compliance scan at 06:00 Riyadh time. BullMQ keeps one
+ * Background jobs: trips for today and tomorrow at 00:10, location history purge at 03:30, subscription renewals
+ * at 05:00, the compliance scan at 06:00 Riyadh time, and the trip watch (late drivers, trips without a driver)
+ * every two minutes. BullMQ keeps one
  * schedule in Redis, so several API instances still run the scan once.
  */
 @Injectable()
@@ -39,6 +42,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
     private readonly compliance: ComplianceService,
     private readonly renewals: RenewalsService,
     private readonly tripGenerator: TripGenerator,
+    private readonly tripWatch: TripWatch,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -60,17 +64,29 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
       { pattern: '10 0 * * *', tz: 'Asia/Riyadh' },
       { name: 'trips', opts: { removeOnComplete: 30, removeOnFail: 100 } },
     );
+    await this.queue.upsertJobScheduler(
+      'trip-watch',
+      { pattern: '*/2 * * * *', tz: 'Asia/Riyadh' },
+      { name: 'watch', opts: { removeOnComplete: 10, removeOnFail: 50 } },
+    );
+    await this.queue.upsertJobScheduler(
+      'daily-purge',
+      { pattern: '30 3 * * *', tz: 'Asia/Riyadh' },
+      { name: 'purge', opts: { removeOnComplete: 30, removeOnFail: 100 } },
+    );
     this.worker = new Worker(
       QUEUE,
       async (job) => {
         if (job.name === 'renewals') return this.renewals.run();
         if (job.name === 'trips') return this.tripGenerator.generate();
+        if (job.name === 'watch') return this.tripWatch.run();
+        if (job.name === 'purge') return this.tripWatch.purge();
         return this.compliance.scan();
       },
       { connection, concurrency: 1 },
     );
     this.worker.on('failed', (job, err) => this.logger.error(`Job ${job?.id} failed: ${err.message}`));
-    this.logger.log('Daily jobs scheduled (Asia/Riyadh): trips 00:10, renewals 05:00, compliance scan 06:00');
+    this.logger.log('Daily jobs scheduled (Asia/Riyadh): trips 00:10, purge 03:30, renewals 05:00, compliance scan 06:00, trip watch every 2 min');
     // Catch up after downtime: make sure today's and tomorrow's trips exist.
     await this.tripGenerator.generate().catch((err: Error) => this.logger.error(`Trip generation failed: ${err.message}`));
   }

@@ -8,7 +8,8 @@ import { SMS_PROVIDER, SmsProvider } from '../src/auth/sms/sms.provider';
 import { configureApp } from '../src/bootstrap';
 import { joinCode } from '../src/common/crypto';
 import { isValidSaudiNationalId } from '../src/common/saudi';
-import { loadEnv } from '../src/config/env';
+import { ENV } from '../src/config/config.module';
+import { Env, loadEnv } from '../src/config/env';
 import { DB, Database } from '../src/database/database.module';
 import { runMigrations } from '../src/database/migrate';
 import { partners, users, type Role } from '../src/database/schema';
@@ -38,8 +39,9 @@ export interface TestContext {
 
 let migrated = false;
 
-export async function createTestApp(): Promise<TestContext> {
-  const env = loadEnv();
+/** @param overrides settings for this app only, e.g. an invite-only pilot with manual payments. */
+export async function createTestApp(overrides: Partial<Env> = {}): Promise<TestContext> {
+  const env = { ...loadEnv(), ...overrides };
   if (!migrated) {
     await runMigrations(env.DATABASE_URL);
     migrated = true;
@@ -48,6 +50,8 @@ export async function createTestApp(): Promise<TestContext> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(SMS_PROVIDER)
     .useValue(sms)
+    .overrideProvider(ENV)
+    .useValue(env)
     .compile();
   const app = moduleRef.createNestApplication({ bufferLogs: true });
   configureApp(app, env);

@@ -56,7 +56,7 @@ export interface PaymentStatus {
 }
 
 export interface PaymentGateway {
-  readonly name: 'sandbox' | 'tap' | 'moyasar';
+  readonly name: 'sandbox' | 'tap' | 'moyasar' | 'manual';
   /** Whether the provider can charge a saved card without the rider (automatic renewals). */
   readonly supportsSavedCards: boolean;
   createCheckout(req: CheckoutRequest): Promise<CheckoutResult>;

@@ -139,8 +139,12 @@ export class RenewalsService {
       kind: 'renewal_due',
       titleAr: 'جدّد اشتراكك',
       titleEn: 'Renew your subscription',
-      bodyAr: `لم نتمكن من خصم ${amount} ريال تلقائيا. ادفع من التطبيق ليستمر سائقك دون انقطاع.`,
-      bodyEn: `We could not charge SAR ${amount} automatically. Pay in the app to keep your rides going.`,
+      bodyAr: this.billing.manual
+        ? `اشتراكك يتجدد اليوم بمبلغ ${amount} ريال. ادفع بالتحويل أو نقدا كالمعتاد ليستمر سائقك دون انقطاع.`
+        : `لم نتمكن من خصم ${amount} ريال تلقائيا. ادفع من التطبيق ليستمر سائقك دون انقطاع.`,
+      bodyEn: this.billing.manual
+        ? `Your subscription renews today: SAR ${amount}. Pay by transfer or cash as usual to keep your rides going.`
+        : `We could not charge SAR ${amount} automatically. Pay in the app to keep your rides going.`,
       data: { subscriptionId: sub.id, paymentId: payment.id, payUrl: payment.checkoutUrl },
       dedupeKey: `renewal:${sub.id}:${periodStart}:${today}`,
     });

@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { AppError } from '../common/errors';
 import { addDays, daysBetween, riyadhToday } from '../common/saudi';
 import { ENV } from '../config/config.module';
@@ -143,6 +143,14 @@ export class SubscriptionsService {
     }
     if (dto.outboundTime < '05:00' || dto.outboundTime > '22:00') {
       throw new AppError('SUBSCRIPTION_SCHEDULE_INVALID', {}, ['service runs between 05:00 and 22:00']);
+    }
+
+    if (this.env.PILOT_MAX_ACTIVE_SUBSCRIPTIONS > 0) {
+      const [row] = await this.db
+        .select({ n: count() })
+        .from(subscriptions)
+        .where(inArray(subscriptions.status, ['active', 'past_due', 'paused']));
+      if (Number(row?.n ?? 0) >= this.env.PILOT_MAX_ACTIVE_SUBSCRIPTIONS) throw new AppError('PILOT_FULL');
     }
 
     const plan = (await this.db.query.plans.findFirst({ where: eq(plans.id, dto.planId) }))!;

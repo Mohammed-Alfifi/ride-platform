@@ -94,6 +94,9 @@ export const users = pgTable(
     /** Bumped to revoke every access token of the user immediately. */
     tokenVersion: integer('token_version').notNull().default(0),
     lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    /** Which version of the terms and privacy policy the user accepted, and when. */
+    termsVersion: varchar('terms_version', { length: 20 }),
+    termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     ...timestamps,
   },
@@ -491,6 +494,11 @@ export const payments = pgTable(
     partnerShareHalalas: integer('partner_share_halalas').notNull(),
     status: paymentStatusEnum('status').notNull().default('initiated'),
     failureReason: varchar('failure_reason', { length: 200 }),
+    /** gateway: paid online. cash / bank_transfer: recorded by an admin. */
+    method: varchar('method', { length: 20 }).notNull().default('gateway'),
+    /** Transfer number or receipt number for a recorded payment. */
+    reference: varchar('reference', { length: 80 }),
+    recordedBy: uuid('recorded_by').references(() => users.id, { onDelete: 'set null' }),
     /** One renewal payment per subscription period; stops a job retry from charging twice. */
     idempotencyKey: varchar('idempotency_key', { length: 120 }),
     /** The service period this payment pays for. */
@@ -695,6 +703,8 @@ export const supportTickets = pgTable(
     category: ticketCategoryEnum('category').notNull(),
     subject: varchar('subject', { length: 120 }).notNull(),
     status: ticketStatusEnum('status').notNull().default('open'),
+    /** An emergency report from the SOS button: shown first and alerted to every admin. */
+    urgent: boolean('urgent').notNull().default(false),
     lastMessageAt: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
     ...timestamps,
   },
@@ -747,6 +757,85 @@ export const promoCodes = pgTable(
     check('promo_codes_value_ck', sql`${t.value} > 0 AND (${t.kind} <> 'percent' OR ${t.value} <= 100)`),
   ],
 );
+
+// ------------------------------------------------------------------ pilot operations
+
+/**
+ * Who may sign in while ACCESS_MODE=invite, and the access codes that replace SMS codes when
+ * no SMS provider is set. A code is single use, expires, and is stored hashed.
+ */
+export const accessInvites = pgTable(
+  'access_invites',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    phone: varchar('phone', { length: 16 }).notNull(),
+    audience: audienceEnum('audience').notNull(),
+    name: varchar('name', { length: 120 }),
+    /** The partner whose team sent the invite; scopes the list in the dashboard. */
+    partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'set null' }),
+    joinRequestId: uuid('join_request_id'),
+    codeHash: varchar('code_hash', { length: 128 }),
+    codeExpiresAt: timestamp('code_expires_at', { withTimezone: true }),
+    codeFailures: integer('code_failures').notNull().default(0),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('access_invites_phone_uq')
+      .on(t.phone, t.audience)
+      .where(sql`${t.revokedAt} IS NULL`),
+    index('access_invites_partner_idx').on(t.partnerId),
+  ],
+);
+
+export const joinKindEnum = pgEnum('join_kind', ['rider', 'driver']);
+export const joinStatusEnum = pgEnum('join_status', ['new', 'invited', 'declined']);
+
+/** Applications from the public join page: families, employees and drivers outside the team's circle. */
+export const joinRequests = pgTable(
+  'join_requests',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    kind: joinKindEnum('kind').notNull(),
+    name: varchar('name', { length: 120 }).notNull(),
+    phone: varchar('phone', { length: 16 }).notNull(),
+    city: varchar('city', { length: 60 }).notNull(),
+    district: varchar('district', { length: 80 }),
+    /** Riders: the school or workplace. */
+    destination: varchar('destination', { length: 120 }),
+    morningTime: varchar('morning_time', { length: 5 }),
+    returnTime: varchar('return_time', { length: 5 }),
+    riders: integer('riders'),
+    /** Drivers: car model and year as typed. */
+    car: varchar('car', { length: 80 }),
+    note: varchar('note', { length: 500 }),
+    status: joinStatusEnum('status').notNull().default('new'),
+    handledBy: uuid('handled_by').references(() => users.id, { onDelete: 'set null' }),
+    handledAt: timestamp('handled_at', { withTimezone: true }),
+    ...timestamps,
+  },
+  (t) => [index('join_requests_status_idx').on(t.status, t.createdAt), index('join_requests_phone_idx').on(t.phone)],
+);
+
+/** Phones and browsers that receive push notifications (Firebase Cloud Messaging). */
+export const deviceTokens = pgTable(
+  'device_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    token: varchar('token', { length: 400 }).notNull(),
+    platform: varchar('platform', { length: 10 }).notNull(),
+    ...timestamps,
+  },
+  (t) => [uniqueIndex('device_tokens_token_uq').on(t.token), index('device_tokens_user_idx').on(t.userId)],
+);
+
+export type AccessInvite = typeof accessInvites.$inferSelect;
+export type JoinRequest = typeof joinRequests.$inferSelect;
 
 export type FamilyMember = typeof familyMembers.$inferSelect;
 export type PromoCode = typeof promoCodes.$inferSelect;

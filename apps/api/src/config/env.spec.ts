@@ -33,6 +33,23 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ ...base, NODE_ENV: 'production' })).toThrow(/SMS_PROVIDER/);
   });
 
+  it('accepts the free pilot setup in production: access codes and manual payments', () => {
+    const env = loadEnv({ ...base, NODE_ENV: 'production', SMS_PROVIDER: 'none', ACCESS_MODE: 'invite', PAYMENT_PROVIDER: 'manual' });
+    expect(env.SMS_PROVIDER).toBe('none');
+    expect(() => loadEnv({ ...base, SMS_PROVIDER: 'none' })).toThrow(/ACCESS_MODE=invite/);
+    expect(() => loadEnv({ ...base, SMS_PROVIDER: 'taqnyat' })).toThrow(/TAQNYAT_TOKEN/);
+  });
+
+  it('checks the Firebase service account', () => {
+    expect(() => loadEnv({ ...base, FCM_SERVICE_ACCOUNT: 'bm90IGpzb24=' })).toThrow(/FCM_SERVICE_ACCOUNT/);
+    const sa = Buffer.from(JSON.stringify({ project_id: 'p', client_email: 'a@p.iam.gserviceaccount.com', private_key: 'k' })).toString('base64');
+    expect(loadEnv({ ...base, FCM_SERVICE_ACCOUNT: sa }).FCM_SERVICE_ACCOUNT).toBe(sa);
+  });
+
+  it('keeps SMS codes shorter than access codes', () => {
+    expect(() => loadEnv({ ...base, OTP_LENGTH: '8' })).toThrow(/OTP_LENGTH/);
+  });
+
   it('requires a numeric test code when test phones are set', () => {
     expect(() => loadEnv({ ...base, OTP_TEST_PHONES: '+966500000000' })).toThrow(/OTP_TEST_CODE/);
     expect(loadEnv({ ...base, OTP_TEST_PHONES: '+966500000000', OTP_TEST_CODE: '1234' }).OTP_TEST_PHONES).toEqual([

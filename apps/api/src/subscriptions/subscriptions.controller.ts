@@ -12,12 +12,13 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiExcludeEndpoint, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiExcludeEndpoint, ApiOkResponse, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { and, count, desc, eq, gte, lte, sql, SQL, sum } from 'drizzle-orm';
 import type { Response } from 'express';
-import type { AuthUser } from '../auth/auth.types';
-import { CurrentUser, Public, Roles } from '../auth/decorators';
+import type { AuthUser, RequestMeta } from '../auth/auth.types';
+import { CurrentUser, Public, ReqMeta, Roles } from '../auth/decorators';
 import { AppError } from '../common/errors';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
@@ -285,11 +286,32 @@ export class PaymentCallbacksController {
   }
 }
 
+class ManualPaymentDto {
+  @ApiProperty({ enum: ['cash', 'bank_transfer'] }) @IsIn(['cash', 'bank_transfer']) method!: 'cash' | 'bank_transfer';
+  @ApiPropertyOptional({ description: 'Transfer or receipt number' }) @IsOptional() @IsString() @MaxLength(80) reference?: string;
+}
+
 @ApiTags('admin: billing')
 @ApiBearerAuth()
 @Controller('v1/admin')
 export class AdminBillingController {
-  constructor(@Inject(DB) private readonly db: Database) {}
+  constructor(
+    @Inject(DB) private readonly db: Database,
+    private readonly billing: BillingService,
+  ) {}
+
+  @Post('subscriptions/:id/payments/manual')
+  @HttpCode(200)
+  @Roles('super_admin', 'partner_admin')
+  @ApiOperation({ summary: 'Record a bank transfer or cash payment; activates or renews the subscription and issues the invoice' })
+  recordManual(
+    @CurrentUser() u: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ManualPaymentDto,
+    @ReqMeta() meta: RequestMeta,
+  ) {
+    return this.billing.recordManual(u, id, dto, meta.ip ?? null);
+  }
 
   @Get('subscriptions')
   @Roles('super_admin', 'partner_admin', 'dispatcher')

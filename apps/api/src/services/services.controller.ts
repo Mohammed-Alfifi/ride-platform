@@ -7,6 +7,8 @@ import {
   IsDateString,
   IsIn,
   IsInt,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   IsUUID,
@@ -44,6 +46,13 @@ class TicketDto {
   @ApiProperty() @IsString() @Length(3, 120) subject!: string;
   @ApiProperty() @IsString() @Length(2, 2000) message!: string;
   @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() tripId?: string;
+}
+
+class SosDto {
+  @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() tripId?: string;
+  @ApiPropertyOptional() @IsOptional() @IsLatitude() lat?: number;
+  @ApiPropertyOptional() @IsOptional() @IsLongitude() lng?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(300) note?: string;
 }
 
 class MessageDto {
@@ -136,6 +145,13 @@ export class SupportController {
   @Get()
   list(@CurrentUser() u: AuthUser) {
     return this.engagement.myTickets(u.id);
+  }
+
+  @Post('/sos')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Emergency button: alerts the operator and platform team with the caller location' })
+  sos(@CurrentUser() u: AuthUser, @Body() dto: SosDto) {
+    return this.engagement.sos(u, dto);
   }
 
   @Post()

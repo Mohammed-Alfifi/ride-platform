@@ -234,6 +234,40 @@ export class EngagementService {
     return this.ticket(ticket.id, user);
   }
 
+  /**
+   * The SOS button: an urgent ticket with the caller's location, alerted to the partner's team and
+   * the platform team at once. The app also offers to call 911 (unified emergency number).
+   */
+  async sos(user: AuthUser, dto: { tripId?: string; lat?: number; lng?: number; note?: string }) {
+    const partnerId = await this.partnerFor(user, dto.tripId);
+    const me = await this.db.query.users.findFirst({ columns: { name: true, phone: true }, where: eq(users.id, user.id) });
+    let tripLine = '';
+    if (dto.tripId) {
+      const trip = await this.db.query.trips.findFirst({ where: eq(trips.id, dto.tripId) });
+      if (trip) tripLine = `الرحلة: ${trip.pickupName} ← ${trip.dropoffName}، الحالة: ${trip.status}`;
+    }
+    const where = dto.lat !== undefined && dto.lng !== undefined ? `الموقع: https://maps.google.com/?q=${dto.lat},${dto.lng}` : 'الموقع: غير متاح';
+    const who = user.role === 'driver' ? 'السائق' : 'الراكب';
+    const body = [`بلاغ طوارئ من ${who} ${me?.name ?? ''} (${me?.phone ?? ''})`, tripLine, where, dto.note?.trim() ?? '']
+      .filter(Boolean)
+      .join('\n');
+    const [ticket] = await this.db
+      .insert(supportTickets)
+      .values({ userId: user.id, partnerId, tripId: dto.tripId ?? null, category: 'trip', subject: 'بلاغ طوارئ', urgent: true })
+      .returning();
+    await this.db.insert(ticketMessages).values({ ticketId: ticket.id, authorId: user.id, fromStaff: false, body });
+    const staff = [...new Set([...(partnerId ? await this.notifications.partnerAdminIds(partnerId) : []), ...(await this.platformAdminIds())])];
+    await this.notifications.notify(staff, {
+      kind: 'sos',
+      titleAr: `بلاغ طوارئ #${ticket.number}`,
+      titleEn: `Emergency report #${ticket.number}`,
+      bodyAr: `${who} ${me?.name ?? me?.phone ?? ''} ضغط زر الطوارئ. اتصل به الآن.`,
+      bodyEn: `${user.role === 'driver' ? 'Driver' : 'Rider'} ${me?.name ?? me?.phone ?? ''} pressed the emergency button. Call now.`,
+      data: { ticketId: ticket.id, tripId: dto.tripId ?? null, lat: dto.lat ?? null, lng: dto.lng ?? null },
+    });
+    return { ticketId: ticket.id, number: ticket.number, emergencyNumber: '911' };
+  }
+
   async myTickets(userId: string) {
     const rows = await this.db
       .select()
@@ -316,7 +350,8 @@ export class EngagementService {
       .from(supportTickets)
       .innerJoin(users, eq(users.id, supportTickets.userId))
       .where(where.length ? and(...where) : undefined)
-      .orderBy(desc(supportTickets.lastMessageAt))
+      // Open emergency reports first, then the most recent activity.
+      .orderBy(sql`(${supportTickets.urgent} AND ${supportTickets.status} <> 'closed') DESC`, desc(supportTickets.lastMessageAt))
       .limit(200);
     return rows.map((r) => ({ ...this.presentTicket(r.t), requester: { name: r.name, phone: r.phone, role: r.role } }));
   }
@@ -328,6 +363,7 @@ export class EngagementService {
       category: t.category,
       subject: t.subject,
       status: t.status,
+      urgent: t.urgent,
       tripId: t.tripId,
       partnerId: t.partnerId,
       lastMessageAt: t.lastMessageAt.toISOString(),

@@ -16,6 +16,11 @@ export class OtpRequestDto {
 
 export class OtpRequestResponse {
   @ApiProperty({ example: true }) sent!: boolean;
+  @ApiProperty({
+    enum: ['sms', 'access_code'],
+    description: 'sms: a code was texted. access_code: type the code the team sent (invite-only pilot).',
+  })
+  channel!: 'sms' | 'access_code';
   @ApiProperty({ example: 300, description: 'Seconds until the code expires' }) expiresIn!: number;
   @ApiProperty({ example: 60, description: 'Seconds before another code may be requested' })
   resendAfter!: number;

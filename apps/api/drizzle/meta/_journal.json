@@ -43,6 +43,13 @@
       "when": 1792325777292,
       "tag": "0005_services",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792329183550,
+      "tag": "0006_pilot",
+      "breakpoints": true
     }
   ]
 }

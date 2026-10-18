@@ -32,12 +32,22 @@ export const envSchema = z
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).default(30),
     HASH_PEPPER: z.string().min(16, 'HASH_PEPPER must be at least 16 characters'),
 
-    OTP_LENGTH: z.coerce.number().int().min(4).max(8).default(6),
+    // Up to 7 digits: 8-digit codes are access codes issued by the team.
+    OTP_LENGTH: z.coerce.number().int().min(4).max(7).default(6),
     OTP_TTL_SECONDS: z.coerce.number().int().min(60).default(300),
     OTP_MAX_ATTEMPTS: z.coerce.number().int().min(1).default(5),
     OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().min(0).default(60),
     OTP_MAX_PER_HOUR: z.coerce.number().int().min(1).default(5),
-    SMS_PROVIDER: z.enum(['console']).default('console'),
+    /**
+     * console: codes go to the log (development). none: no SMS at all; people sign in with access
+     * codes the team issues from the dashboard (free, needs ACCESS_MODE=invite). taqnyat: Taqnyat SMS.
+     */
+    SMS_PROVIDER: z.enum(['console', 'none', 'taqnyat']).default('console'),
+    TAQNYAT_TOKEN: z.string().optional().default(''),
+    SMS_SENDER: z.string().optional().default(''),
+    /** open: anyone may create a rider or driver account. invite: only phones the team invited. */
+    ACCESS_MODE: z.enum(['open', 'invite']).default('open'),
+    ACCESS_CODE_TTL_DAYS: z.coerce.number().int().min(1).max(30).default(7),
     OTP_TEST_PHONES: csv,
     OTP_TEST_CODE: z.string().optional().default(''),
 
@@ -67,7 +77,24 @@ export const envSchema = z
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),
     /** Where the dashboard is served; shared trip links point here (/t/<token>). */
     PUBLIC_WEB_URL: z.string().url().default('http://localhost:3001'),
-    PAYMENT_PROVIDER: z.enum(['sandbox', 'tap', 'moyasar']).default('sandbox'),
+    /** manual: no gateway; riders pay by transfer or cash and an admin records the payment. */
+    PAYMENT_PROVIDER: z.enum(['sandbox', 'tap', 'moyasar', 'manual']).default('sandbox'),
+    PAYMENT_INSTRUCTIONS_AR: z.string().optional().default(''),
+    PAYMENT_INSTRUCTIONS_EN: z.string().optional().default(''),
+    /** Saudi mobile the apps open in WhatsApp for help, e.g. 0500000000. */
+    SUPPORT_WHATSAPP: z.string().optional().default(''),
+    /** Firebase service account JSON, base64. Empty: notifications stay in the app inbox only. */
+    FCM_SERVICE_ACCOUNT: z.string().optional().default(''),
+    /** Stop new subscriptions above this many active ones (0: no limit). Keeps a pilot small. */
+    PILOT_MAX_ACTIVE_SUBSCRIPTIONS: z.coerce.number().int().min(0).default(0),
+    /** Driver location history is deleted after this many days. */
+    LOCATION_RETENTION_DAYS: z.coerce.number().int().min(1).default(30),
+    /** Bump when the terms or privacy policy change; users accept the new version in the app. */
+    TERMS_VERSION: z.string().max(20).default('2026-10'),
+    /** Alert the team when a driver has not set off this many minutes before pick-up. */
+    LATE_ALERT_MINUTES: z.coerce.number().int().min(1).default(10),
+    /** Where riders without the Android app open the web version (shown in invites). */
+    RIDER_WEB_URL: z.string().optional().default(''),
     TAP_SECRET_KEY: z.string().optional().default(''),
     TAP_MERCHANT_ID: z.string().optional().default(''),
     TAP_API_URL: z.string().url().default('https://api.tap.company'),
@@ -87,6 +114,28 @@ export const envSchema = z
         path: ['SMS_PROVIDER'],
         message: 'The console SMS provider prints codes to logs and is not allowed in production',
       });
+    }
+    if (env.SMS_PROVIDER === 'none' && env.ACCESS_MODE !== 'invite') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SMS_PROVIDER'],
+        message: 'SMS_PROVIDER=none works only with ACCESS_MODE=invite (people sign in with access codes)',
+      });
+    }
+    if (env.SMS_PROVIDER === 'taqnyat' && !env.TAQNYAT_TOKEN) {
+      ctx.addIssue({ code: 'custom', path: ['TAQNYAT_TOKEN'], message: 'TAQNYAT_TOKEN is required when SMS_PROVIDER=taqnyat' });
+    }
+    if (env.FCM_SERVICE_ACCOUNT) {
+      try {
+        const sa = JSON.parse(Buffer.from(env.FCM_SERVICE_ACCOUNT, 'base64').toString('utf8')) as Record<string, unknown>;
+        if (!sa.client_email || !sa.private_key || !sa.project_id) throw new Error('fields');
+      } catch {
+        ctx.addIssue({
+          code: 'custom',
+          path: ['FCM_SERVICE_ACCOUNT'],
+          message: 'FCM_SERVICE_ACCOUNT must be the Firebase service account JSON file, base64 encoded',
+        });
+      }
     }
     if (env.NODE_ENV === 'production' && env.PAYMENT_PROVIDER === 'sandbox') {
       ctx.addIssue({ code: 'custom', path: ['PAYMENT_PROVIDER'], message: 'The sandbox payment provider is not allowed in production' });

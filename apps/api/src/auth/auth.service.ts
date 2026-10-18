@@ -7,6 +7,7 @@ import { partners, User, users, type Audience } from '../database/schema';
 import { presentUser } from '../users/user.presenter';
 import type { RequestMeta } from './auth.types';
 import { AuthResponse, OtpRequestResponse, TokenPairView } from './auth.dto';
+import { ACCESS_CODE_LENGTH, AccessService } from './access.service';
 import { OtpService } from './otp.service';
 import { TokensService } from './tokens.service';
 
@@ -16,19 +17,28 @@ export class AuthService {
     @Inject(DB) private readonly db: Database,
     private readonly otp: OtpService,
     private readonly tokens: TokensService,
+    private readonly access: AccessService,
   ) {}
 
   async requestOtp(rawPhone: string, app: Audience, locale: 'ar' | 'en'): Promise<OtpRequestResponse> {
     const phone = normalizeSaudiMobile(rawPhone);
+    // During an invite-only pilot, only invited phones may use the rider and driver apps.
+    if (!(await this.access.mayEnter(phone, app))) throw new AppError('AUTH_NOT_INVITED');
+    // No SMS gateway: the person types the access code the team sent them.
+    if (this.access.codesOnly) return { sent: true, channel: 'access_code', expiresIn: 0, resendAfter: 0 };
     // Riders and drivers may sign up; the admin app only serves accounts created by an admin.
     const deliver = app === 'admin' ? Boolean(await this.findActiveAccount(phone, app)) : true;
     const result = await this.otp.request(phone, app, deliver, locale);
-    return { sent: true, ...result };
+    return { sent: true, channel: 'sms', ...result };
   }
 
   async verifyOtp(rawPhone: string, app: Audience, code: string, meta: RequestMeta): Promise<AuthResponse> {
     const phone = normalizeSaudiMobile(rawPhone);
-    await this.otp.verify(phone, app, code);
+    if (!(await this.access.mayEnter(phone, app))) throw new AppError('AUTH_NOT_INVITED');
+    // Eight digits: an access code from the team. Shorter: an SMS code.
+    if (code.length === ACCESS_CODE_LENGTH) await this.access.verifyCode(phone, app, code);
+    else if (this.access.codesOnly) throw new AppError('AUTH_OTP_INVALID');
+    else await this.otp.verify(phone, app, code);
 
     let user = await this.findAccount(phone, app);
     let isNewUser = false;
