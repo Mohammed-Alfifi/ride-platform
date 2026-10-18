@@ -32,6 +32,16 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
   TimeOfDay _return = const TimeOfDay(hour: 13, minute: 30);
   bool _saveCard = true;
   bool _paying = false;
+  /// null = the account holder rides.
+  FamilyMember? _member;
+  final _promo = TextEditingController();
+  String? _promoError;
+
+  @override
+  void dispose() {
+    _promo.dispose();
+    super.dispose();
+  }
 
   RepoErrors get _repo => RepoErrors(ref.read(riderRepositoryProvider));
 
@@ -122,11 +132,80 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
       context,
       () => ref.read(riderRepositoryProvider).quote(planId: plan.id, pickupId: pickup.id, dropoffId: dropoff.id),
     );
+    // Keep a code already applied, if it still works with this plan.
+    if (q != null && _quote?.promoCode != null) {
+      final withCode = await _tryPromo(plan, pickup, dropoff, _quote!.promoCode!);
+      if (withCode != null && mounted) {
+        setState(() {
+          _quote = withCode;
+          _loadingQuote = false;
+        });
+        return;
+      }
+    }
     if (mounted) {
       setState(() {
         _quote = q;
         _loadingQuote = false;
       });
+    }
+  }
+
+  Future<Quote?> _tryPromo(Plan plan, Place pickup, Place dropoff, String code) async {
+    try {
+      return await ref.read(riderRepositoryProvider).quote(planId: plan.id, pickupId: pickup.id, dropoffId: dropoff.id, promoCode: code);
+    } catch (e) {
+      if (mounted) setState(() => _promoError = describeError(context, e));
+      return null;
+    }
+  }
+
+  Future<void> _applyPromo() async {
+    final code = _promo.text.trim();
+    if (code.isEmpty || _plan == null) return;
+    setState(() => _promoError = null);
+    final q = await _tryPromo(_plan!, _pickup!, _dropoff!, code);
+    if (q != null && mounted) setState(() => _quote = q);
+  }
+
+  Future<void> _chooseRider() async {
+    final t = RiderStrings.of(context);
+    final family = await ref.read(familyProvider.future).catchError((_) => <FamilyMember>[]);
+    if (!mounted) return;
+    final picked = await showModalBottomSheet<Object>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => SafeArea(
+        child: ListView(shrinkWrap: true, children: [
+          ListTile(leading: const Icon(Icons.person_outline), title: Text(t.me), onTap: () => Navigator.pop(c, 'me')),
+          for (final m in family)
+            ListTile(
+              leading: const Icon(Icons.child_care_outlined),
+              title: Text(m.name),
+              subtitle: m.note == null ? null : Text(m.note!),
+              onTap: () => Navigator.pop(c, m),
+            ),
+          ListTile(
+            leading: const Icon(Icons.person_add_alt_1_outlined, color: Brand.route),
+            title: Text(t.addFamily, style: const TextStyle(color: Brand.route, fontWeight: FontWeight.w600)),
+            onTap: () => Navigator.pop(c, 'add'),
+          ),
+        ]),
+      ),
+    );
+    if (!mounted || picked == null) return;
+    if (picked == 'me') {
+      setState(() => _member = null);
+      return;
+    }
+    if (picked is FamilyMember) {
+      setState(() => _member = picked);
+      return;
+    }
+    final added = await showDialog<FamilyMember>(context: context, builder: (_) => const AddMemberDialog());
+    if (added != null && mounted) {
+      ref.invalidate(familyProvider);
+      setState(() => _member = added);
     }
   }
 
@@ -157,6 +236,8 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
         outboundTime: _hhmm(_outbound),
         returnTime: plan.roundTrip ? _hhmm(_return) : null,
         saveCard: _saveCard,
+        memberId: _member?.id,
+        promoCode: _quote?.promoCode,
       ),
     );
     if (!mounted) return;
@@ -186,6 +267,18 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
         children: [
+          _SectionTitle(t.whoRides),
+          Material(
+            color: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14), side: const BorderSide(color: Brand.line)),
+            child: ListTile(
+              leading: Icon(_member == null ? Icons.person_outline : Icons.child_care_outlined, color: Brand.route),
+              title: Text(_member?.name ?? t.me, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(_member == null ? t.whoRidesHint : (_member!.note ?? t.relation(_member!.relation))),
+              trailing: const Icon(Icons.expand_more),
+              onTap: _chooseRider,
+            ),
+          ),
           _SectionTitle(t.stepRoute),
           _PlaceField(label: t.pickup, place: _pickup, icon: Icons.trip_origin, onTap: () => _choosePlace(pickup: true)),
           const SizedBox(height: 8),
@@ -259,6 +352,37 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
             ),
             const SizedBox(height: 4),
             Text(t.vatIncluded(t.sar(_quote!.vatHalalas)), style: theme.textTheme.bodySmall),
+            const SizedBox(height: 16),
+            if (_quote!.promoCode == null)
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _promo,
+                      textCapitalization: TextCapitalization.characters,
+                      textDirection: TextDirection.ltr,
+                      decoration: InputDecoration(labelText: t.promoCode, errorText: _promoError),
+                      onSubmitted: (_) => _applyPromo(),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(height: 56, child: OutlinedButton(onPressed: _applyPromo, child: Text(t.apply))),
+                ],
+              )
+            else
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(color: Brand.sunTint, borderRadius: BorderRadius.circular(14)),
+                child: Row(children: [
+                  const Icon(Icons.local_offer_outlined, color: Brand.sunDeep),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(t.promoApplied(_quote!.promoCode!, t.sar(_quote!.discountHalalas)),
+                        style: const TextStyle(color: Brand.sunDeep, fontWeight: FontWeight.w600)),
+                  ),
+                ]),
+              ),
             const SizedBox(height: 12),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
@@ -272,7 +396,7 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _paying ? null : _pay,
-              child: _paying ? const ButtonSpinner() : Text(t.payAmount(t.sar(_quote!.priceHalalas))),
+              child: _paying ? const ButtonSpinner() : Text(t.payAmount(t.sar(_quote!.firstPaymentHalalas))),
             ),
             const SizedBox(height: 8),
             Text(t.payWith, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
@@ -469,4 +593,64 @@ class _Loading extends StatelessWidget {
   @override
   Widget build(BuildContext context) =>
       const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
+}
+
+/// Adds a child or relative the account holder books rides for.
+class AddMemberDialog extends ConsumerStatefulWidget {
+  const AddMemberDialog({super.key});
+
+  @override
+  ConsumerState<AddMemberDialog> createState() => _AddMemberDialogState();
+}
+
+class _AddMemberDialogState extends ConsumerState<AddMemberDialog> {
+  final _name = TextEditingController();
+  final _note = TextEditingController();
+  String _relation = 'child';
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _note.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_name.text.trim().length < 2) return;
+    setState(() => _busy = true);
+    final m = await RepoErrors(ref.read(riderRepositoryProvider)).run(
+      context,
+      () => ref.read(riderRepositoryProvider).addMember(name: _name.text.trim(), relation: _relation, note: _note.text.trim()),
+    );
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (m != null) Navigator.of(context).pop(m);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RiderStrings.of(context);
+    return AlertDialog(
+      title: Text(t.addFamily),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: _name, autofocus: true, decoration: InputDecoration(labelText: t.memberName)),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, children: [
+          for (final r in const ['child', 'spouse', 'parent', 'other'])
+            ChoiceChip(label: Text(t.relation(r)), selected: _relation == r, onSelected: (_) => setState(() => _relation = r)),
+        ]),
+        const SizedBox(height: 12),
+        TextField(controller: _note, decoration: InputDecoration(labelText: t.memberNote, hintText: t.memberNoteHint)),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.back)),
+        FilledButton(
+          style: FilledButton.styleFrom(minimumSize: const Size(96, 44)),
+          onPressed: _busy ? null : _save,
+          child: Text(t.confirm),
+        ),
+      ],
+    );
+  }
 }

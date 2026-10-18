@@ -151,6 +151,25 @@ class RiderStrings {
   String get receipt => _s('إيصال', 'Receipt');
   String expires(int m, int y) => _s('تنتهي ${m.toString().padLeft(2, '0')}/${y % 100}', 'Expires ${m.toString().padLeft(2, '0')}/${y % 100}');
 
+  // Family and codes
+  String get whoRides => _s('من سيركب؟', 'Who is riding?');
+  String get whoRidesHint => _s('اختر ابنك أو ابنتك إن كان الاشتراك لهم', 'Choose your child if the subscription is for them');
+  String get me => _s('أنا', 'Me');
+  String get addFamily => _s('إضافة فرد من العائلة', 'Add a family member');
+  String get memberName => _s('الاسم', 'Name');
+  String get memberNote => _s('المدرسة أو الصف (اختياري)', 'School or class (optional)');
+  String get memberNoteHint => _s('يساعد السائق عند البوابة', 'Helps the driver at the gate');
+  String relation(String r) => switch (r) {
+        'child' => _s('ابن أو ابنة', 'Child'),
+        'spouse' => _s('زوج أو زوجة', 'Spouse'),
+        'parent' => _s('أب أو أم', 'Parent'),
+        _ => _s('آخر', 'Other'),
+      };
+  String get promoCode => _s('كود الخصم', 'Discount code');
+  String get apply => _s('تطبيق', 'Apply');
+  String promoApplied(String code, String amount) =>
+      _s('تم تطبيق $code: خصم $amount ريال على الشهر الأول', '$code applied: SAR $amount off the first month');
+
   // Trips
   String get nextTrip => _s('رحلتك القادمة', 'Your next trip');
   String get tripNow => _s('رحلتك الآن', 'Your trip now');
@@ -176,6 +195,25 @@ class RiderStrings {
   String get arrivedSafely => _s('وصل بالسلامة', 'Arrived safely');
   String arrivedAt(String place) => _s('تم الوصول إلى $place', 'Arrived at $place');
   String get expectedArrival => _s('الوصول المتوقع', 'Expected');
+  String get shareTrip => _s('شارك الرحلة', 'Share trip');
+  String shareMessage(String who, String url) => who.isEmpty
+      ? _s('تابع مشواري مباشرة على الخريطة: $url', 'Follow my ride live on the map: $url')
+      : _s('تابع مشوار $who مباشرة على الخريطة: $url', 'Follow $who\'s ride live on the map: $url');
+  String get rateTitle => _s('كيف كانت الرحلة؟', 'How was the ride?');
+  String get rateThanks => _s('شكرا، وصل تقييمك', 'Thanks for your rating');
+  String get rateComment => _s('ملاحظة للشريك (اختياري)', 'A note for the operator (optional)');
+  String get sendRating => _s('إرسال التقييم', 'Send rating');
+  String ratingTag(String tag) => switch (tag) {
+        'on_time' => _s('في الموعد', 'On time'),
+        'safe_driving' => _s('قيادة آمنة', 'Safe driving'),
+        'clean_car' => _s('سيارة نظيفة', 'Clean car'),
+        'polite' => _s('تعامل راق', 'Polite'),
+        'late' => _s('تأخر', 'Late'),
+        'unsafe_driving' => _s('قيادة غير آمنة', 'Unsafe driving'),
+        'unclean_car' => _s('سيارة غير نظيفة', 'Unclean car'),
+        _ => _s('تعامل سيئ', 'Rude'),
+      };
+  String get help => _s('المساعدة', 'Help');
   String get yourDriver => _s('سائقك', 'Your driver');
   String get callDriver => _s('اتصل بالسائق', 'Call the driver');
   String get noDriverYet => _s('سيُحدد السائق قريبا', 'Driver to be confirmed');

@@ -38,6 +38,11 @@ class RiderHomeScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
+            tooltip: t.help,
+            icon: const Icon(Icons.support_agent_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SupportScreen())),
+          ),
+          IconButton(
             tooltip: t.invoicesAndCards,
             icon: const Icon(Icons.receipt_long_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BillingScreen())),
@@ -134,6 +139,29 @@ class _SubscriptionCard extends StatelessWidget {
                     StatusPill(label: t.status(sub.status), tone: tone),
                   ],
                 ),
+                if (sub.memberName != null || sub.driverName != null) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 14,
+                    runSpacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      if (sub.memberName != null)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.person_outline, size: 16, color: Brand.inkSoft),
+                          const SizedBox(width: 4),
+                          Text(sub.memberName!, style: const TextStyle(color: Brand.inkSoft, fontSize: 13)),
+                        ]),
+                      if (sub.driverName != null)
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.directions_car_outlined, size: 16, color: Brand.inkSoft),
+                          const SizedBox(width: 4),
+                          Text(sub.driverName!, style: const TextStyle(color: Brand.inkSoft, fontSize: 13)),
+                          if (sub.driverPlate != null) ...[const SizedBox(width: 6), PlateChip(sub.driverPlate!)],
+                        ]),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 14),
                 stop(sub.pickup.name, sub.outboundTime, filled: false),
                 Align(

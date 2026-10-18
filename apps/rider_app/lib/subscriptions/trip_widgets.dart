@@ -106,7 +106,7 @@ class UpcomingTrips extends ConsumerWidget {
             onTap: trip.open ? () => openLive(context, trip) : null,
             leading: Icon(trip.leg == 'outbound' ? Icons.arrow_circle_up_outlined : Icons.arrow_circle_down_outlined,
                 color: trip.open ? Brand.route : Brand.inkSoft),
-            title: Text('${trip.leg == 'outbound' ? t.outbound : t.returnLeg} · ${_when(t, trip)}'),
+            title: Text([trip.leg == 'outbound' ? t.outbound : t.returnLeg, _when(t, trip), if (trip.passengerName != null) trip.passengerName!].join('، ')),
             subtitle: Text(t.tripStatus(trip.status)),
             trailing: trip.upcoming && trip.scheduledAt.difference(DateTime.now()).inMinutes > 30
                 ? TextButton(onPressed: () => _skip(context, ref, trip), child: Text(t.skipTrip, style: const TextStyle(fontSize: 12)))

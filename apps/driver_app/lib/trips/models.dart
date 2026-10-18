@@ -17,6 +17,7 @@ class DriverTrip {
     required this.dropoff,
     required this.riderName,
     required this.riderPhone,
+    this.passengerName,
     this.arrivedAt,
   });
 
@@ -31,6 +32,7 @@ class DriverTrip {
       dropoff: Spot.fromJson(j['dropoff'] as Map<String, dynamic>),
       riderName: rider['name'] as String?,
       riderPhone: rider['phone'] as String,
+      passengerName: j['passengerName'] as String?,
       arrivedAt: j['arrivedAt'] == null ? null : DateTime.parse(j['arrivedAt'] as String),
     );
   }
@@ -43,6 +45,11 @@ class DriverTrip {
   final Spot dropoff;
   final String? riderName;
   final String riderPhone;
+
+  /// Who actually rides: a family member (a son, a daughter) or the account holder.
+  final String? passengerName;
+
+  String get displayName => passengerName ?? riderName ?? riderPhone;
   final DateTime? arrivedAt;
 
   bool get active => status == 'en_route' || status == 'arrived' || status == 'on_board';

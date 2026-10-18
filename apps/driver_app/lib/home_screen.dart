@@ -39,6 +39,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         title: Text(showTrips ? tt.today : (user.needsName ? t.title : user.name!)),
         actions: [
           IconButton(
+            tooltip: tt.help,
+            icon: const Icon(Icons.support_agent_outlined),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SupportScreen())),
+          ),
+          IconButton(
             tooltip: Strings.of(context).profile,
             icon: const Icon(Icons.person_outline),
             onPressed: () => context.push('/profile'),

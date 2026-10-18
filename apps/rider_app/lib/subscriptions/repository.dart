@@ -18,9 +18,27 @@ class RiderRepository {
   Future<List<Coverage>> coverage(Place at) async =>
       (await _api.getList('/v1/coverage', query: {'lat': at.lat, 'lng': at.lng})).map(Coverage.fromJson).toList();
 
-  Future<Quote> quote({required String planId, required String pickupId, required String dropoffId}) async => Quote.fromJson(
-        await _api.post('/v1/quotes', data: {'planId': planId, 'pickupPlaceId': pickupId, 'dropoffPlaceId': dropoffId}),
+  Future<Quote> quote({required String planId, required String pickupId, required String dropoffId, String? promoCode}) async =>
+      Quote.fromJson(await _api.post('/v1/quotes', data: {
+        'planId': planId,
+        'pickupPlaceId': pickupId,
+        'dropoffPlaceId': dropoffId,
+        if (promoCode != null && promoCode.trim().isNotEmpty) 'promoCode': promoCode.trim(),
+      }));
+
+  Future<List<FamilyMember>> family() async => (await _api.getList('/v1/family')).map(FamilyMember.fromJson).toList();
+
+  Future<FamilyMember> addMember({required String name, required String relation, String? note}) async => FamilyMember.fromJson(
+        await _api.post('/v1/family', data: {'name': name, 'relation': relation, if (note != null && note.isNotEmpty) 'note': note}),
       );
+
+  Future<void> removeMember(String id) => _api.delete('/v1/family/$id');
+
+  /// A link a parent or relative can open in any browser to follow this trip live.
+  Future<String> shareTrip(String tripId) async => (await _api.post('/v1/trips/$tripId/share'))['url'] as String;
+
+  Future<void> rate(String tripId, {required int stars, List<String> tags = const [], String? comment}) =>
+      _api.post('/v1/trips/$tripId/rating', data: {'stars': stars, 'tags': tags, if (comment != null && comment.isNotEmpty) 'comment': comment});
 
   /// Creates the subscription and returns it with the payment page to open.
   Future<(Subscription, Payment)> subscribe({
@@ -31,8 +49,12 @@ class RiderRepository {
     required String outboundTime,
     String? returnTime,
     bool saveCard = true,
+    String? memberId,
+    String? promoCode,
   }) async {
     final body = await _api.post('/v1/subscriptions', data: {
+      if (memberId != null) 'memberId': memberId,
+      if (promoCode != null) 'promoCode': promoCode,
       'planId': planId,
       'pickupPlaceId': pickupId,
       'dropoffPlaceId': dropoffId,
@@ -105,6 +127,8 @@ final subscriptionsProvider =
 
 final subscriptionProvider = FutureProvider.autoDispose
     .family<Subscription, String>((ref, id) => ref.watch(riderRepositoryProvider).subscription(id));
+
+final familyProvider = FutureProvider.autoDispose<List<FamilyMember>>((ref) => ref.watch(riderRepositoryProvider).family());
 
 final tripsProvider = FutureProvider.autoDispose<List<Trip>>((ref) => ref.watch(riderRepositoryProvider).trips());
 

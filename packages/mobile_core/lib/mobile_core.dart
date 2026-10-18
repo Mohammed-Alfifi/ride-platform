@@ -10,6 +10,7 @@ export 'src/config.dart';
 export 'src/l10n/strings.dart';
 export 'src/models/user_profile.dart';
 export 'src/phone.dart';
+export 'src/support/support_screen.dart';
 export 'src/ui/app_shell.dart';
 export 'src/ui/otp_screen.dart';
 export 'src/ui/phone_screen.dart';

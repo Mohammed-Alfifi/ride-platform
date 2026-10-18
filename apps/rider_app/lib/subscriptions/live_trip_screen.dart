@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:latlong2/latlong.dart';
 import 'package:mobile_core/mobile_core.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'models.dart';
@@ -73,6 +74,17 @@ class _LiveTripScreenState extends ConsumerState<LiveTripScreen> {
     }
   }
 
+  /// A link for a parent or relative: they follow the car in any browser, no app needed.
+  Future<void> _share(Trip trip) async {
+    final t = RiderStrings.of(context);
+    try {
+      final url = await ref.read(riderRepositoryProvider).shareTrip(trip.id);
+      await Share.share(t.shareMessage(trip.passengerName ?? '', url));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(context, e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final live = _live;
@@ -97,6 +109,23 @@ class _LiveTripScreenState extends ConsumerState<LiveTripScreen> {
           padding: const EdgeInsets.all(6),
           child: CircleAvatar(backgroundColor: Colors.white, child: BackButton(color: Brand.ink, onPressed: () => Navigator.of(context).pop())),
         ),
+        actions: [
+          if (trip.open)
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 10),
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 44),
+                  backgroundColor: Colors.white,
+                  foregroundColor: Brand.ink,
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                ),
+                onPressed: () => _share(trip),
+                icon: const Icon(Icons.ios_share, size: 18),
+                label: Text(RiderStrings.of(context).shareTrip),
+              ),
+            ),
+        ],
       ),
       body: Stack(
         children: [
@@ -217,6 +246,7 @@ class _Panel extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             _Progress(trip: trip),
+            if (trip.status == 'completed') ...[const Divider(height: 28), RateTrip(tripId: trip.id)],
             if (driver != null) ...[
               const Divider(height: 28),
               Row(
@@ -311,4 +341,94 @@ class _Stop extends StatelessWidget {
           border: Border.all(color: Brand.route, width: 4),
         ),
       );
+}
+
+/// Stars, a few quick reasons, and an optional note, right after the ride.
+class RateTrip extends ConsumerStatefulWidget {
+  const RateTrip({super.key, required this.tripId});
+  final String tripId;
+
+  @override
+  ConsumerState<RateTrip> createState() => _RateTripState();
+}
+
+class _RateTripState extends ConsumerState<RateTrip> {
+  static const _good = ['on_time', 'safe_driving', 'clean_car', 'polite'];
+  static const _bad = ['late', 'unsafe_driving', 'unclean_car', 'rude'];
+  int _stars = 0;
+  final Set<String> _tags = {};
+  final _comment = TextEditingController();
+  bool _sent = false;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _comment.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    setState(() => _busy = true);
+    try {
+      await ref.read(riderRepositoryProvider).rate(widget.tripId, stars: _stars, tags: _tags.toList(), comment: _comment.text.trim());
+      if (mounted) setState(() => _sent = true);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(context, e))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RiderStrings.of(context);
+    if (_sent) {
+      return Row(children: [
+        const Icon(Icons.check_circle, color: Brand.route),
+        const SizedBox(width: 8),
+        Text(t.rateThanks, style: const TextStyle(fontWeight: FontWeight.w600)),
+      ]);
+    }
+    final tags = _stars == 0 ? const <String>[] : (_stars >= 4 ? _good : _bad);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(t.rateTitle, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 1; i <= 5; i++)
+              IconButton(
+                iconSize: 36,
+                tooltip: '$i',
+                onPressed: () => setState(() {
+                  _stars = i;
+                  _tags.clear();
+                }),
+                icon: Icon(i <= _stars ? Icons.star_rounded : Icons.star_outline_rounded, color: i <= _stars ? Brand.sun : Brand.line),
+              ),
+          ],
+        ),
+        if (tags.isNotEmpty) ...[
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final tag in tags)
+                FilterChip(
+                  label: Text(t.ratingTag(tag)),
+                  selected: _tags.contains(tag),
+                  onSelected: (on) => setState(() => on ? _tags.add(tag) : _tags.remove(tag)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          if (_stars <= 3) TextField(controller: _comment, maxLength: 500, decoration: InputDecoration(labelText: t.rateComment, counterText: '')),
+          const SizedBox(height: 10),
+          FilledButton(onPressed: _busy ? null : _send, child: Text(t.sendRating)),
+        ],
+      ],
+    );
+  }
 }

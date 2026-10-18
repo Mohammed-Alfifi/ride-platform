@@ -205,7 +205,7 @@ class _NextTripCard extends StatelessWidget {
                   children: [
                     Text(trip.active ? t.now : t.next, style: const TextStyle(color: Brand.inkSoft, fontSize: 13)),
                     const SizedBox(height: 2),
-                    Text(trip.riderName ?? trip.riderPhone, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                    Text(trip.displayName, style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -379,7 +379,7 @@ class _TripRow extends StatelessWidget {
           textDirection: TextDirection.ltr,
           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
         ),
-        title: Text(trip.riderName ?? trip.riderPhone, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: Text(trip.displayName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
         subtitle: Text('${trip.pickup.name} ${t.arrow} ${trip.dropoff.name}', style: const TextStyle(color: Brand.nightSoft)),
         trailing: Text(t.status(trip.status), style: TextStyle(color: finished ? Brand.nightSoft : Brand.routeBright, fontSize: 13)),
       ),
@@ -409,6 +409,7 @@ class TripStrings {
   String _t(String a, String e) => ar ? a : e;
 
   String get today => _t('رحلات اليوم', 'Today');
+  String get help => _t('المساعدة', 'Help');
   String get account => _t('حسابي', 'My account');
   String progress(int done, int total) => _t('أنجزت $done من $total رحلة', '$done of $total trips done');
   String get sharing => _t('موقعك ظاهر للركاب', 'Sharing location');

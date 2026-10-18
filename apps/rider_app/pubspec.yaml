@@ -18,6 +18,7 @@ dependencies:
   latlong2: ^0.9.1
   mobile_core:
     path: ../../packages/mobile_core
+  share_plus: ^10.1.4
   url_launcher: ^6.3.1
   webview_flutter: ^4.10.0
 

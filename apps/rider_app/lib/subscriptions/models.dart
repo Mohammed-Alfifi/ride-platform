@@ -87,9 +87,13 @@ class Quote {
     required this.maxDistanceKm,
     required this.priceHalalas,
     required this.vatHalalas,
+    this.promoCode,
+    this.discountHalalas = 0,
   });
 
   factory Quote.fromJson(Map<String, dynamic> j) => Quote(
+        promoCode: _str(j['promoCode']),
+        discountHalalas: _int(j['discountHalalas']),
         eligible: j['eligible'] == true,
         reason: _str(j['reason']),
         distanceKm: _int(j['distanceKm']),
@@ -104,6 +108,20 @@ class Quote {
   final int maxDistanceKm;
   final int priceHalalas;
   final int vatHalalas;
+  final String? promoCode;
+  final int discountHalalas;
+
+  int get firstPaymentHalalas => priceHalalas - discountHalalas;
+}
+
+class FamilyMember {
+  const FamilyMember({required this.id, required this.name, required this.relation, this.note});
+  factory FamilyMember.fromJson(Map<String, dynamic> j) =>
+      FamilyMember(id: j['id'] as String, name: j['name'] as String, relation: j['relation'] as String, note: _str(j['note']));
+  final String id;
+  final String name;
+  final String relation; // child | spouse | parent | other
+  final String? note;
 }
 
 class SavedCard {
@@ -147,6 +165,9 @@ class Subscription {
     required this.card,
     required this.payUrl,
     required this.pendingPaymentId,
+    this.memberName,
+    this.driverName,
+    this.driverPlate,
   });
 
   factory Subscription.fromJson(Map<String, dynamic> j) => Subscription(
@@ -173,6 +194,9 @@ class Subscription {
             : null,
         payUrl: _str(j['payUrl']),
         pendingPaymentId: _str(j['pendingPaymentId']),
+        memberName: j['member'] is Map ? _str((j['member'] as Map)['name']) : null,
+        driverName: j['driver'] is Map ? _str((j['driver'] as Map)['name']) : null,
+        driverPlate: j['driver'] is Map ? _str((j['driver'] as Map)['plate']) : null,
       );
 
   final String id;
@@ -196,6 +220,9 @@ class Subscription {
   final SavedCard? card;
   final String? payUrl;
   final String? pendingPaymentId;
+  final String? memberName;
+  final String? driverName;
+  final String? driverPlate;
 
   bool get live => status == 'active' || status == 'past_due';
   bool get needsPayment => status == 'pending_payment' || status == 'past_due';
@@ -280,6 +307,7 @@ class Trip {
     required this.pickup,
     required this.dropoff,
     required this.driver,
+    this.passengerName,
     this.startedAt,
     this.arrivedAt,
     this.pickedUpAt,
@@ -298,6 +326,7 @@ class Trip {
       pickup: TripSpot.fromJson(j['pickup'] as Map<String, dynamic>),
       dropoff: TripSpot.fromJson(j['dropoff'] as Map<String, dynamic>),
       driver: j['driver'] is Map<String, dynamic> ? TripDriver.fromJson(j['driver'] as Map<String, dynamic>) : null,
+      passengerName: _str(j['passengerName']),
       startedAt: at('startedAt'),
       arrivedAt: at('arrivedAt'),
       pickedUpAt: at('pickedUpAt'),
@@ -314,6 +343,7 @@ class Trip {
   final TripSpot pickup;
   final TripSpot dropoff;
   final TripDriver? driver;
+  final String? passengerName;
   final DateTime? startedAt;
   final DateTime? arrivedAt;
   final DateTime? pickedUpAt;
