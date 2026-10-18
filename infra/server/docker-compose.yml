@@ -44,6 +44,7 @@ services:
       REDIS_URL: redis://redis:6379
       PUBLIC_API_URL: https://${API_DOMAIN}
       PUBLIC_WEB_URL: https://${ADMIN_DOMAIN}
+      RIDER_WEB_URL: https://${API_DOMAIN}/app/
       CORS_ORIGINS: https://${ADMIN_DOMAIN}
       STORAGE_DRIVER: local
       STORAGE_DIR: /app/var/uploads
@@ -64,6 +65,14 @@ services:
     environment:
       API_URL: http://api:3000
       COOKIE_SECURE: 'true'
+      # Public pages (join, download, terms, privacy)
+      RIDER_WEB_URL: https://${API_DOMAIN}/app/
+      DOWNLOAD_BASE_URL: ${DOWNLOAD_BASE_URL:-}
+      SUPPORT_WHATSAPP: ${SUPPORT_WHATSAPP:-}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-}
+      OPERATOR_NAME: ${OPERATOR_NAME:-}
+      OPERATOR_CR: ${OPERATOR_CR:-}
+      OPERATOR_CITY: ${OPERATOR_CITY:-}
     depends_on:
       - api
 
@@ -80,6 +89,8 @@ services:
       ACME_EMAIL: ${ACME_EMAIL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # The rider web app (downloaded from the latest release by fetch-web.sh)
+      - ./web:/srv/web:ro
       - caddy_data:/data
       - caddy_config:/config
     depends_on:

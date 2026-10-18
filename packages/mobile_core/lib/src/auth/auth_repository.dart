@@ -6,9 +6,12 @@ import '../models/user_profile.dart';
 import 'token_store.dart';
 
 class OtpRequestResult {
-  const OtpRequestResult({required this.expiresIn, required this.resendAfter});
+  const OtpRequestResult({required this.expiresIn, required this.resendAfter, this.accessCode = false});
   final int expiresIn;
   final int resendAfter;
+
+  /// No SMS was sent: the person types the 8-digit access code the team sent them on WhatsApp.
+  final bool accessCode;
 }
 
 class SignInResult {
@@ -34,6 +37,7 @@ class AuthRepository {
     return OtpRequestResult(
       expiresIn: (body['expiresIn'] as num).toInt(),
       resendAfter: (body['resendAfter'] as num).toInt(),
+      accessCode: body['channel'] == 'access_code',
     );
   }
 
@@ -58,6 +62,14 @@ class AuthRepository {
       if (locale != null) 'locale': locale,
     });
     return UserProfile.fromJson(body);
+  }
+
+  Future<void> acceptTerms(String version) => _api.post('/v1/me/terms', data: {'version': version});
+
+  /// Deletes the account on the server, then forgets the session here.
+  Future<void> deleteAccount() async {
+    await _api.delete('/v1/me');
+    await _tokens.clear();
   }
 
   Future<void> signOut() async {

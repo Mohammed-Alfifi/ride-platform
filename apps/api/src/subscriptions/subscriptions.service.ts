@@ -258,6 +258,7 @@ export class SubscriptionsService {
       card: card ? { id: card.id, brand: card.brand, last4: card.last4 } : null,
       payUrl: pending?.checkoutUrl ?? null,
       pendingPaymentId: pending?.id ?? null,
+      amountDueHalalas: pending?.amountHalalas ?? null,
       createdAt: sub.createdAt.toISOString(),
     };
   }

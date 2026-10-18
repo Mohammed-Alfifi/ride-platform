@@ -5,10 +5,14 @@ import 'package:go_router/go_router.dart';
 
 import '../auth/session_controller.dart';
 import '../l10n/strings.dart';
+import '../pilot/signed_in.dart';
 import 'otp_screen.dart';
 import 'phone_screen.dart';
 import 'profile_screen.dart';
 import 'theme.dart';
+
+/// Shows banners from anywhere, including push notifications that arrive while the app is open.
+final rootMessengerKey = GlobalKey<ScaffoldMessengerState>();
 
 /// The shared app frame: theme, Arabic/English, and sign-in routing.
 /// Each app passes its own home screen; everything before it is shared.
@@ -49,7 +53,7 @@ class _RideAppState extends ConsumerState<RideApp> {
           return args is OtpArgs ? OtpScreen(args: args) : const PhoneScreen();
         },
       ),
-      GoRoute(path: '/home', builder: (context, _) => widget.home(context)),
+      GoRoute(path: '/home', builder: (context, _) => SignedInGate(child: widget.home(context))),
       GoRoute(path: '/profile', builder: (_, __) => const ProfileScreen()),
     ],
   );
@@ -67,6 +71,7 @@ class _RideAppState extends ConsumerState<RideApp> {
     final locale = ref.watch(languageProvider);
     return MaterialApp.router(
       title: widget.title,
+      scaffoldMessengerKey: rootMessengerKey,
       debugShowCheckedModeBanner: false,
       theme: widget.theme ?? buildTheme(),
       locale: locale,

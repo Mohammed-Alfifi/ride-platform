@@ -38,6 +38,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         titleTextStyle: showTrips ? Theme.of(context).appBarTheme.titleTextStyle?.copyWith(color: Colors.white) : null,
         title: Text(showTrips ? tt.today : (user.needsName ? t.title : user.name!)),
         actions: [
+          NotificationsBell(color: showTrips ? Colors.white : null),
           IconButton(
             tooltip: tt.help,
             icon: const Icon(Icons.support_agent_outlined),

@@ -274,6 +274,10 @@ class _Panel extends StatelessWidget {
                 ],
               ),
             ],
+            if (trip.open) ...[
+              const SizedBox(height: 14),
+              Align(alignment: AlignmentDirectional.centerStart, child: SosButton(tripId: trip.id)),
+            ],
           ],
         ),
       ),

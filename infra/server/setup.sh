@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # One-time server setup on Ubuntu 22.04/24.04 (Oracle Cloud, any VPS):
 # installs Docker, opens ports 80/443, writes server.env with fresh secrets, and starts everything.
-# Usage:  bash setup.sh <api-domain> <admin-domain> <email> [+9665xxxxxxxx test phone]
+# Usage:  bash setup.sh <api-domain> <admin-domain> <email>
 set -euo pipefail
 cd "$(dirname "$0")"
 
-API_DOMAIN=${1:?usage: setup.sh <api-domain> <admin-domain> <email> [test-phone]}
+API_DOMAIN=${1:?usage: setup.sh <api-domain> <admin-domain> <email>}
 ADMIN_DOMAIN=${2:?admin domain missing}
 ACME_EMAIL=${3:?email missing}
-TEST_PHONE=${4:-}
+
+command -v unzip >/dev/null || sudo apt-get install -y unzip >/dev/null 2>&1 || true
 
 if ! command -v docker >/dev/null; then
   echo "Installing Docker..."
@@ -26,7 +27,6 @@ fi
 
 if [ ! -f server.env ]; then
   secret() { openssl rand -base64 "$1" | tr -d '\n'; }
-  code=$(printf '%06d' $((RANDOM % 1000000)))
   sed \
     -e "s|^API_DOMAIN=.*|API_DOMAIN=$API_DOMAIN|" \
     -e "s|^ADMIN_DOMAIN=.*|ADMIN_DOMAIN=$ADMIN_DOMAIN|" \
@@ -35,17 +35,18 @@ if [ ! -f server.env ]; then
     -e "s|^JWT_ACCESS_SECRET=.*|JWT_ACCESS_SECRET=$(secret 48)|" \
     -e "s|^HASH_PEPPER=.*|HASH_PEPPER=$(secret 32)|" \
     -e "s|^DATA_ENCRYPTION_KEY=.*|DATA_ENCRYPTION_KEY=$(secret 32)|" \
-    -e "s|^OTP_TEST_PHONES=.*|OTP_TEST_PHONES=$TEST_PHONE|" \
-    -e "s|^OTP_TEST_CODE=.*|OTP_TEST_CODE=$( [ -n "$TEST_PHONE" ] && echo "$code" )|" \
     server.env.example > server.env
   chmod 600 server.env
   echo "server.env written. Keep a copy somewhere safe: losing DATA_ENCRYPTION_KEY makes stored ID numbers unreadable."
 fi
 
+bash fetch-web.sh || true
 sudo docker compose --env-file server.env up -d --build
 echo
 echo "Starting. In a minute or two:"
 echo "  API:        https://$API_DOMAIN/health"
 echo "  Dashboard:  https://$ADMIN_DOMAIN"
-[ -n "$TEST_PHONE" ] && echo "  Sign-in code for $TEST_PHONE: $(grep ^OTP_TEST_CODE server.env | cut -d= -f2)"
+echo "  Join page:  https://$ADMIN_DOMAIN/join   (share it; requests appear in the dashboard)"
+echo "  Rider web:  https://$API_DOMAIN/app/"
+echo "Fill SUPPORT_WHATSAPP, PAYMENT_INSTRUCTIONS_AR and OPERATOR_NAME in server.env, then: bash update.sh"
 echo "Create the first platform admin:  bash admin.sh +9665XXXXXXXX \"Your name\""

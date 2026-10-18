@@ -235,7 +235,7 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
         days: _days.toList()..sort(),
         outboundTime: _hhmm(_outbound),
         returnTime: plan.roundTrip ? _hhmm(_return) : null,
-        saveCard: _saveCard,
+        saveCard: _saveCard && !(ref.read(serverConfigProvider).valueOrNull?.manualPayments ?? false),
         memberId: _member?.id,
         promoCode: _quote?.promoCode,
       ),
@@ -250,7 +250,8 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
         : await CheckoutScreen.open(context, paymentId: payment.id, checkoutUrl: payment.checkoutUrl!);
     if (!mounted) return;
     ref.invalidate(subscriptionsProvider);
-    showPaymentOutcome(context, result);
+    // Manual payments: the subscription screen shows how to pay; no "payment pending" banner here.
+    if (payment.checkoutUrl != null || result?.status != 'initiated') showPaymentOutcome(context, result);
     // Land on the subscription either way: active, or waiting for payment with a "Pay now" button.
     await Navigator.of(context).pushReplacement(MaterialPageRoute<void>(builder: (_) => SubscriptionScreen(id: sub.id)));
   }
@@ -260,6 +261,8 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
     final t = RiderStrings.of(context);
     final theme = Theme.of(context);
     final samePlace = _pickup != null && _dropoff != null && _pickup!.id == _dropoff!.id;
+    // Pilot without a gateway: the rider confirms here and pays the team by transfer or cash.
+    final manual = ref.watch(serverConfigProvider).valueOrNull?.manualPayments ?? false;
     final routeDone = _pickup != null && _dropoff != null && !samePlace;
 
     return Scaffold(
@@ -384,22 +387,25 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
                 ]),
               ),
             const SizedBox(height: 12),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              value: _saveCard,
-              onChanged: (v) => setState(() => _saveCard = v),
-              title: Text(t.saveCard),
-              subtitle: Text(t.saveCardHint),
-            ),
+            if (!manual)
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                value: _saveCard,
+                onChanged: (v) => setState(() => _saveCard = v),
+                title: Text(t.saveCard),
+                subtitle: Text(t.saveCardHint),
+              ),
             const SizedBox(height: 8),
             Text(t.startsTomorrow, style: theme.textTheme.bodySmall),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _paying ? null : _pay,
-              child: _paying ? const ButtonSpinner() : Text(t.payAmount(t.sar(_quote!.firstPaymentHalalas))),
+              child: _paying
+                  ? const ButtonSpinner()
+                  : Text(manual ? t.subscribeManual(t.sar(_quote!.firstPaymentHalalas)) : t.payAmount(t.sar(_quote!.firstPaymentHalalas))),
             ),
             const SizedBox(height: 8),
-            Text(t.payWith, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+            Text(manual ? t.payManualHint : t.payWith, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
           ],
         ],
       ),

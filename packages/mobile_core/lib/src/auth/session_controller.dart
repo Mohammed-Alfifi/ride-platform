@@ -6,6 +6,7 @@ import '../api/api_client.dart';
 import '../api/api_error.dart';
 import '../l10n/strings.dart';
 import '../models/user_profile.dart';
+import '../notifications/push.dart';
 import 'auth_repository.dart';
 
 /// The signed-in user, or null when signed out. Loading while a stored session is restored.
@@ -52,12 +53,28 @@ class SessionController extends AsyncNotifier<UserProfile?> {
     if (state.valueOrNull != null) state = AsyncData(await _repo.updateMe(locale: code));
   }
 
+  Future<void> acceptTerms(String version) async {
+    await _repo.acceptTerms(version);
+    state = AsyncData(await _repo.me());
+  }
+
+  /// Stops push notifications to this phone for the account that is leaving.
+  Future<void> _beforeSignOut() => ref.read(pushServiceProvider).unregister();
+
+  Future<void> deleteAccount() async {
+    await _beforeSignOut();
+    await _repo.deleteAccount();
+    state = const AsyncData(null);
+  }
+
   Future<void> signOut() async {
+    await _beforeSignOut();
     await _repo.signOut();
     state = const AsyncData(null);
   }
 
   Future<void> signOutEverywhere() async {
+    await _beforeSignOut();
     await _repo.signOutEverywhere();
     state = const AsyncData(null);
   }

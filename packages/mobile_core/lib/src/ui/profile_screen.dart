@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../auth/session_controller.dart';
 import '../l10n/strings.dart';
 import '../phone.dart';
+import '../pilot/server_config.dart';
+import '../pilot/signed_in.dart';
+import 'theme.dart';
 
 /// Name, language and sign-out. Shared by both apps.
 class ProfileScreen extends ConsumerStatefulWidget {
@@ -55,9 +59,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     if (ok == true) await ref.read(sessionProvider.notifier).signOutEverywhere();
   }
 
+  Future<void> _delete() async {
+    final s = Strings.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.deleteAccount),
+        content: Text(s.deleteAccountConfirm),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(s.cancel)),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Brand.red),
+            child: Text(s.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    try {
+      await ref.read(sessionProvider.notifier).deleteAccount();
+      messenger.showSnackBar(SnackBar(content: Text(s.deleteAccountDone)));
+    } catch (e) {
+      // The server explains what to do first (cancel subscriptions, finish today's trips).
+      if (mounted) messenger.showSnackBar(SnackBar(content: Text(describeError(context, e)), duration: const Duration(seconds: 6)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = Strings.of(context);
+    final config = ref.watch(serverConfigProvider).valueOrNull;
     final user = ref.watch(sessionProvider).valueOrNull;
     final lang = ref.watch(languageProvider).languageCode;
     if (user == null) return const SizedBox.shrink();
@@ -88,6 +121,22 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               child: Text(s.otherLanguage),
             ),
           ),
+          if (config != null) ...[
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(s.terms),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => launchUrl(Uri.parse(config.termsUrl), mode: LaunchMode.externalApplication),
+            ),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(s.privacy),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => launchUrl(Uri.parse(config.privacyUrl), mode: LaunchMode.externalApplication),
+            ),
+            const SizedBox(height: 8),
+            const WhatsAppHelpButton(),
+          ],
           const Divider(height: 32),
           TextButton(
             onPressed: () => ref.read(sessionProvider.notifier).signOut(),
@@ -97,6 +146,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             onPressed: _signOutEverywhere,
             style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
             child: Text(s.signOutEverywhere),
+          ),
+          TextButton(
+            onPressed: _delete,
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+            child: Text(s.deleteAccount),
           ),
         ],
       ),

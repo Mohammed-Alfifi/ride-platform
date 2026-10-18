@@ -116,6 +116,18 @@ class RiderStrings {
       );
   String get pendingBody => _s('أكمل الدفع لتفعيل الاشتراك.', 'Complete the payment to start your subscription.');
   String get payNow => _s('ادفع الآن', 'Pay now');
+  String get webPayWait => _s('فتحنا صفحة الدفع في نافذة جديدة. بعد إتمام الدفع ارجع هنا واضغط «أكملت الدفع».',
+      'The payment page opened in a new tab. When you have paid, come back and tap "I have paid".');
+  String get webPayDone => _s('أكملت الدفع', 'I have paid');
+  String get manualPayTitle => _s('طريقة الدفع', 'How to pay');
+  String subscribeManual(String amount) => _s('تأكيد الاشتراك ($amount)', 'Confirm subscription ($amount)');
+  String get payManualHint => _s('الدفع بالتحويل البنكي أو نقدا بعد التأكيد. لا يُطلب منك أي دفع داخل التطبيق.',
+      'Pay by bank transfer or cash after we confirm. Nothing is charged in the app.');
+  String get sendReceipt => _s('أرسل إيصال التحويل بالواتساب', 'Send the transfer receipt on WhatsApp');
+  String receiptMessage(String who, String plan, String amount, String ref) => _s(
+      'السلام عليكم، أرسل إيصال التحويل لاشتراك مشوار.\nالاسم: $who\nالباقة: $plan\nالمبلغ: $amount\nرقم الاشتراك: $ref',
+      'Hello, here is the transfer receipt for my Mishwar subscription.\nName: $who\nPlan: $plan\nAmount: $amount\nSubscription: $ref');
+  String get manualPending => _s('بانتظار تأكيد الدفع من فريق مشوار.', 'Waiting for the Mishwar team to confirm your payment.');
   String pausedRange(String from, String until) => _s('موقوف من $from إلى $until', 'Paused from $from to $until');
   String get pause => _s('إيقاف مؤقت', 'Pause');
   String get pauseHelp => _s(

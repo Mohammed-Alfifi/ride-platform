@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_core/mobile_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import 'models.dart';
@@ -19,10 +21,24 @@ class CheckoutScreen extends ConsumerStatefulWidget {
   final String checkoutUrl;
 
   /// Opens checkout and returns the confirmed payment, or null if the rider closed it.
-  static Future<Payment?> open(BuildContext context, {required String paymentId, required String checkoutUrl}) =>
-      Navigator.of(context).push<Payment>(
-        MaterialPageRoute(fullscreenDialog: true, builder: (_) => CheckoutScreen(paymentId: paymentId, checkoutUrl: checkoutUrl)),
-      );
+  static Future<Payment?> open(BuildContext context, {required String paymentId, required String checkoutUrl}) {
+    if (kIsWeb) return _openOnWeb(context, paymentId, checkoutUrl);
+    return Navigator.of(context).push<Payment>(
+      MaterialPageRoute(fullscreenDialog: true, builder: (_) => CheckoutScreen(paymentId: paymentId, checkoutUrl: checkoutUrl)),
+    );
+  }
+
+  /// Web build: the payment page opens in a new tab; the rider comes back and the app asks the
+  /// server for the result (the server confirms with the gateway, as on the phone).
+  static Future<Payment?> _openOnWeb(BuildContext context, String paymentId, String checkoutUrl) async {
+    await launchUrl(Uri.parse(checkoutUrl), webOnlyWindowName: '_blank');
+    if (!context.mounted) return null;
+    return showDialog<Payment>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => _WebCheckoutWait(paymentId: paymentId),
+    );
+  }
 
   @override
   ConsumerState<CheckoutScreen> createState() => _CheckoutScreenState();
@@ -108,6 +124,47 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
               )
             : WebViewWidget(controller: _web),
       ),
+    );
+  }
+}
+
+class _WebCheckoutWait extends ConsumerStatefulWidget {
+  const _WebCheckoutWait({required this.paymentId});
+  final String paymentId;
+
+  @override
+  ConsumerState<_WebCheckoutWait> createState() => _WebCheckoutWaitState();
+}
+
+class _WebCheckoutWaitState extends ConsumerState<_WebCheckoutWait> {
+  bool _checking = false;
+
+  Future<void> _check() async {
+    setState(() => _checking = true);
+    Payment? payment;
+    try {
+      payment = await ref.read(riderRepositoryProvider).payment(widget.paymentId);
+    } catch (_) {
+      payment = null;
+    }
+    if (!mounted) return;
+    if (payment != null && payment.status != 'initiated') {
+      Navigator.of(context).pop(payment);
+    } else {
+      setState(() => _checking = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = RiderStrings.of(context);
+    return AlertDialog(
+      title: Text(t.securePayment),
+      content: Text(t.webPayWait),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(t.back)),
+        FilledButton(onPressed: _checking ? null : _check, child: _checking ? const ButtonSpinner() : Text(t.webPayDone)),
+      ],
     );
   }
 }

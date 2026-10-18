@@ -60,7 +60,7 @@ class ApiClient {
     }
   }
 
-  Future<void> delete(String path) => _send(() => dio.delete<dynamic>(path));
+  Future<void> delete(String path, {Object? data}) => _send(() => dio.delete<dynamic>(path, data: data));
 
   /// The current access token, for screens that must pass it to a web view (printable invoices).
   Future<String?> accessToken() async => (await tokens.read())?.accessToken;

@@ -1,7 +1,11 @@
+import 'package:dio/dio.dart' show Options, ResponseType;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_core/mobile_core.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../platform/open_html.dart' if (dart.library.js_interop) '../platform/open_html_web.dart';
 
 import 'models.dart';
 import 'new_subscription_screen.dart' show RepoErrors;
@@ -54,7 +58,9 @@ class BillingScreen extends ConsumerWidget {
                           title: Text(inv.description, maxLines: 1, overflow: TextOverflow.ellipsis),
                           subtitle: Text('${inv.number}  ·  ${t.day(inv.issuedAt)}  ·  ${inv.taxInvoice ? t.taxInvoice : t.receipt}'),
                           trailing: Text(t.sar(inv.totalHalalas), style: const TextStyle(fontWeight: FontWeight.w600)),
-                          onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => InvoiceScreen(invoice: inv))),
+                          onTap: () => kIsWeb
+                              ? _openOnWeb(context, ref, inv)
+                              : Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => InvoiceScreen(invoice: inv))),
                         ),
                     ],
             ),
@@ -104,6 +110,19 @@ class _CardTile extends ConsumerWidget {
         },
       ),
     );
+  }
+}
+
+/// Web build: fetch the printable invoice with the rider's token and open it in a new tab.
+Future<void> _openOnWeb(BuildContext context, WidgetRef ref, Invoice inv) async {
+  try {
+    final res = await ref.read(apiClientProvider).dio.get<String>(
+          '/v1/invoices/${inv.id}',
+          options: Options(responseType: ResponseType.plain),
+        );
+    openHtmlInNewTab(res.data ?? '');
+  } catch (e) {
+    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(context, e))));
   }
 }
 

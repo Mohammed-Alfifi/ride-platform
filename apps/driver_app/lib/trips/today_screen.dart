@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'package:mobile_core/mobile_core.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -256,10 +257,22 @@ class _NextTripCard extends StatelessWidget {
               onPressed: canNoShow && !busy ? () => _confirmNoShow(context) : null,
               style: TextButton.styleFrom(foregroundColor: Brand.red),
               child: Text(canNoShow ? t.noShow : t.noShowWait),
+            ),          if (trip.active) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: SosButton(tripId: trip.id, dark: true, locate: _here),
             ),
+          ],
         ],
       ),
     );
+  }
+
+  /// Where the car is now, for an emergency report.
+  static Future<({double lat, double lng})?> _here() async {
+    final p = await Geolocator.getCurrentPosition();
+    return (lat: p.latitude, lng: p.longitude);
   }
 
   Future<void> _confirmNoShow(BuildContext context) async {

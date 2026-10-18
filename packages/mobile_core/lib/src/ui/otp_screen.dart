@@ -11,9 +11,12 @@ import '../phone.dart';
 import 'app_shell.dart';
 
 class OtpArgs {
-  const OtpArgs({required this.phone, required this.resendAfter});
+  const OtpArgs({required this.phone, required this.resendAfter, this.accessCode = false});
   final String phone;
   final int resendAfter;
+
+  /// Invite-only pilot without SMS: the person types the 8-digit code the team sent on WhatsApp.
+  final bool accessCode;
 }
 
 class OtpScreen extends ConsumerStatefulWidget {
@@ -86,9 +89,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   @override
   Widget build(BuildContext context) {
     final s = Strings.of(context);
+    final access = widget.args.accessCode;
+    final length = access ? 8 : 6;
     return AuthScaffold(
-      title: s.codeTitle,
-      intro: s.codeSentTo(formatSaudiMobile(widget.args.phone)),
+      title: access ? s.accessCodeTitle : s.codeTitle,
+      intro: access ? s.accessCodeIntro(formatSaudiMobile(widget.args.phone)) : s.codeSentTo(formatSaudiMobile(widget.args.phone)),
       children: [
         TextField(
           controller: _controller,
@@ -97,11 +102,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           textAlign: TextAlign.center,
           textDirection: TextDirection.ltr,
           autofillHints: const [AutofillHints.oneTimeCode],
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-          style: const TextStyle(fontSize: 26, letterSpacing: 12, fontWeight: FontWeight.w600),
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(length)],
+          style: TextStyle(fontSize: 26, letterSpacing: access ? 8 : 12, fontWeight: FontWeight.w600),
           decoration: InputDecoration(errorText: _error, errorMaxLines: 3),
           onChanged: (v) {
-            if (v.length == 6) _verify();
+            if (v.length == length) _verify();
           },
         ),
         const SizedBox(height: 20),
@@ -114,9 +119,12 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             TextButton(onPressed: () => context.pop(), child: Text(s.changeNumber)),
-            _resendIn > 0
-                ? Text(s.resendIn(_resendIn), style: Theme.of(context).textTheme.bodyMedium)
-                : TextButton(onPressed: _resend, child: Text(s.resend)),
+            if (access)
+              Flexible(child: Text(s.accessCodeHelp, style: Theme.of(context).textTheme.bodySmall, textAlign: TextAlign.end))
+            else if (_resendIn > 0)
+              Text(s.resendIn(_resendIn), style: Theme.of(context).textTheme.bodyMedium)
+            else
+              TextButton(onPressed: _resend, child: Text(s.resend)),
           ],
         ),
       ],

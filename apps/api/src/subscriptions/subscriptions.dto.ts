@@ -160,6 +160,8 @@ export class SubscriptionView {
   @ApiProperty({ nullable: true, type: String, description: 'Open payment page when payment is due' })
   payUrl!: string | null;
   @ApiProperty({ nullable: true, type: String }) pendingPaymentId!: string | null;
+  @ApiProperty({ nullable: true, type: Number, description: 'Amount of the waiting payment (after any discount)' })
+  amountDueHalalas!: number | null;
   @ApiProperty({ nullable: true, type: Object, description: 'Who rides, when not the account holder' })
   member!: { id: string; name: string } | null;
   @ApiProperty({ nullable: true, type: Object }) driver!: { name: string | null; plate: string | null } | null;

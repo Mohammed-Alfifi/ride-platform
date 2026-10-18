@@ -151,6 +151,20 @@ jobs:
             grep -E 'Error:|Expected:|Actual:|EXCEPTION|\[E\]|Some tests failed' test.txt | head -20 | while IFS= read -r line; do echo "::error::$line"; done
           fi
           exit $code
+      # The rider app also runs in browsers (iPhone users open it from the server at /app/).
+      - name: web build (rider app)
+        if: always() && matrix.package == 'apps/rider_app'
+        shell: bash
+        run: |
+          flutter create --platforms=web --org sa.ride --project-name rider_app . > /dev/null
+          set +e
+          flutter build web --release --base-href /app/ > web.txt 2>&1
+          code=$?
+          tail -30 web.txt
+          if [ $code -ne 0 ]; then
+            grep -E 'Error|error:' web.txt | head -15 | while IFS= read -r line; do echo "::error::$line"; done
+          fi
+          exit $code
       - name: fail on analyzer problems
         if: always() && steps.analyze.outputs.count > 0
         run: exit 1

@@ -49,6 +49,30 @@ class Strings {
   String get cancel => get('cancel');
   String get phoneNumber => get('phoneNumber');
   String get retry => get('retry');
+  String get accessCodeTitle => get('accessCodeTitle');
+  String accessCodeIntro(String phone) => get('accessCodeIntro', {'phone': phone});
+  String get accessCodeHelp => get('accessCodeHelp');
+  String get notifications => get('notifications');
+  String get noNotifications => get('noNotifications');
+  String get termsTitle => get('termsTitle');
+  String get termsIntro => get('termsIntro');
+  List<String> get termsPoints => get('termsPoints').split('|');
+  String get terms => get('terms');
+  String get privacy => get('privacy');
+  String get termsAgree => get('termsAgree');
+  String get termsAccept => get('termsAccept');
+  String get sos => get('sos');
+  String get sosTitle => get('sosTitle');
+  String get sosIntro => get('sosIntro');
+  String sosCall(String n) => get('sosCall', {'n': n});
+  String get sosReport => get('sosReport');
+  String get sosSent => get('sosSent');
+  String get whatsappSupport => get('whatsappSupport');
+  String get deleteAccount => get('deleteAccount');
+  String get deleteAccountConfirm => get('deleteAccountConfirm');
+  String get deleteAccountDone => get('deleteAccountDone');
+  String get delete => get('delete');
+  String get legal => get('legal');
 
   static const _ar = Strings._({
     'phoneTitle': 'أدخل رقم جوالك',
@@ -78,6 +102,30 @@ class Strings {
     'cancel': 'إلغاء',
     'phoneNumber': 'رقم الجوال',
     'retry': 'إعادة المحاولة',
+    'accessCodeTitle': 'أدخل رمز الدخول',
+    'accessCodeIntro': 'اكتب رمز الدخول المكون من 8 أرقام الذي وصلك على الواتساب من فريق مشوار للرقم {phone}.',
+    'accessCodeHelp': 'لم يصلك رمز؟ اطلبه من فريق مشوار.',
+    'notifications': 'الإشعارات',
+    'noNotifications': 'لا توجد إشعارات بعد.',
+    'termsTitle': 'قبل أن تبدأ',
+    'termsIntro': 'مشوار في مرحلة تجربة محدودة. اقرأ الشروط وسياسة الخصوصية، وأهم ما فيهما:',
+    'termsPoints': 'نستخدم بياناتك لتشغيل رحلاتك فقط، ولا نبيعها ولا نعلن بها.|موقع السائق يُسجل أثناء الرحلات فقط ويُحذف بعد 30 يوما.|كن جاهزا في الموعد؛ ينتظر السائق خمس دقائق.|في الطوارئ استخدم زر الطوارئ أو اتصل بـ 911.|يمكنك حذف حسابك في أي وقت من صفحة حسابي.',
+    'terms': 'الشروط والأحكام',
+    'privacy': 'سياسة الخصوصية',
+    'termsAgree': 'قرأت الشروط وسياسة الخصوصية وأوافق عليهما',
+    'termsAccept': 'موافقة ومتابعة',
+    'sos': 'طوارئ',
+    'sosTitle': 'طوارئ',
+    'sosIntro': 'في الخطر المباشر اتصل بالطوارئ أولا. بلاغك لفريق مشوار يصلهم فورا مع موقعك.',
+    'sosCall': 'اتصل بالطوارئ {n}',
+    'sosReport': 'أبلغ فريق مشوار الآن',
+    'sosSent': 'وصل بلاغك لفريق التشغيل وسيتصلون بك الآن.',
+    'whatsappSupport': 'تواصل معنا على الواتساب',
+    'deleteAccount': 'حذف الحساب',
+    'deleteAccountConfirm': 'سيُحذف حسابك وتُسجَّل خارجا من كل الأجهزة. تبقى الفواتير محفوظة كما يوجب النظام. هل تريد الحذف؟',
+    'deleteAccountDone': 'تم حذف حسابك.',
+    'delete': 'حذف',
+    'legal': 'الشروط والخصوصية',
   });
 
   static const _en = Strings._({
@@ -108,6 +156,30 @@ class Strings {
     'cancel': 'Cancel',
     'phoneNumber': 'Mobile number',
     'retry': 'Try again',
+    'accessCodeTitle': 'Enter your access code',
+    'accessCodeIntro': 'Type the 8-digit access code the Mishwar team sent on WhatsApp for {phone}.',
+    'accessCodeHelp': 'No code? Ask the Mishwar team.',
+    'notifications': 'Notifications',
+    'noNotifications': 'No notifications yet.',
+    'termsTitle': 'Before you start',
+    'termsIntro': 'Mishwar is in a limited pilot. Read the terms and the privacy policy; the key points:',
+    'termsPoints': 'We use your data only to run your rides; we never sell it or use it for ads.|The driver\'s location is recorded during trips only and deleted after 30 days.|Be ready on time; the driver waits five minutes.|In an emergency use the emergency button or call 911.|You can delete your account any time from My account.',
+    'terms': 'Terms',
+    'privacy': 'Privacy policy',
+    'termsAgree': 'I have read and accept the terms and the privacy policy',
+    'termsAccept': 'Accept and continue',
+    'sos': 'Emergency',
+    'sosTitle': 'Emergency',
+    'sosIntro': 'If anyone is in danger, call emergency services first. A report to the Mishwar team reaches them at once with your location.',
+    'sosCall': 'Call emergency {n}',
+    'sosReport': 'Alert the Mishwar team now',
+    'sosSent': 'Your report reached the operations team; they will call you now.',
+    'whatsappSupport': 'Chat with us on WhatsApp',
+    'deleteAccount': 'Delete account',
+    'deleteAccountConfirm': 'Your account is deleted and you are signed out everywhere. Invoices are kept as the law requires. Delete it?',
+    'deleteAccountDone': 'Your account was deleted.',
+    'delete': 'Delete',
+    'legal': 'Terms and privacy',
   });
 }
 

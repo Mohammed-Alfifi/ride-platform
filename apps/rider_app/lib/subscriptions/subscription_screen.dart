@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mobile_core/mobile_core.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'checkout_screen.dart';
 import 'models.dart';
@@ -132,6 +133,9 @@ class _BodyState extends ConsumerState<_Body> {
       periodLine = s.cancelAtPeriodEnd ? t.endsOn(end) : (s.autoRenew && s.card != null ? t.renewsOn(end) : t.paidUntil(end));
     }
 
+    final config = ref.watch(serverConfigProvider).valueOrNull;
+    final manual = config != null && config.manualPayments ? config : null;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
@@ -143,7 +147,10 @@ class _BodyState extends ConsumerState<_Body> {
           ],
         ),
         if (periodLine != null) ...[const SizedBox(height: 8), Text(periodLine, style: theme.textTheme.bodyLarge)],
-        if (s.needsPayment) ...[
+        if (s.needsPayment && manual != null) ...[
+          const SizedBox(height: 12),
+          _ManualPay(sub: s, config: manual),
+        ] else if (s.needsPayment) ...[
           const SizedBox(height: 12),
           _Callout(text: s.status == 'past_due' ? t.pastDueBody : t.pendingBody),
           const SizedBox(height: 12),
@@ -249,4 +256,52 @@ class _Row extends StatelessWidget {
         title: Text(title),
         subtitle: Text(subtitle),
       );
+}
+
+/// Pilot without a payment gateway: how to pay the team, and a WhatsApp shortcut for the receipt.
+class _ManualPay extends ConsumerWidget {
+  const _ManualPay({required this.sub, required this.config});
+  final Subscription sub;
+  final ServerConfig config;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final t = RiderStrings.of(context);
+    final theme = Theme.of(context);
+    final user = ref.watch(sessionProvider).valueOrNull;
+    final amount = t.sar(sub.amountDueHalalas ?? sub.priceHalalas);
+    final receipt = config.whatsapp(t.receiptMessage(
+      user?.name ?? user?.phone ?? '',
+      t.ar ? sub.planNameAr : sub.planNameEn,
+      amount,
+      sub.id.substring(0, 8).toUpperCase(),
+    ));
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Brand.sunTint, borderRadius: BorderRadius.circular(14)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(children: [
+            const Icon(Icons.account_balance_outlined, color: Brand.sunDeep),
+            const SizedBox(width: 8),
+            Expanded(child: Text(t.manualPayTitle, style: theme.textTheme.titleMedium)),
+            Text(amount, style: theme.textTheme.titleMedium?.copyWith(color: Brand.sunDeep)),
+          ]),
+          const SizedBox(height: 10),
+          SelectableText(config.paymentInstructions(t.ar), style: const TextStyle(height: 1.7)),
+          const SizedBox(height: 10),
+          Text(t.manualPending, style: theme.textTheme.bodySmall),
+          if (receipt != null) ...[
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => launchUrl(receipt, mode: LaunchMode.externalApplication),
+              icon: const Icon(Icons.chat_outlined),
+              label: Text(t.sendReceipt),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }

@@ -37,6 +37,7 @@ class RiderHomeScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          const NotificationsBell(),
           IconButton(
             tooltip: t.help,
             icon: const Icon(Icons.support_agent_outlined),

@@ -42,7 +42,7 @@ class _PhoneScreenState extends ConsumerState<PhoneScreen> {
     try {
       final result = await ref.read(sessionProvider.notifier).requestOtp(phone);
       if (!mounted) return;
-      context.push('/otp', extra: OtpArgs(phone: phone, resendAfter: result.resendAfter));
+      context.push('/otp', extra: OtpArgs(phone: phone, resendAfter: result.resendAfter, accessCode: result.accessCode));
     } catch (e) {
       if (mounted) setState(() => _error = describeError(context, e));
     } finally {

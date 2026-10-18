@@ -5,10 +5,24 @@
 
 {$API_DOMAIN} {
 	encode gzip
-	request_body {
-		max_size 15MB
+
+	# The rider app for iPhone and browsers (Flutter web build).
+	redir /app /app/
+	handle_path /app/* {
+		root * /srv/web
+		@static path *.js *.wasm *.png *.otf *.ttf *.json
+		header @static Cache-Control "public, max-age=3600"
+		header /index.html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
 	}
-	reverse_proxy api:3000
+
+	handle {
+		request_body {
+			max_size 15MB
+		}
+		reverse_proxy api:3000
+	}
 }
 
 {$ADMIN_DOMAIN} {

@@ -165,6 +165,7 @@ class Subscription {
     required this.card,
     required this.payUrl,
     required this.pendingPaymentId,
+    this.amountDueHalalas,
     this.memberName,
     this.driverName,
     this.driverPlate,
@@ -194,6 +195,7 @@ class Subscription {
             : null,
         payUrl: _str(j['payUrl']),
         pendingPaymentId: _str(j['pendingPaymentId']),
+        amountDueHalalas: j['amountDueHalalas'] == null ? null : _int(j['amountDueHalalas']),
         memberName: j['member'] is Map ? _str((j['member'] as Map)['name']) : null,
         driverName: j['driver'] is Map ? _str((j['driver'] as Map)['name']) : null,
         driverPlate: j['driver'] is Map ? _str((j['driver'] as Map)['plate']) : null,
@@ -220,6 +222,9 @@ class Subscription {
   final SavedCard? card;
   final String? payUrl;
   final String? pendingPaymentId;
+
+  /// What the waiting payment asks for (after any first-month discount).
+  final int? amountDueHalalas;
   final String? memberName;
   final String? driverName;
   final String? driverPlate;

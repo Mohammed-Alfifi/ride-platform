@@ -7,6 +7,7 @@ class UserProfile {
     required this.locale,
     this.name,
     this.partnerId,
+    this.termsVersion,
   });
 
   final String id;
@@ -16,6 +17,9 @@ class UserProfile {
   final String status;
   final String locale;
   final String? partnerId;
+
+  /// The terms version the user accepted; null until they accept any.
+  final String? termsVersion;
 
   bool get isPending => status == 'pending';
   bool get needsName => name == null || name!.trim().isEmpty;
@@ -28,5 +32,6 @@ class UserProfile {
         status: json['status'] as String,
         locale: (json['locale'] as String?) ?? 'ar',
         partnerId: json['partnerId'] as String?,
+        termsVersion: json['termsVersion'] as String?,
       );
 }
