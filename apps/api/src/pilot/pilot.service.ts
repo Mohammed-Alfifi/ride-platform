@@ -5,6 +5,7 @@ import type { AuthUser } from '../auth/auth.types';
 import { TokensService } from '../auth/tokens.service';
 import { AuditService } from '../audit/audit.service';
 import { AppError } from '../common/errors';
+import { offsetOf, pageOf } from '../common/paging';
 import { normalizeSaudiMobile } from '../common/phone';
 import { riyadhToday } from '../common/saudi';
 import { ENV } from '../config/config.module';
@@ -138,18 +139,30 @@ export class PilotService {
     return { received: true };
   }
 
-  async joinRequests(actor: AuthUser, q: { status?: 'new' | 'invited' | 'declined'; kind?: 'rider' | 'driver' }) {
+  async joinRequests(
+    actor: AuthUser,
+    q: { status?: 'new' | 'invited' | 'declined'; kind?: 'rider' | 'driver'; page?: number; pageSize?: number },
+  ) {
     this.assertReviewer(actor);
     const where: SQL[] = [];
     if (q.status) where.push(eq(joinRequests.status, q.status));
     if (q.kind) where.push(eq(joinRequests.kind, q.kind));
-    const rows = await this.db
-      .select()
-      .from(joinRequests)
-      .where(where.length ? and(...where) : undefined)
-      .orderBy(desc(joinRequests.createdAt))
-      .limit(500);
-    return rows.map((r) => this.presentJoin(r));
+    const cond = where.length ? and(...where) : undefined;
+    const [rows, [{ total }]] = await Promise.all([
+      this.db
+        .select()
+        .from(joinRequests)
+        .where(cond)
+        .orderBy(desc(joinRequests.createdAt))
+        .limit(q.pageSize ?? 50)
+        .offset(offsetOf(q)),
+      this.db.select({ total: sql<number>`count(*)::int` }).from(joinRequests).where(cond),
+    ]);
+    return pageOf(
+      rows.map((r) => this.presentJoin(r)),
+      total,
+      q,
+    );
   }
 
   /** Approves an application: invites the phone and returns the WhatsApp message with the access code. */

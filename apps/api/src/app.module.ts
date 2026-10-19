@@ -23,6 +23,7 @@ import { StorageModule } from './storage/storage.service';
 import { ZonesModule } from './zones/zones.controller';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { TripsModule } from './trips/trips.module';
+import { MonitoringModule } from './monitoring/monitoring.module';
 import { PilotModule } from './pilot/pilot.module';
 import { ServicesModule } from './services/services.module';
 
@@ -82,6 +83,7 @@ function hasPrettyLogs(): boolean {
     TripsModule,
     ServicesModule,
     PilotModule,
+    MonitoringModule,
     JobsModule,
   ],
   controllers: [HealthController],

@@ -2,8 +2,8 @@
 
 import { FormEvent, useState } from 'react';
 import { useApp } from '@/components/Providers';
-import { LoadState, useLoad } from '@/components/ui';
-import { api, ApiError } from '@/lib/client';
+import { LoadState, Pager, useLoad } from '@/components/ui';
+import { api, ApiError, Page } from '@/lib/client';
 import { formatDate, formatSaudiPhone } from '@/lib/format';
 
 type Status = 'open' | 'answered' | 'closed';
@@ -34,7 +34,11 @@ export default function SupportPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
-  const list = useLoad(() => api<TicketRow[]>(`admin/support/tickets${status ? `?status=${status}` : ''}`), [status]);
+  const [page, setPage] = useState(1);
+  const list = useLoad(
+    () => api<Page<TicketRow>>(`admin/support/tickets?page=${page}&pageSize=50${status ? `&status=${status}` : ''}`),
+    [status, page],
+  );
   const ticket = useLoad(() => (selected ? api<Ticket>(`admin/support/tickets/${selected}`) : Promise.resolve(null)), [selected]);
 
   async function send(e: FormEvent) {
@@ -70,15 +74,19 @@ export default function SupportPage() {
         <section className="panel">
           <div className="tabs" role="tablist">
             {FILTERS.map((f) => (
-              <button key={f || 'all'} type="button" role="tab" aria-selected={status === f} onClick={() => setStatus(f)}>
+              <button key={f || 'all'} type="button" role="tab" aria-selected={status === f} onClick={() => {
+                  setStatus(f);
+                  setPage(1);
+                }}
+              >
                 {f ? t.support.filters[f] : t.support.filters.all}
               </button>
             ))}
           </div>
           <LoadState loading={list.loading && !list.data} error={list.error} onRetry={list.reload} />
-          {list.data && list.data.length === 0 && <p className="empty">{t.support.empty}</p>}
+          {list.data && list.data.items.length === 0 && <p className="empty">{t.support.empty}</p>}
           <ul className="ticket-list">
-            {list.data?.map((x) => (
+            {list.data?.items.map((x) => (
               <li key={x.id}>
                 <button
                   type="button"
@@ -101,6 +109,7 @@ export default function SupportPage() {
               </li>
             ))}
           </ul>
+          {list.data && <Pager page={page} pageSize={list.data.pageSize} total={list.data.total} onPage={setPage} />}
         </section>
 
         <section className="panel">

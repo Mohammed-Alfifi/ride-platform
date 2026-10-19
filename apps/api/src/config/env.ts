@@ -21,6 +21,12 @@ export const envSchema = z
     NODE_ENV: z.enum(['development', 'test', 'staging', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
     CORS_ORIGINS: csv,
+    /**
+     * How many proxies sit in front of the API and add themselves to X-Forwarded-For. Decides which
+     * address is the visitor's, so rate limits apply per visitor. Caddy on your own server: 1.
+     * Render: 2 (its edge appends its own address after the visitor's).
+     */
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     SWAGGER_ENABLED: bool,
 

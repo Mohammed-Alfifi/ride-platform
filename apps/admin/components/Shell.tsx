@@ -25,7 +25,10 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/compliance', label: t.nav.compliance },
     { href: '/partners', label: t.nav.partners },
     { href: '/users', label: t.nav.users },
-  ].filter((i) => !(['/payments', '/reports', '/promos', '/join-requests', '/access'].includes(i.href) && profile?.role === 'dispatcher'));
+    { href: '/system', label: t.nav.system },
+  ]
+    .filter((i) => !(['/payments', '/reports', '/promos', '/join-requests', '/access'].includes(i.href) && profile?.role === 'dispatcher'))
+    .filter((i) => i.href !== '/system' || profile?.role === 'super_admin');
 
   // On phones the menu is one scrolling row; bring the current page into view.
   useEffect(() => {

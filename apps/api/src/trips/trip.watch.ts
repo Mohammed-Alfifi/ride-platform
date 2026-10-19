@@ -47,6 +47,12 @@ export class TripWatch {
     const result: WatchResult = { lateStart: 0, overdue: 0, unassignedPartners: 0 };
     const lead = this.env.LATE_ALERT_MINUTES;
     const at = now.toISOString();
+    // One staff lookup per partner per run, however many trips need attention.
+    const staff = new Map<string, Promise<string[]>>();
+    const adminsOf = (partnerId: string) => {
+      if (!staff.has(partnerId)) staff.set(partnerId, this.notifications.partnerAdminIds(partnerId));
+      return staff.get(partnerId) as Promise<string[]>;
+    };
 
     // Driver still not on the way, pick-up within the next few minutes (or already passed).
     const notStarted = await this.rows(sql`
@@ -54,7 +60,7 @@ export class TripWatch {
       AND t.scheduled_at <= ${at}::timestamptz + make_interval(mins => ${lead})
       AND t.scheduled_at > ${at}::timestamptz - interval '60 minutes'`);
     for (const t of notStarted) {
-      const admins = await this.notifications.partnerAdminIds(t.partner_id);
+      const admins = await adminsOf(t.partner_id);
       const n = await this.notifications.notify(admins, {
         kind: 'trip_not_started',
         titleAr: 'سائق لم ينطلق بعد',
@@ -94,7 +100,7 @@ export class TripWatch {
         data: { tripId: t.id },
         dedupeKey: `overdue:${t.id}`,
       });
-      await this.notifications.notify(await this.notifications.partnerAdminIds(t.partner_id), {
+      await this.notifications.notify(await adminsOf(t.partner_id), {
         kind: 'trip_overdue',
         titleAr: 'رحلة متأخرة',
         titleEn: 'Trip is late',
@@ -113,7 +119,7 @@ export class TripWatch {
         AND scheduled_at > ${at}::timestamptz AND scheduled_at < ${at}::timestamptz + interval '12 hours'
       GROUP BY partner_id`);
     for (const r of unassigned.rows) {
-      const created = await this.notifications.notify(await this.notifications.partnerAdminIds(r.partner_id), {
+      const created = await this.notifications.notify(await adminsOf(r.partner_id), {
         kind: 'trips_unassigned',
         titleAr: 'رحلات بدون سائق',
         titleEn: 'Trips without a driver',

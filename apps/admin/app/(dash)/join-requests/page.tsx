@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { InviteSent, IssuedCode } from '@/components/InviteSent';
 import { useApp } from '@/components/Providers';
-import { LoadState, useLoad } from '@/components/ui';
-import { api, ApiError } from '@/lib/client';
+import { LoadState, Pager, useLoad } from '@/components/ui';
+import { api, ApiError, Page } from '@/lib/client';
 import { formatDay, formatSaudiPhone } from '@/lib/format';
 import { fill } from '@/lib/i18n';
 
@@ -34,7 +34,8 @@ export default function JoinRequestsPage() {
   const [tab, setTab] = useState<JoinStatus>('new');
   const [issued, setIssued] = useState<IssuedCode | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const list = useLoad(() => api<JoinRequest[]>(`admin/join-requests?status=${tab}`), [tab]);
+  const [page, setPage] = useState(1);
+  const list = useLoad(() => api<Page<JoinRequest>>(`admin/join-requests?status=${tab}&page=${page}`), [tab, page]);
   const [joinUrl, setJoinUrl] = useState('/join');
   useEffect(() => setJoinUrl(`${window.location.origin}/join`), []);
 
@@ -78,14 +79,18 @@ export default function JoinRequestsPage() {
       <section className="panel">
         <div className="tabs" role="tablist">
           {TABS.map((key) => (
-            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
+            <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => {
+                setTab(key);
+                setPage(1);
+              }}
+            >
               {t.pilot.filters[key]}
             </button>
           ))}
         </div>
         <LoadState loading={list.loading && !list.data} error={list.error} onRetry={list.reload} />
-        {list.data && list.data.length === 0 && <p className="empty">{t.pilot.empty}</p>}
-        {list.data && list.data.length > 0 && (
+        {list.data && list.data.items.length === 0 && <p className="empty">{t.pilot.empty}</p>}
+        {list.data && list.data.items.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead>
@@ -102,7 +107,7 @@ export default function JoinRequestsPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.data.map((r) => (
+                {list.data.items.map((r) => (
                   <tr key={r.id}>
                     <td>
                       {r.name} <span className={`kind kind-${r.kind}`}>{t.pilot.kinds[r.kind]}</span>
@@ -143,6 +148,7 @@ export default function JoinRequestsPage() {
             </table>
           </div>
         )}
+        {list.data && <Pager page={page} pageSize={list.data.pageSize} total={list.data.total} onPage={setPage} />}
       </section>
       <InviteSent issued={issued} onClose={() => setIssued(null)} />
     </>

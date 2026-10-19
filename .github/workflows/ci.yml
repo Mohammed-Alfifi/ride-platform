@@ -43,6 +43,68 @@ jobs:
       - run: pnpm --filter @ride/api test:cov
       - run: pnpm --filter @ride/api build
 
+  performance:
+    name: API - performance under load
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: ride
+          POSTGRES_PASSWORD: ride
+          POSTGRES_DB: ride_perf
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U ride" --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      NODE_ENV: development
+      DATABASE_URL: postgres://ride:ride@localhost:5432/ride_perf
+      REDIS_URL: redis://localhost:6379/2
+      JWT_ACCESS_SECRET: perf-access-secret-that-is-long-enough-1234567890
+      HASH_PEPPER: perf-pepper-1234567890
+      DATA_ENCRYPTION_KEY: BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc=
+      OTP_TEST_PHONES: +966500000001,+966500002001
+      OTP_TEST_CODE: '123456'
+      SUPER_ADMIN_PHONE: +966500000000
+      JOBS_ENABLED: 'false'
+      LOG_LEVEL: warn
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Database with 1,500 subscribers and two months of trips
+        run: |
+          sudo apt-get install -y postgresql-client >/dev/null
+          node dist/database/migrate.js
+          node dist/database/seed.js --demo
+          psql "$DATABASE_URL" -q -f perf/seed.sql
+      - name: Start the API
+        run: |
+          nohup node dist/main.js > api.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs localhost:3000/health/live && break; sleep 1; done
+      - name: Measure (fails when an endpoint is slower than its budget)
+        run: |
+          token() {
+            curl -fs -XPOST localhost:3000/v1/auth/otp/request -H 'content-type: application/json' -d "{\"phone\":\"$1\",\"app\":\"$2\"}" > /dev/null
+            curl -fs -XPOST localhost:3000/v1/auth/otp/verify -H 'content-type: application/json' -d "{\"phone\":\"$1\",\"app\":\"$2\",\"code\":\"123456\"}" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).accessToken))'
+          }
+          node perf/run.mjs "$(token 0500000001 admin)" "$(token 0500002001 driver)"
+      - name: API log
+        if: failure()
+        run: tail -50 api.log
+
   admin:
     name: Admin dashboard - typecheck, tests, build
     runs-on: ubuntu-latest

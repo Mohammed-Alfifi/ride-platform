@@ -3,6 +3,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { and, avg, count, desc, eq, gte, isNull, lte, sql, SQL } from 'drizzle-orm';
 import type { AuthUser } from '../auth/auth.types';
 import { AppError } from '../common/errors';
+import { offsetOf, pageOf } from '../common/paging';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
@@ -337,7 +338,7 @@ export class EngagementService {
     return this.ticket(id, viewer);
   }
 
-  async adminTickets(actor: AuthUser, q: { status?: string; partnerId?: string }) {
+  async adminTickets(actor: AuthUser, q: { status?: string; partnerId?: string; page?: number; pageSize?: number }) {
     const where: SQL[] = [];
     if (actor.role === 'super_admin') {
       if (q.partnerId) where.push(eq(supportTickets.partnerId, q.partnerId));
@@ -345,15 +346,24 @@ export class EngagementService {
       where.push(eq(supportTickets.partnerId, actor.partnerId as string));
     }
     if (q.status) where.push(sql`${supportTickets.status} = ${q.status}`);
-    const rows = await this.db
-      .select({ t: supportTickets, name: users.name, phone: users.phone, role: users.role })
-      .from(supportTickets)
-      .innerJoin(users, eq(users.id, supportTickets.userId))
-      .where(where.length ? and(...where) : undefined)
-      // Open emergency reports first, then the most recent activity.
-      .orderBy(sql`(${supportTickets.urgent} AND ${supportTickets.status} <> 'closed') DESC`, desc(supportTickets.lastMessageAt))
-      .limit(200);
-    return rows.map((r) => ({ ...this.presentTicket(r.t), requester: { name: r.name, phone: r.phone, role: r.role } }));
+    const cond = where.length ? and(...where) : undefined;
+    const [rows, [{ total }]] = await Promise.all([
+      this.db
+        .select({ t: supportTickets, name: users.name, phone: users.phone, role: users.role })
+        .from(supportTickets)
+        .innerJoin(users, eq(users.id, supportTickets.userId))
+        .where(cond)
+        // Open emergency reports first, then the most recent activity.
+        .orderBy(sql`(${supportTickets.urgent} AND ${supportTickets.status} <> 'closed') DESC`, desc(supportTickets.lastMessageAt))
+        .limit(q.pageSize ?? 50)
+        .offset(offsetOf(q)),
+      this.db.select({ total: sql<number>`count(*)::int` }).from(supportTickets).where(cond),
+    ]);
+    return pageOf(
+      rows.map((r) => ({ ...this.presentTicket(r.t), requester: { name: r.name, phone: r.phone, role: r.role } })),
+      total,
+      q,
+    );
   }
 
   private presentTicket(t: typeof supportTickets.$inferSelect) {

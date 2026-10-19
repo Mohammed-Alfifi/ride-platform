@@ -121,18 +121,18 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
     await http().post('/v1/join').send({ kind: 'rider', name: 'x', phone: 'abc', city: 'الرياض' }).expect(400);
 
     const list = await http().get('/v1/admin/join-requests?status=new').set(bearer(admin.accessToken)).expect(200);
-    expect(list.body).toHaveLength(1);
-    expect(list.body[0]).toMatchObject({ name: 'أم خالد', riders: 3, status: 'new', phone });
+    expect(list.body).toMatchObject({ total: 1, page: 1, pageSize: 50 });
+    expect(list.body.items[0]).toMatchObject({ name: 'أم خالد', riders: 3, status: 'new', phone });
     const alerted = await ctx.db.select().from(notifications).where(and(eq(notifications.userId, superAdmin.userId), eq(notifications.kind, 'join_request')));
     expect(alerted).toHaveLength(1);
 
-    const inv = await http().post(`/v1/admin/join-requests/${list.body[0].id}/invite`).set(bearer(admin.accessToken)).expect(200);
+    const inv = await http().post(`/v1/admin/join-requests/${list.body.items[0].id}/invite`).set(bearer(admin.accessToken)).expect(200);
     expect(inv.body.code).toMatch(/^\d{8}$/);
     expect(inv.body.whatsappUrl).toMatch(new RegExp(`^https://wa.me/${phone.slice(1)}\\?text=`));
     expect(inv.body.message).toContain(inv.body.code);
     expect(inv.body.message).toContain('https://api.example.sa/app/');
     expect(inv.body.invite).toMatchObject({ audience: 'rider', name: 'أم خالد', partnerId, hasCode: true, signedUp: false });
-    const [row] = await ctx.db.select().from(joinRequests).where(eq(joinRequests.id, list.body[0].id));
+    const [row] = await ctx.db.select().from(joinRequests).where(eq(joinRequests.id, list.body.items[0].id));
     expect(row.status).toBe('invited');
 
     // The code: no SMS, the app asks for the access code; wrong codes fail; the right one works once.
@@ -146,7 +146,7 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
 
     // Another partner's team does not see this invite; a new code works again.
     const others = await http().get('/v1/admin/access').set(bearer(otherAdmin.accessToken)).expect(200);
-    expect(others.body).toHaveLength(0);
+    expect(others.body).toMatchObject({ items: [], total: 0 });
     await http().post(`/v1/admin/access/${inv.body.invite.id}/code`).set(bearer(otherAdmin.accessToken)).expect(404);
     const again = await http().post(`/v1/admin/access/${inv.body.invite.id}/code`).set(bearer(admin.accessToken)).expect(200);
     expect(again.body.invite.signedUp).toBe(true);
@@ -255,7 +255,7 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
     }
     await http().post('/v1/support/tickets').set(bearer(rider1.accessToken)).send({ category: 'app', subject: 'سؤال عادي', message: 'كيف أغير الموعد؟' }).expect(201);
     const inbox = await http().get('/v1/admin/support/tickets').set(bearer(admin.accessToken)).expect(200);
-    expect(inbox.body[0]).toMatchObject({ urgent: true, subject: 'بلاغ طوارئ' });
+    expect(inbox.body.items[0]).toMatchObject({ urgent: true, subject: 'بلاغ طوارئ' });
     const detail = await http().get(`/v1/admin/support/tickets/${res.body.ticketId}`).set(bearer(admin.accessToken)).expect(200);
     expect(detail.body.messages[0].body).toContain('https://maps.google.com/?q=24.8675,46.8275');
   });
@@ -317,11 +317,22 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
   it('removing an invite signs the person out and keeps them out', async () => {
     const rider = await invitedRider('مؤقت');
     const list = await http().get('/v1/admin/access?audience=rider').set(bearer(admin.accessToken)).expect(200);
-    const inv = list.body.find((i: { phone: string }) => i.phone === rider.phone);
+    const inv = list.body.items.find((i: { phone: string }) => i.phone === rider.phone);
     await http().delete(`/v1/admin/access/${inv.id}`).set(bearer(admin.accessToken)).expect(204);
     await http().post('/v1/auth/refresh').send({ refreshToken: rider.refreshToken }).expect(401);
     const res = await http().post('/v1/auth/otp/request').send({ phone: rider.phone, app: 'rider' }).expect(403);
     expect(res.body.error.code).toBe('AUTH_NOT_INVITED');
+  });
+
+  it('shows the platform owner how the system is doing', async () => {
+    await http().get('/v1/admin/system').set(bearer(admin.accessToken)).expect(403);
+    const res = await http().get('/v1/admin/system').set(bearer(superAdmin.accessToken)).expect(200);
+    expect(res.body.db.ok).toBe(true);
+    expect(res.body.redis.ok).toBe(true);
+    expect(res.body.requests.count).toBeGreaterThan(10);
+    const sub = res.body.routes.find((r: { route: string }) => r.route === 'POST /v1/subscriptions');
+    expect(sub).toMatchObject({ count: expect.any(Number), errors: 0 });
+    expect(sub.p95).toBeGreaterThanOrEqual(sub.p50);
   });
 
   it('keeps an active subscription count for the pilot cap', async () => {

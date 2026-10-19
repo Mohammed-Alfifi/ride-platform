@@ -4,6 +4,7 @@ import { Throttle } from '@nestjs/throttler';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { AccessService } from '../auth/access.service';
+import { PageQuery } from '../common/paging';
 import type { AuthUser, RequestMeta } from '../auth/auth.types';
 import { CurrentUser, Public, ReqMeta, Roles } from '../auth/decorators';
 import { AUDIENCES, type Audience } from '../database/schema';
@@ -26,7 +27,7 @@ class JoinDto {
   @ApiPropertyOptional({ description: 'Leave empty' }) @IsOptional() @IsString() @MaxLength(200) website?: string;
 }
 
-class JoinQuery {
+class JoinQuery extends PageQuery {
   @ApiPropertyOptional({ enum: ['new', 'invited', 'declined'] }) @IsOptional() @IsIn(['new', 'invited', 'declined']) status?: 'new' | 'invited' | 'declined';
   @ApiPropertyOptional({ enum: ['rider', 'driver'] }) @IsOptional() @IsIn(['rider', 'driver']) kind?: 'rider' | 'driver';
 }
@@ -38,7 +39,7 @@ class InviteDto {
   @ApiPropertyOptional({ format: 'uuid', description: 'Platform admins only' }) @IsOptional() @IsUUID() partnerId?: string;
 }
 
-class InviteQuery {
+class InviteQuery extends PageQuery {
   @ApiPropertyOptional({ enum: AUDIENCES }) @IsOptional() @IsIn(AUDIENCES as unknown as string[]) audience?: Audience;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(60) search?: string;
   @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() partnerId?: string;

@@ -1,8 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, desc, eq, ilike, isNull, or, SQL } from 'drizzle-orm';
+import { and, desc, eq, ilike, isNull, or, SQL, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import { numericCode, pepperedHash, safeEqualHex } from '../common/crypto';
 import { AppError } from '../common/errors';
+import { offsetOf, Page, pageOf } from '../common/paging';
 import { normalizeSaudiMobile } from '../common/phone';
 import { partnerScope } from '../common/tenant';
 import { ENV } from '../config/config.module';
@@ -94,7 +95,10 @@ export class AccessService {
     if (!used) throw new AppError('AUTH_OTP_EXPIRED');
   }
 
-  async list(actor: AuthUser, q: { audience?: Audience; search?: string; partnerId?: string }): Promise<InviteView[]> {
+  async list(
+    actor: AuthUser,
+    q: { audience?: Audience; search?: string; partnerId?: string; page?: number; pageSize?: number },
+  ): Promise<Page<InviteView>> {
     const scope = partnerScope(actor, q.partnerId);
     const where: SQL[] = [isNull(accessInvites.revokedAt)];
     if (scope) where.push(eq(accessInvites.partnerId, scope));
@@ -103,17 +107,28 @@ export class AccessService {
       const term = `%${q.search.replace(/[%_]/g, '')}%`;
       where.push(or(ilike(accessInvites.name, term), ilike(accessInvites.phone, term)) as SQL);
     }
-    const rows = await this.db
-      .select({ invite: accessInvites, userId: users.id })
-      .from(accessInvites)
-      .leftJoin(
-        users,
-        and(eq(users.phone, accessInvites.phone), eq(users.audience, accessInvites.audience), isNull(users.deletedAt)),
-      )
-      .where(and(...where))
-      .orderBy(desc(accessInvites.createdAt))
-      .limit(500);
-    return rows.map((r) => this.present(r.invite, Boolean(r.userId)));
+    const [rows, [{ total }]] = await Promise.all([
+      this.db
+        .select({ invite: accessInvites, userId: users.id })
+        .from(accessInvites)
+        .leftJoin(
+          users,
+          and(eq(users.phone, accessInvites.phone), eq(users.audience, accessInvites.audience), isNull(users.deletedAt)),
+        )
+        .where(and(...where))
+        .orderBy(desc(accessInvites.createdAt))
+        .limit(q.pageSize ?? 50)
+        .offset(offsetOf(q)),
+      this.db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(accessInvites)
+        .where(and(...where)),
+    ]);
+    return pageOf(
+      rows.map((r) => this.present(r.invite, Boolean(r.userId))),
+      total,
+      q,
+    );
   }
 
   /**

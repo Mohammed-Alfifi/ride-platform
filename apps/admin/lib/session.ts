@@ -56,12 +56,14 @@ export async function readSessionCookies(): Promise<{ access?: string; refresh?:
 }
 
 /**
- * The visitor's address as the proxy in front of this server reported it (Caddy sets
- * X-Forwarded-For and ignores values sent by browsers). The last entry is the one it added.
+ * The visitor's address as the proxies in front of this server reported it. Entries added by
+ * the browser itself come first and are ignored.
  */
 export function clientIp(req: Request): string | undefined {
-  const forwarded = req.headers.get('x-forwarded-for');
-  const ip = forwarded?.split(',').pop()?.trim() || req.headers.get('x-real-ip')?.trim();
+  const forwarded = req.headers.get('x-forwarded-for')?.split(',').map((x) => x.trim()).filter(Boolean) ?? [];
+  // Behind Caddy the visitor is the last entry; behind Render's edge (TRUST_PROXY_HOPS=2) the one before it.
+  const hops = Math.max(1, Number(process.env.TRUST_PROXY_HOPS ?? 1) || 1);
+  const ip = forwarded[Math.max(0, forwarded.length - hops)] || req.headers.get('x-real-ip')?.trim();
   return ip && /^[0-9a-fA-F:.]{3,45}$/.test(ip) ? ip : undefined;
 }
 

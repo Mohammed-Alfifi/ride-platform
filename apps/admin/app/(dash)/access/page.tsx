@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import { InviteSent, IssuedCode } from '@/components/InviteSent';
 import { useApp } from '@/components/Providers';
-import { FormDialog, LoadState, useLoad } from '@/components/ui';
-import { api, ApiError } from '@/lib/client';
+import { FormDialog, LoadState, Pager, useLoad } from '@/components/ui';
+import { api, ApiError, Page } from '@/lib/client';
 import { formatSaudiPhone } from '@/lib/format';
 import { fill } from '@/lib/i18n';
 
@@ -30,11 +30,12 @@ export default function AccessPage() {
   const [search, setSearch] = useState('');
   const [adding, setAdding] = useState(false);
   const [issued, setIssued] = useState<IssuedCode | null>(null);
+  const [page, setPage] = useState(1);
   const list = useLoad(() => {
-    const q = new URLSearchParams({ audience: tab });
+    const q = new URLSearchParams({ audience: tab, page: String(page) });
     if (search.trim()) q.set('search', search.trim());
-    return api<Invite[]>(`admin/access?${q}`);
-  }, [tab, search]);
+    return api<Page<Invite>>(`admin/access?${q}`);
+  }, [tab, search, page]);
 
   const when = (iso: string) =>
     new Intl.DateTimeFormat(lang === 'ar' ? 'ar-SA-u-nu-latn-ca-gregory' : 'en-GB', {
@@ -90,7 +91,11 @@ export default function AccessPage() {
         <div className="panel-tools">
           <div className="tabs" role="tablist">
             {TABS.map((key) => (
-              <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
+              <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => {
+                  setTab(key);
+                  setPage(1);
+                }}
+              >
                 {t.pilot.audiences[key]}
               </button>
             ))}
@@ -101,12 +106,15 @@ export default function AccessPage() {
             placeholder={t.pilot.search}
             aria-label={t.pilot.search}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
           />
         </div>
         <LoadState loading={list.loading && !list.data} error={list.error} onRetry={list.reload} />
-        {list.data && list.data.length === 0 && <p className="empty">{t.pilot.empty}</p>}
-        {list.data && list.data.length > 0 && (
+        {list.data && list.data.items.length === 0 && <p className="empty">{t.pilot.empty}</p>}
+        {list.data && list.data.items.length > 0 && (
           <div className="table-wrap">
             <table>
               <thead>
@@ -120,7 +128,7 @@ export default function AccessPage() {
                 </tr>
               </thead>
               <tbody>
-                {list.data.map((i) => (
+                {list.data.items.map((i) => (
                   <tr key={i.id}>
                     <td>
                       {i.name ?? '—'}
@@ -147,6 +155,7 @@ export default function AccessPage() {
             </table>
           </div>
         )}
+        {list.data && <Pager page={page} pageSize={list.data.pageSize} total={list.data.total} onPage={setPage} />}
       </section>
 
       <FormDialog open={adding} title={t.pilot.add} submitLabel={t.pilot.invite} onClose={() => setAdding(false)} onSubmit={create}>

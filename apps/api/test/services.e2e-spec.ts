@@ -150,8 +150,11 @@ describe('Family, promo codes, shared tracking, ratings, support and reports (e2
     const id = opened.body.id;
 
     const inbox = await ctx.http().get('/v1/admin/support/tickets').set(bearer(admin.accessToken)).expect(200);
-    expect(inbox.body.map((t: { id: string }) => t.id)).toContain(id);
-    expect(inbox.body[0].requester.name).toBe('أبو سارة');
+    expect(inbox.body.items.map((t: { id: string }) => t.id)).toContain(id);
+    expect(inbox.body.items[0].requester.name).toBe('أبو سارة');
+    const paged = await ctx.http().get('/v1/admin/support/tickets?pageSize=1&page=1').set(bearer(admin.accessToken)).expect(200);
+    expect(paged.body.items).toHaveLength(1);
+    expect(paged.body.total).toBe(inbox.body.total);
     await ctx.http().get(`/v1/admin/support/tickets/${id}`).set(bearer(otherAdmin.accessToken)).expect(404);
 
     const answered = await ctx.http().post(`/v1/admin/support/tickets/${id}/reply`).set(bearer(admin.accessToken)).send({ body: 'نعتذر، تواصلنا مع السائق.' }).expect(201);

@@ -21,6 +21,7 @@ import {
 import type { Response } from 'express';
 import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser, Public, Roles } from '../auth/decorators';
+import { PageQuery } from '../common/paging';
 import { AnalyticsService } from './analytics.service';
 import { EngagementService, RATING_TAGS } from './engagement.service';
 import { PromosService } from './promos.service';
@@ -59,7 +60,7 @@ class MessageDto {
   @ApiProperty() @IsString() @Length(1, 2000) body!: string;
 }
 
-class TicketQuery {
+class TicketQuery extends PageQuery {
   @ApiPropertyOptional({ enum: ['open', 'answered', 'closed'] }) @IsOptional() @IsIn(['open', 'answered', 'closed']) status?: string;
   @ApiPropertyOptional({ format: 'uuid' }) @IsOptional() @IsUUID() partnerId?: string;
 }

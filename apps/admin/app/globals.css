@@ -2182,3 +2182,23 @@ td.actions .btn + .btn {
   gap: 0.15rem;
   margin: 0;
 }
+
+/* ---------- System health ---------- */
+.stat dd.ok {
+  color: var(--route);
+}
+.stat dd.bad,
+td.bad {
+  color: var(--red);
+}
+.system-meta {
+  margin: -0.75rem 0 1.25rem;
+  color: var(--ink-soft);
+}
+code.route {
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+}
+.system-panel {
+  margin-bottom: 1.25rem;
+}

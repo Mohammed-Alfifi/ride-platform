@@ -120,3 +120,23 @@ export function FormDialog({
     </dialog>
   );
 }
+
+/** Previous / next for a paged list; hidden when everything fits on one page. */
+export function Pager({ page, pageSize, total, onPage }: { page: number; pageSize: number; total: number; onPage: (page: number) => void }) {
+  const { t } = useApp();
+  const pages = Math.max(1, Math.ceil(total / pageSize));
+  if (pages <= 1) return null;
+  return (
+    <div className="pager">
+      <span>{t.users.pageOf.replace('{page}', String(page)).replace('{pages}', String(pages))}</span>
+      <div className="btns">
+        <button type="button" className="btn btn-quiet" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          {t.users.previous}
+        </button>
+        <button type="button" className="btn btn-quiet" disabled={page >= pages} onClick={() => onPage(page + 1)}>
+          {t.users.next}
+        </button>
+      </div>
+    </div>
+  );
+}
