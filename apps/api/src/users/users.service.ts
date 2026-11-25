@@ -24,9 +24,10 @@ export class UsersService {
   }
 
   async updateMe(userId: string, dto: UpdateMeDto): Promise<UserView> {
-    const changes: Partial<Pick<User, 'name' | 'locale'>> = {};
+    const changes: Partial<Pick<User, 'name' | 'locale' | 'gender'>> = {};
     if (dto.name !== undefined) changes.name = dto.name.trim();
     if (dto.locale !== undefined) changes.locale = dto.locale;
+    if (dto.gender !== undefined) changes.gender = dto.gender;
     if (Object.keys(changes).length === 0) return this.getMe(userId);
     const [updated] = await this.db.update(users).set(changes).where(eq(users.id, userId)).returning();
     return presentUser(updated);

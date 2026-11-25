@@ -82,26 +82,26 @@ describe('Places, quotes, subscriptions and payments (e2e, sandbox gateway)', ()
     expect(tooFar.body).toMatchObject({ eligible: false, reason: 'PLAN_DISTANCE_EXCEEDED' });
 
     const refused = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken))
-      .send({ planId, pickupPlaceId: home, dropoffPlaceId: far, days: [0, 1, 2, 3, 4], outboundTime: '06:30', returnTime: '13:30' })
+      .send({ planId, pickupPlaceId: home, dropoffPlaceId: far, days: [0, 1, 2, 3, 4], outboundTime: '06:30', returnTime: '13:30', sharedRideConsent: true })
       .expect(422);
     expect(refused.body.error.code).toBe('PLAN_DISTANCE_EXCEEDED');
   });
 
   it('checks the weekly schedule against the plan', async () => {
     const base = { planId, pickupPlaceId: home, dropoffPlaceId: school, outboundTime: '06:30', returnTime: '13:30' };
-    const wrongDays = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken)).send({ ...base, days: [0, 1, 2] });
+    const wrongDays = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken)).send({ ...base, days: [0, 1, 2], sharedRideConsent: true });
     expect(wrongDays.body.error.code).toBe('SUBSCRIPTION_SCHEDULE_INVALID');
     const noReturn = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken))
-      .send({ ...base, returnTime: undefined, days: [0, 1, 2, 3, 4] });
+      .send({ ...base, returnTime: undefined, days: [0, 1, 2, 3, 4], sharedRideConsent: true });
     expect(noReturn.body.error.code).toBe('SUBSCRIPTION_SCHEDULE_INVALID');
-    await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken)).send({ ...base, days: [0, 1, 2, 3, 9] }).expect(400);
+    await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken)).send({ ...base, days: [0, 1, 2, 3, 9], sharedRideConsent: true }).expect(400);
   });
 
   let subId: string;
 
   it('subscribes, pays on the hosted page, saves the card and issues a tax invoice', async () => {
     const res = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken))
-      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [4, 0, 1, 2, 3], outboundTime: '06:30', returnTime: '13:30' })
+      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [4, 0, 1, 2, 3], outboundTime: '06:30', returnTime: '13:30', sharedRideConsent: true })
       .expect(201);
     subId = res.body.subscription.id;
     expect(res.body.subscription).toMatchObject({ status: 'pending_payment', days: [0, 1, 2, 3, 4], priceHalalas: 115000 });
@@ -252,7 +252,7 @@ describe('Places, quotes, subscriptions and payments (e2e, sandbox gateway)', ()
 
   it('abandons an unpaid subscription by cancelling it', async () => {
     const res = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken))
-      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4], outboundTime: '07:00', returnTime: '14:00', saveCard: false })
+      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4], outboundTime: '07:00', returnTime: '14:00', saveCard: false, sharedRideConsent: true })
       .expect(201);
     await ctx.http().post(`${pathOf(res.body.payment.checkoutUrl)}/decline`).expect(303);
     const failed = await ctx.http().get(`/v1/payments/${res.body.payment.id}`).set(bearer(rider.accessToken)).expect(200);

@@ -30,6 +30,9 @@ export default function PlansPage() {
         daysPerWeek: Number(text('daysPerWeek')),
         priceHalalas: Math.round(Number(text('price')) * 100),
         maxDistanceKm: Number(text('maxDistanceKm')),
+        serviceClass: text('serviceClass') || 'commute',
+        womenOnly: form.get('womenOnly') === 'on',
+        requiresEscort: text('serviceClass') === 'education' && form.get('requiresEscort') === 'on',
       },
     });
     setAdding(false);
@@ -70,6 +73,7 @@ export default function PlansPage() {
                 <tr>
                   <th scope="col">{t.plans.name}</th>
                   <th scope="col">{t.plans.zone}</th>
+                  <th scope="col">{t.plans.serviceClass}</th>
                   <th scope="col">{t.plans.tripType}</th>
                   <th scope="col">{t.plans.days}</th>
                   <th scope="col">{t.plans.maxDistance}</th>
@@ -83,6 +87,11 @@ export default function PlansPage() {
                   <tr key={p.id}>
                     <td>{lang === 'ar' ? p.nameAr : p.nameEn}</td>
                     <td>{zoneName(p.zoneId)}</td>
+                    <td>
+                      {t.plans[p.serviceClass]}
+                      {p.womenOnly && <span className="badge badge-muted plan-tag">{t.plans.womenOnly}</span>}
+                      {p.requiresEscort && <span className="badge badge-muted plan-tag">{t.plans.requiresEscort}</span>}
+                    </td>
                     <td>{t.plans[p.tripType]}</td>
                     <td className="tabnum">{p.daysPerWeek}</td>
                     <td className="tabnum">{p.maxDistanceKm}</td>
@@ -108,6 +117,16 @@ export default function PlansPage() {
       </section>
 
       <FormDialog open={adding} title={t.plans.add} submitLabel={t.plans.add} onClose={() => setAdding(false)} onSubmit={create}>
+        <div className="field">
+          <label htmlFor="serviceClass">{t.plans.serviceClass}</label>
+          <select id="serviceClass" name="serviceClass" className="select" defaultValue="commute" aria-describedby="class-hint">
+            <option value="commute">{t.plans.commute}</option>
+            <option value="education">{t.plans.education}</option>
+          </select>
+          <span className="hint" id="class-hint">
+            {t.plans.classHint}
+          </span>
+        </div>
         <div className="field">
           <label htmlFor="zoneId">{t.plans.zone}</label>
           <select id="zoneId" name="zoneId" className="select" required defaultValue={activeZones[0]?.id}>
@@ -154,6 +173,12 @@ export default function PlansPage() {
             <input id="maxDistanceKm" name="maxDistanceKm" className="input num" type="number" min={1} max={200} defaultValue={15} required />
           </div>
         </div>
+        <label className="check">
+          <input type="checkbox" name="womenOnly" /> {t.plans.womenOnly}
+        </label>
+        <label className="check">
+          <input type="checkbox" name="requiresEscort" /> {t.plans.requiresEscort}
+        </label>
       </FormDialog>
     </>
   );

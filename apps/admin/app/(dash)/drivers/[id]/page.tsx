@@ -15,6 +15,10 @@ const DOC_ORDER: DocType[] = [
   'vehicle_registration',
   'vehicle_insurance',
   'periodic_inspection',
+  'criminal_record',
+  'professional_driver_card',
+  'operating_card',
+  'first_aid_certificate',
 ];
 
 export default function DriverDetailPage() {

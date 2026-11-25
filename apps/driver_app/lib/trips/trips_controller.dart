@@ -13,8 +13,12 @@ class TodayTrips extends AsyncNotifier<List<DriverTrip>> {
   Future<void> refresh() async => state = await AsyncValue.guard(build);
 
   /// action: start | arrive | pickup | complete | no-show. Errors go to the screen that asked.
-  Future<void> act(String tripId, String action) async {
-    final updated = DriverTrip.fromJson(await _api.post('/v1/driver/trips/$tripId/$action'));
+  /// cabinChecked: the driver confirmed no student is left in the vehicle (education drop-offs).
+  Future<void> act(String tripId, String action, {bool cabinChecked = false}) async {
+    final updated = DriverTrip.fromJson(await _api.post(
+      '/v1/driver/trips/$tripId/$action',
+      data: cabinChecked ? {'cabinChecked': true} : null,
+    ));
     final list = state.valueOrNull ?? const [];
     state = AsyncData([for (final t in list) t.id == updated.id ? updated : t]);
   }

@@ -51,8 +51,14 @@ class RiderRepository {
     bool saveCard = true,
     String? memberId,
     String? promoCode,
+    required bool sharedRideConsent,
+    String? guardianContractVersion,
+    String? passengerGender,
   }) async {
     final body = await _api.post('/v1/subscriptions', data: {
+      'sharedRideConsent': sharedRideConsent,
+      if (guardianContractVersion != null) 'guardianContractVersion': guardianContractVersion,
+      if (passengerGender != null) 'passengerGender': passengerGender,
       if (memberId != null) 'memberId': memberId,
       if (promoCode != null) 'promoCode': promoCode,
       'planId': planId,
@@ -68,6 +74,8 @@ class RiderRepository {
       Payment.fromJson({...body['payment'] as Map<String, dynamic>, 'failureReason': null, 'invoiceId': null}),
     );
   }
+
+  Future<TransportContract> contract(String planId) async => TransportContract.fromJson(await _api.get('/v1/plans/$planId/contract'));
 
   Future<List<Subscription>> subscriptions() async =>
       (await _api.getList('/v1/subscriptions')).map(Subscription.fromJson).toList();

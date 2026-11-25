@@ -84,6 +84,12 @@ export class VehicleDto {
   @Min(1)
   @Max(14)
   seats!: number;
+
+  @ApiPropertyOptional({ example: 'نورة محمد', description: 'Adult escort on board, for plans of young students' })
+  @IsOptional()
+  @IsString()
+  @Length(2, 120)
+  escortName?: string;
 }
 
 export class UploadDocumentDto {
@@ -118,6 +124,7 @@ export class VehicleView {
   @ApiProperty() year!: number;
   @ApiProperty() color!: string;
   @ApiProperty() seats!: number;
+  @ApiProperty({ nullable: true, type: String }) escortName!: string | null;
   @ApiProperty({ description: 'Last day the vehicle may serve under the age rule (exclusive)' })
   eligibleUntil!: string;
 }

@@ -101,7 +101,27 @@ export type DocType =
   | 'driver_photo'
   | 'vehicle_registration'
   | 'vehicle_insurance'
-  | 'periodic_inspection';
+  | 'periodic_inspection'
+  | 'professional_driver_card'
+  | 'criminal_record'
+  | 'operating_card'
+  | 'first_aid_certificate';
+
+export type ServiceClass = 'commute' | 'education';
+
+export interface LicenseView {
+  id: string;
+  partnerId: string;
+  serviceClass: ServiceClass;
+  licenseNumber: string;
+  unifiedCode: string | null;
+  expiresAt: string;
+  minPriceHalalas: number | null;
+  maxPriceHalalas: number | null;
+  pricingReference: string | null;
+  verifiedAt: string | null;
+  valid: boolean;
+}
 export type OnboardingStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
 
 export interface DocumentView {
@@ -192,6 +212,9 @@ export interface PlanView {
   daysPerWeek: number;
   priceHalalas: number;
   maxDistanceKm: number;
+  serviceClass: ServiceClass;
+  womenOnly: boolean;
+  requiresEscort: boolean;
   active: boolean;
 }
 

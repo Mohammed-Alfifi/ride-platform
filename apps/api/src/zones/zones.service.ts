@@ -5,7 +5,8 @@ import type { AuthUser } from '../auth/auth.types';
 import { AppError } from '../common/errors';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
-import { partners, Plan, plans, zones } from '../database/schema';
+import { LicensesService } from '../compliance/licenses.service';
+import { partners, Plan, plans, ServiceClass, zones } from '../database/schema';
 import {
   CoverageView,
   CreatePlanDto,
@@ -27,6 +28,7 @@ export class ZonesService {
   constructor(
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
+    private readonly licenses: LicensesService,
   ) {}
 
   // ------------------------------------------------------------------ zones
@@ -98,7 +100,18 @@ export class ZonesService {
       .from(plans)
       .where(and(inArray(plans.zoneId, found.map((z) => z.zoneId)), eq(plans.active, true)))
       .orderBy(asc(plans.priceHalalas));
-    return found.map((z) => ({ ...z, plans: planRows.filter((p) => p.zoneId === z.zoneId).map(presentPlan) }));
+    // A plan whose licence lapsed, or whose price left the approved range, is not offered.
+    const gate = await this.licenses.sellable(planRows);
+    const offered = planRows.filter((p) => gate.canSell(p.partnerId, p.serviceClass, p.priceHalalas));
+    return found.map((z) => {
+      const zonePlans = offered.filter((p) => p.zoneId === z.zoneId);
+      const licenseCodes: Partial<Record<ServiceClass, string>> = {};
+      for (const p of zonePlans) {
+        const code = gate.codeOf(p.partnerId, p.serviceClass);
+        if (code) licenseCodes[p.serviceClass] = code;
+      }
+      return { ...z, plans: zonePlans.map(presentPlan), licenseCodes };
+    });
   }
 
   // ------------------------------------------------------------------ plans
@@ -116,9 +129,12 @@ export class ZonesService {
   async createPlan(actor: AuthUser, dto: CreatePlanDto, ip?: string): Promise<PlanView> {
     const zone = await this.get(dto.zoneId);
     assertPartnerAccess(actor, zone.partnerId);
+    const serviceClass = dto.serviceClass ?? 'commute';
+    this.assertPlanRules(serviceClass, dto.requiresEscort ?? false);
+    await this.licenses.assertCanSell(zone.partnerId, serviceClass, dto.priceHalalas);
     const [row] = await this.db
       .insert(plans)
-      .values({ ...dto, nameAr: dto.nameAr.trim(), nameEn: dto.nameEn.trim(), partnerId: zone.partnerId })
+      .values({ ...dto, serviceClass, nameAr: dto.nameAr.trim(), nameEn: dto.nameEn.trim(), partnerId: zone.partnerId })
       .returning();
     await this.audit.record({ actorId: actor.id, partnerId: zone.partnerId, action: 'plan.create', entity: 'plan', entityId: row.id, after: row, ip });
     return presentPlan(row);
@@ -132,12 +148,25 @@ export class ZonesService {
     } catch {
       throw new AppError('PLAN_NOT_FOUND');
     }
+    // Only the fields sent change; absent ones arrive as undefined and must not erase the plan's.
+    const sent = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) as UpdatePlanDto;
+    const next = { ...before, ...sent };
+    this.assertPlanRules(next.serviceClass, next.requiresEscort);
+    // Turning a plan off is always allowed; anything that leaves it on sale is checked.
+    if (next.active) await this.licenses.assertCanSell(before.partnerId, next.serviceClass, next.priceHalalas);
     const [row] = await this.db.update(plans).set(dto).where(eq(plans.id, id)).returning();
     await this.audit.record({ actorId: actor.id, partnerId: before.partnerId, action: 'plan.update', entity: 'plan', entityId: id, before, after: row, ip });
     return presentPlan(row);
   }
 
   // ------------------------------------------------------------------ helpers
+
+  /** An escort is an education transport rule; asking it of a commute plan is a mistake. */
+  private assertPlanRules(serviceClass: ServiceClass, requiresEscort: boolean): void {
+    if (requiresEscort && serviceClass !== 'education') {
+      throw new AppError('PLAN_RULES_INVALID', {}, ['requiresEscort applies to education plans only']);
+    }
+  }
 
   private async get(id: string): Promise<ZoneView> {
     const [row] = await this.selectZones(eq(zones.id, id));
@@ -236,6 +265,9 @@ export function presentPlan(p: Plan): PlanView {
     daysPerWeek: p.daysPerWeek,
     priceHalalas: p.priceHalalas,
     maxDistanceKm: p.maxDistanceKm,
+    serviceClass: p.serviceClass,
+    womenOnly: p.womenOnly,
+    requiresEscort: p.requiresEscort,
     active: p.active,
   };
 }

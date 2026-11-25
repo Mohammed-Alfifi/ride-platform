@@ -26,12 +26,13 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
   late final _color = TextEditingController(text: _existing?.color ?? '');
   late int _year = _existing?.year ?? DateTime.now().year;
   late int _seats = _existing?.seats ?? 4;
+  late final _escort = TextEditingController(text: _existing?.escortName ?? '');
   bool _busy = false;
   String? _error;
 
   @override
   void dispose() {
-    for (final c in [_letters, _numbers, _make, _model, _color]) {
+    for (final c in [_letters, _numbers, _make, _model, _color, _escort]) {
       c.dispose();
     }
     super.dispose();
@@ -52,6 +53,7 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
         'year': _year,
         'color': _color.text.trim(),
         'seats': _seats,
+        if (_escort.text.trim().isNotEmpty) 'escortName': _escort.text.trim(),
       });
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -114,8 +116,14 @@ class _VehicleScreenState extends ConsumerState<VehicleScreen> {
             DropdownButtonFormField<int>(
               value: _seats,
               decoration: InputDecoration(labelText: t.seats),
-              items: [for (var s = 1; s <= 7; s++) DropdownMenuItem(value: s, child: Text('$s'))],
+              // Up to 14: education transport uses 7 to 9 seat cars and small buses.
+              items: [for (var s = 1; s <= 14; s++) DropdownMenuItem(value: s, child: Text('$s'))],
               onChanged: (v) => setState(() => _seats = v ?? _seats),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _escort,
+              decoration: InputDecoration(labelText: t.escortName, helperText: t.escortHint, helperMaxLines: 2),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),

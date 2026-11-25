@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType, OmitType } from '@nestjs/swagger';
+import { SERVICE_CLASSES, type ServiceClass } from '../database/schema';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -131,6 +132,21 @@ export class CreatePlanDto {
   @Min(1)
   @Max(200)
   maxDistanceKm!: number;
+
+  @ApiPropertyOptional({ enum: SERVICE_CLASSES, default: 'commute', description: 'education needs a verified education transport licence' })
+  @IsOptional()
+  @IsIn(SERVICE_CLASSES as unknown as string[])
+  serviceClass?: ServiceClass;
+
+  @ApiPropertyOptional({ default: false, description: 'Only women ride together' })
+  @IsOptional()
+  @IsBoolean()
+  womenOnly?: boolean;
+
+  @ApiPropertyOptional({ default: false, description: 'Education only: an adult escort must be on board' })
+  @IsOptional()
+  @IsBoolean()
+  requiresEscort?: boolean;
 }
 
 export class UpdatePlanDto extends PartialType(OmitType(CreatePlanDto, ['zoneId'] as const)) {
@@ -150,6 +166,9 @@ export class PlanView {
   @ApiProperty() daysPerWeek!: number;
   @ApiProperty() priceHalalas!: number;
   @ApiProperty() maxDistanceKm!: number;
+  @ApiProperty({ enum: SERVICE_CLASSES }) serviceClass!: ServiceClass;
+  @ApiProperty() womenOnly!: boolean;
+  @ApiProperty() requiresEscort!: boolean;
   @ApiProperty() active!: boolean;
 }
 
@@ -161,4 +180,10 @@ export class CoverageView {
   @ApiProperty() partnerNameAr!: string;
   @ApiProperty() partnerNameEn!: string;
   @ApiProperty({ type: [PlanView] }) plans!: PlanView[];
+  @ApiProperty({
+    type: Object,
+    description: "Transport authority licence code per class the partner sells here, shown to riders",
+    example: { commute: 'TGA-123456' },
+  })
+  licenseCodes!: Partial<Record<ServiceClass, string>>;
 }

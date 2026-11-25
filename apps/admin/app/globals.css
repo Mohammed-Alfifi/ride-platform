@@ -2202,3 +2202,14 @@ code.route {
 .system-panel {
   margin-bottom: 1.25rem;
 }
+
+/* Phase 6: plan class tags and the licences panel. */
+.plan-tag {
+  margin-inline-start: 0.4rem;
+}
+.licences-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: end;
+}

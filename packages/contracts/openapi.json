@@ -49,6 +49,64 @@
         ]
       }
     },
+    "/v1/notifications/devices": {
+      "post": {
+        "operationId": "NotificationsController_device",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Register this phone for push notifications (call after every sign-in and token refresh)",
+        "tags": [
+          "notifications"
+        ]
+      },
+      "delete": {
+        "operationId": "NotificationsController_removeDevice",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeviceRemoveDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stop push notifications to this phone (call on sign-out)",
+        "tags": [
+          "notifications"
+        ]
+      }
+    },
     "/v1/notifications/read-all": {
       "post": {
         "operationId": "NotificationsController_readAll",
@@ -275,6 +333,24 @@
           }
         ],
         "summary": "Update name or language",
+        "tags": [
+          "me"
+        ]
+      },
+      "delete": {
+        "operationId": "MePilotController_remove",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete my account (riders: no running subscription; drivers: no trips left today)",
         "tags": [
           "me"
         ]
@@ -1984,6 +2060,42 @@
         ]
       }
     },
+    "/v1/plans/{id}/contract": {
+      "get": {
+        "operationId": "RiderController_contract",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContractClausesView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Transport contract the guardian accepts before an education plan",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
     "/v1/family": {
       "get": {
         "operationId": "RiderController_family",
@@ -2169,6 +2281,45 @@
         "summary": "Gateway webhooks. The status is always re-read from the gateway.",
         "tags": [
           "payments: callbacks"
+        ]
+      }
+    },
+    "/v1/admin/subscriptions/{id}/payments/manual": {
+      "post": {
+        "operationId": "AdminBillingController_recordManual",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManualPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record a bank transfer or cash payment; activates or renews the subscription and issues the invoice",
+        "tags": [
+          "admin: billing"
         ]
       }
     },
@@ -2466,6 +2617,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteTripDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": ""
@@ -2659,6 +2820,23 @@
             "schema": {
               "format": "uuid",
               "type": "string"
+            }
+          },
+          {
+            "name": "view",
+            "required": false,
+            "in": "query",
+            "description": "Which trips to list (the counters always cover the whole day)",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "unassigned",
+                "late",
+                "active",
+                "done",
+                "problems"
+              ]
             }
           }
         ],
@@ -2968,6 +3146,36 @@
         ]
       }
     },
+    "/v1/support/tickets/sos": {
+      "post": {
+        "operationId": "SupportController_sos",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SosDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Emergency button: alerts the operator and platform team with the caller location",
+        "tags": [
+          "support"
+        ]
+      }
+    },
     "/v1/support/tickets/{id}": {
       "get": {
         "operationId": "SupportController_get",
@@ -3066,6 +3274,33 @@
       "get": {
         "operationId": "AdminServiceController_tickets",
         "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "default": 50,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
           {
             "name": "status",
             "required": false,
@@ -3259,6 +3494,33 @@
       "get": {
         "operationId": "AdminServiceController_promoList",
         "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "default": 50,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
           {
             "name": "status",
             "required": false,
@@ -3456,6 +3718,633 @@
           "admin: service"
         ]
       }
+    },
+    "/v1/admin/partners/{partnerId}/licenses": {
+      "get": {
+        "operationId": "ComplianceController_list",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LicenseView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: compliance"
+        ]
+      }
+    },
+    "/v1/admin/partners/{partnerId}/licenses/{serviceClass}": {
+      "put": {
+        "operationId": "ComplianceController_upsert",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceClass",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "commute",
+                "education"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpsertLicenseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Enter or renew a licence; it waits for platform verification again",
+        "tags": [
+          "admin: compliance"
+        ]
+      }
+    },
+    "/v1/admin/partners/{partnerId}/licenses/{serviceClass}/verify": {
+      "post": {
+        "operationId": "ComplianceController_verify",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "serviceClass",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "commute",
+                "education"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LicenseView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Confirm the licence against the authority's records",
+        "tags": [
+          "admin: compliance"
+        ]
+      }
+    },
+    "/v1/admin/regulator/export": {
+      "get": {
+        "operationId": "ComplianceController_export",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "description": "Super admins only",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Drivers, vehicles and trips of a period for the transport authority (contains national IDs)",
+        "tags": [
+          "admin: compliance"
+        ]
+      }
+    },
+    "/v1/admin/regulator/submit": {
+      "post": {
+        "operationId": "ComplianceController_submit",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "description": "Super admins only",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a period's batch through the configured authority connector",
+        "tags": [
+          "admin: compliance"
+        ]
+      }
+    },
+    "/v1/app-config": {
+      "get": {
+        "operationId": "PublicPilotController_config",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "How this server runs: sign-in method, payment mode, links, support contact",
+        "tags": [
+          "public: app"
+        ]
+      }
+    },
+    "/v1/join": {
+      "post": {
+        "operationId": "PublicPilotController_join",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JoinDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Public join form: a family, an employee or a driver asks to take part",
+        "tags": [
+          "public: app"
+        ]
+      }
+    },
+    "/v1/me/terms": {
+      "post": {
+        "operationId": "MePilotController_terms",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TermsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record that the user accepted this version of the terms and privacy policy",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/admin/join-requests": {
+      "get": {
+        "operationId": "AdminPilotController_joinRequests",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "default": 50,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "new",
+                "invited",
+                "declined"
+              ]
+            }
+          },
+          {
+            "name": "kind",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "rider",
+                "driver"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/join-requests/{id}/invite": {
+      "post": {
+        "operationId": "AdminPilotController_invite",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve: invite the phone and get the WhatsApp message with the access code",
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/join-requests/{id}/decline": {
+      "post": {
+        "operationId": "AdminPilotController_decline",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/access": {
+      "get": {
+        "operationId": "AdminPilotController_invites",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maximum": 100,
+              "default": 50,
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/Object"
+                }
+              ]
+            }
+          },
+          {
+            "name": "audience",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "rider",
+                "driver",
+                "admin"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invited phones (invite-only pilot)",
+        "tags": [
+          "admin: pilot"
+        ]
+      },
+      "post": {
+        "operationId": "AdminPilotController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Invite a phone directly and get its access code (shown once)",
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/access/{id}/code": {
+      "post": {
+        "operationId": "AdminPilotController_code",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A new access code, e.g. after the person changed phone or signed out",
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/access/{id}": {
+      "delete": {
+        "operationId": "AdminPilotController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove the invite and sign the person out",
+        "tags": [
+          "admin: pilot"
+        ]
+      }
+    },
+    "/v1/admin/system": {
+      "get": {
+        "operationId": "SystemController_status",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Health of this API instance: response times, errors, database, Redis and background jobs",
+        "tags": [
+          "admin: system"
+        ]
+      }
     }
   },
   "info": {
@@ -3475,6 +4364,38 @@
       }
     },
     "schemas": {
+      "DeviceDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Firebase Cloud Messaging registration token"
+          },
+          "platform": {
+            "type": "string",
+            "enum": [
+              "android",
+              "ios",
+              "web"
+            ]
+          }
+        },
+        "required": [
+          "token",
+          "platform"
+        ]
+      },
+      "DeviceRemoveDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
       "OtpRequestDto": {
         "type": "object",
         "properties": {
@@ -3505,6 +4426,14 @@
             "type": "boolean",
             "example": true
           },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "sms",
+              "access_code"
+            ],
+            "description": "sms: a code was texted. access_code: type the code the team sent (invite-only pilot)."
+          },
           "expiresIn": {
             "type": "number",
             "example": 300,
@@ -3518,6 +4447,7 @@
         },
         "required": [
           "sent",
+          "channel",
           "expiresIn",
           "resendAfter"
         ]
@@ -3595,6 +4525,14 @@
               "en"
             ]
           },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "male",
+              "female"
+            ]
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -3607,6 +4545,11 @@
             "type": "string",
             "nullable": true,
             "format": "date-time"
+          },
+          "termsVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Version of the terms the user accepted"
           },
           "createdAt": {
             "type": "string",
@@ -3621,8 +4564,10 @@
           "audience",
           "partnerId",
           "locale",
+          "gender",
           "status",
           "lastLoginAt",
+          "termsVersion",
           "createdAt"
         ]
       },
@@ -3710,6 +4655,14 @@
               "ar",
               "en"
             ]
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ],
+            "description": "Used for women-only rides; never shown to other riders"
           }
         }
       },
@@ -4002,6 +4955,10 @@
           "seats": {
             "type": "number"
           },
+          "escortName": {
+            "type": "string",
+            "nullable": true
+          },
           "eligibleUntil": {
             "type": "string",
             "description": "Last day the vehicle may serve under the age rule (exclusive)"
@@ -4016,6 +4973,7 @@
           "year",
           "color",
           "seats",
+          "escortName",
           "eligibleUntil"
         ]
       },
@@ -4033,7 +4991,11 @@
               "driver_photo",
               "vehicle_registration",
               "vehicle_insurance",
-              "periodic_inspection"
+              "periodic_inspection",
+              "professional_driver_card",
+              "criminal_record",
+              "operating_card",
+              "first_aid_certificate"
             ]
           },
           "mime": {
@@ -4089,7 +5051,11 @@
               "driver_photo",
               "vehicle_registration",
               "vehicle_insurance",
-              "periodic_inspection"
+              "periodic_inspection",
+              "professional_driver_card",
+              "criminal_record",
+              "operating_card",
+              "first_aid_certificate"
             ]
           },
           "expiryRequired": {
@@ -4265,6 +5231,11 @@
             "type": "number",
             "example": 4,
             "description": "Passenger seats, not counting the driver"
+          },
+          "escortName": {
+            "type": "string",
+            "example": "نورة محمد",
+            "description": "Adult escort on board, for plans of young students"
           }
         },
         "required": [
@@ -4515,7 +5486,11 @@
               "driver_photo",
               "vehicle_registration",
               "vehicle_insurance",
-              "periodic_inspection"
+              "periodic_inspection",
+              "professional_driver_card",
+              "criminal_record",
+              "operating_card",
+              "first_aid_certificate"
             ]
           },
           "expiresAt": {
@@ -4703,6 +5678,19 @@
           "maxDistanceKm": {
             "type": "number"
           },
+          "serviceClass": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "education"
+            ]
+          },
+          "womenOnly": {
+            "type": "boolean"
+          },
+          "requiresEscort": {
+            "type": "boolean"
+          },
           "active": {
             "type": "boolean"
           }
@@ -4717,6 +5705,9 @@
           "daysPerWeek",
           "priceHalalas",
           "maxDistanceKm",
+          "serviceClass",
+          "womenOnly",
+          "requiresEscort",
           "active"
         ]
       },
@@ -4754,6 +5745,25 @@
           "maxDistanceKm": {
             "type": "number",
             "example": 15
+          },
+          "serviceClass": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "education"
+            ],
+            "default": "commute",
+            "description": "education needs a verified education transport licence"
+          },
+          "womenOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only women ride together"
+          },
+          "requiresEscort": {
+            "type": "boolean",
+            "default": false,
+            "description": "Education only: an adult escort must be on board"
           }
         },
         "required": [
@@ -4797,6 +5807,25 @@
             "type": "number",
             "example": 15
           },
+          "serviceClass": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "education"
+            ],
+            "default": "commute",
+            "description": "education needs a verified education transport licence"
+          },
+          "womenOnly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Only women ride together"
+          },
+          "requiresEscort": {
+            "type": "boolean",
+            "default": false,
+            "description": "Education only: an adult escort must be on board"
+          },
           "active": {
             "type": "boolean"
           }
@@ -4828,6 +5857,13 @@
             "items": {
               "$ref": "#/components/schemas/PlanView"
             }
+          },
+          "licenseCodes": {
+            "type": "object",
+            "description": "Transport authority licence code per class the partner sells here, shown to riders",
+            "example": {
+              "commute": "TGA-123456"
+            }
           }
         },
         "required": [
@@ -4837,7 +5873,8 @@
           "partnerId",
           "partnerNameAr",
           "partnerNameEn",
-          "plans"
+          "plans",
+          "licenseCodes"
         ]
       },
       "PlaceView": {
@@ -5088,6 +6125,11 @@
             "type": "string",
             "nullable": true
           },
+          "amountDueHalalas": {
+            "type": "number",
+            "nullable": true,
+            "description": "Amount of the waiting payment (after any discount)"
+          },
           "member": {
             "type": "object",
             "nullable": true,
@@ -5096,6 +6138,21 @@
           "driver": {
             "type": "object",
             "nullable": true
+          },
+          "serviceClass": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "education"
+            ]
+          },
+          "womenOnly": {
+            "type": "boolean"
+          },
+          "contractVersion": {
+            "type": "string",
+            "nullable": true,
+            "description": "Guardian contract version accepted (education)"
           },
           "createdAt": {
             "type": "string"
@@ -5125,8 +6182,12 @@
           "card",
           "payUrl",
           "pendingPaymentId",
+          "amountDueHalalas",
           "member",
           "driver",
+          "serviceClass",
+          "womenOnly",
+          "contractVersion",
           "createdAt"
         ]
       },
@@ -5182,6 +6243,23 @@
             "type": "boolean",
             "description": "Keep the card for automatic monthly renewal",
             "default": true
+          },
+          "sharedRideConsent": {
+            "type": "boolean",
+            "description": "The rider agrees to share the car with other riders (required by the regulation)"
+          },
+          "guardianContractVersion": {
+            "type": "string",
+            "example": "2026-11",
+            "description": "Education plans: the contract version the guardian accepted"
+          },
+          "passengerGender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ],
+            "description": "Saved on the rider or family member; required for women-only plans"
           }
         },
         "required": [
@@ -5189,7 +6267,8 @@
           "pickupPlaceId",
           "dropoffPlaceId",
           "days",
-          "outboundTime"
+          "outboundTime",
+          "sharedRideConsent"
         ]
       },
       "SubscribeResult": {
@@ -5258,6 +6337,43 @@
           "isDefault"
         ]
       },
+      "ContractClausesView": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string"
+          },
+          "planId": {
+            "type": "string"
+          },
+          "titleAr": {
+            "type": "string"
+          },
+          "titleEn": {
+            "type": "string"
+          },
+          "clausesAr": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "clausesEn": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "version",
+          "planId",
+          "titleAr",
+          "titleEn",
+          "clausesAr",
+          "clausesEn"
+        ]
+      },
       "MemberView": {
         "type": "object",
         "properties": {
@@ -5273,13 +6389,22 @@
           "note": {
             "type": "string",
             "nullable": true
+          },
+          "gender": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "male",
+              "female"
+            ]
           }
         },
         "required": [
           "id",
           "name",
           "relation",
-          "note"
+          "note",
+          "gender"
         ]
       },
       "CreateMemberDto": {
@@ -5301,12 +6426,47 @@
           "note": {
             "type": "string",
             "example": "مدارس الأندلس، الصف الرابع"
+          },
+          "gender": {
+            "type": "string",
+            "enum": [
+              "male",
+              "female"
+            ]
           }
         },
         "required": [
           "name",
           "relation"
         ]
+      },
+      "ManualPaymentDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "cash",
+              "bank_transfer"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "description": "Transfer or receipt number"
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "CompleteTripDto": {
+        "type": "object",
+        "properties": {
+          "cabinChecked": {
+            "type": "boolean",
+            "description": "Education trips: the driver checked that no student is left in the vehicle"
+          }
+        }
       },
       "LocationPoint": {
         "type": "object",
@@ -5393,6 +6553,24 @@
         "required": [
           "stars"
         ]
+      },
+      "SosDto": {
+        "type": "object",
+        "properties": {
+          "tripId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
       },
       "TicketDto": {
         "type": "object",
@@ -5483,6 +6661,200 @@
         },
         "required": [
           "active"
+        ]
+      },
+      "LicenseView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "serviceClass": {
+            "type": "string",
+            "enum": [
+              "commute",
+              "education"
+            ]
+          },
+          "licenseNumber": {
+            "type": "string"
+          },
+          "unifiedCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "expiresAt": {
+            "type": "string"
+          },
+          "minPriceHalalas": {
+            "type": "number",
+            "nullable": true
+          },
+          "maxPriceHalalas": {
+            "type": "number",
+            "nullable": true
+          },
+          "pricingReference": {
+            "type": "string",
+            "nullable": true
+          },
+          "verifiedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Verified and not expired: the class may be sold"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "serviceClass",
+          "licenseNumber",
+          "unifiedCode",
+          "expiresAt",
+          "minPriceHalalas",
+          "maxPriceHalalas",
+          "pricingReference",
+          "verifiedAt",
+          "valid"
+        ]
+      },
+      "UpsertLicenseDto": {
+        "type": "object",
+        "properties": {
+          "licenseNumber": {
+            "type": "string",
+            "example": "1234567890",
+            "description": "Licence number issued by the Transport General Authority"
+          },
+          "unifiedCode": {
+            "type": "string",
+            "description": "The authority's unified code, shown to riders"
+          },
+          "expiresAt": {
+            "type": "string",
+            "example": "2028-11-30"
+          },
+          "minPriceHalalas": {
+            "type": "number",
+            "description": "Lowest approved monthly price, VAT included, halalas"
+          },
+          "maxPriceHalalas": {
+            "type": "number",
+            "description": "Highest approved monthly price, VAT included, halalas"
+          },
+          "pricingReference": {
+            "type": "string",
+            "description": "Reference of the approved pricing method"
+          }
+        },
+        "required": [
+          "licenseNumber",
+          "expiresAt"
+        ]
+      },
+      "JoinDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "rider",
+              "driver"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string",
+            "example": "0501234567"
+          },
+          "city": {
+            "type": "string",
+            "example": "الرياض"
+          },
+          "district": {
+            "type": "string"
+          },
+          "destination": {
+            "type": "string",
+            "description": "School or workplace"
+          },
+          "morningTime": {
+            "type": "string",
+            "example": "06:30"
+          },
+          "returnTime": {
+            "type": "string",
+            "example": "13:30"
+          },
+          "riders": {
+            "type": "number"
+          },
+          "car": {
+            "type": "string",
+            "description": "Drivers: car model and year"
+          },
+          "note": {
+            "type": "string"
+          },
+          "website": {
+            "type": "string",
+            "description": "Leave empty"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "phone",
+          "city"
+        ]
+      },
+      "TermsDto": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "example": "2026-10"
+          }
+        },
+        "required": [
+          "version"
+        ]
+      },
+      "InviteDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "0501234567"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "rider",
+              "driver",
+              "admin"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Platform admins only"
+          }
+        },
+        "required": [
+          "phone",
+          "audience"
         ]
       }
     }

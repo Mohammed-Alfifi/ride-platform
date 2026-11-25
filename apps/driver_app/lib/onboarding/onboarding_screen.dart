@@ -59,7 +59,7 @@ class OnboardingView extends ConsumerWidget {
               const SizedBox(height: 20),
               Text(t.stepDocuments, style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 8),
-              for (final type in documentTypes) _DocumentTile(type: type, document: o.document(type)),
+              for (final type in o.requiredTypes) _DocumentTile(type: type, document: o.document(type)),
               if (o.editable) ...[
                 const SizedBox(height: 24),
                 _SubmitButton(enabled: o.canSubmit),

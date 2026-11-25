@@ -19,6 +19,7 @@ class DriverTrip {
     required this.riderPhone,
     this.passengerName,
     this.arrivedAt,
+    this.serviceClass = 'commute',
   });
 
   factory DriverTrip.fromJson(Map<String, dynamic> j) {
@@ -34,6 +35,7 @@ class DriverTrip {
       riderPhone: rider['phone'] as String,
       passengerName: j['passengerName'] as String?,
       arrivedAt: j['arrivedAt'] == null ? null : DateTime.parse(j['arrivedAt'] as String),
+      serviceClass: j['serviceClass'] as String? ?? 'commute',
     );
   }
 
@@ -51,6 +53,10 @@ class DriverTrip {
 
   String get displayName => passengerName ?? riderName ?? riderPhone;
   final DateTime? arrivedAt;
+
+  /// commute | education. Education trips end only after the vehicle-empty check.
+  final String serviceClass;
+  bool get education => serviceClass == 'education';
 
   bool get active => status == 'en_route' || status == 'arrived' || status == 'on_board';
   bool get open => status == 'scheduled' || active;

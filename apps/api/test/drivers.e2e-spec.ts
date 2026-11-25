@@ -22,6 +22,7 @@ const DOC_TYPES = [
   'vehicle_registration',
   'vehicle_insurance',
   'periodic_inspection',
+  'criminal_record',
 ] as const;
 
 let idCounter = 100000;
@@ -191,8 +192,8 @@ describe('Drivers: onboarding, review and compliance (e2e)', () => {
       await upload(d, 'driving_license', FILES.png, daysFromToday(400)).expect(201);
       const all = await ctx.db.select().from(documents).where(eq(documents.driverId, d.userId));
       const current = all.filter((x) => x.supersededAt === null);
-      expect(all).toHaveLength(7);
-      expect(current).toHaveLength(6);
+      expect(all).toHaveLength(8);
+      expect(current).toHaveLength(DOC_TYPES.length);
 
       const ready = await onboarding(d).expect(200);
       expect(ready.body).toMatchObject({ missing: [], canSubmit: true });
@@ -266,7 +267,7 @@ describe('Drivers: onboarding, review and compliance (e2e)', () => {
       expect(mine.body.items[0].onboardingStatus).toBe('submitted');
       expect(mine.body.items.map((i: { id: string }) => i.id)).toContain(d.userId);
       const item = mine.body.items.find((i: { id: string }) => i.id === d.userId);
-      expect(item.pendingDocuments).toBe(6);
+      expect(item.pendingDocuments).toBe(DOC_TYPES.length);
       expect(item.vehicle).toContain('Toyota Camry');
 
       const theirs = await ctx.http().get('/v1/admin/drivers').set(bearer(admin2.accessToken)).expect(200);

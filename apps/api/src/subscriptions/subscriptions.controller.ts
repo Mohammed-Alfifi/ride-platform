@@ -40,6 +40,7 @@ import {
   QuoteView,
   SubscribeResult,
   SubscriptionView,
+  ContractClausesView,
 } from './subscriptions.dto';
 import { SubscriptionsService } from './subscriptions.service';
 
@@ -149,6 +150,13 @@ export class RiderController {
   @HttpCode(204)
   async removeCard(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<void> {
     await this.subs.removeCard(u.id, id);
+  }
+
+  @Get('plans/:id/contract')
+  @ApiOperation({ summary: 'Transport contract the guardian accepts before an education plan' })
+  @ApiOkResponse({ type: ContractClausesView })
+  contract(@Param('id', ParseUUIDPipe) id: string): Promise<ContractClausesView> {
+    return this.subs.contract(id);
   }
 
   @Get('family')
