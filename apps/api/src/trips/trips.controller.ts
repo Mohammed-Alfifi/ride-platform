@@ -23,6 +23,7 @@ import type { AuthUser } from '../auth/auth.types';
 import { CurrentUser, Roles } from '../auth/decorators';
 import { TripGenerator } from './trip.generator';
 import { BOARD_VIEWS, BoardView, LiveView, TripsService, TripView } from './trips.service';
+import { RunsService } from '../runs/runs.service';
 
 class DayQuery {
   @ApiPropertyOptional({ example: '2026-10-19', description: 'Riyadh calendar day; today when omitted' })
@@ -181,6 +182,7 @@ export class DispatchController {
   constructor(
     private readonly trips: TripsService,
     private readonly generator: TripGenerator,
+    private readonly runs: RunsService,
   ) {}
 
   @Get('dispatch')
@@ -209,8 +211,9 @@ export class DispatchController {
   @Post('trips/generate')
   @HttpCode(200)
   @Roles('super_admin')
-  @ApiOperation({ summary: 'Create today and tomorrow trips now (normally nightly at 00:10)' })
-  async generate(): Promise<{ created: number }> {
-    return { created: await this.generator.generate() };
+  @ApiOperation({ summary: 'Create today and tomorrow trips and plan their runs now (normally nightly at 00:10)' })
+  async generate(): Promise<{ created: number; runs: { planned: number; kept: number; removed: number } }> {
+    const created = await this.generator.generate();
+    return { created, runs: await this.runs.planUpcoming() };
   }
 }

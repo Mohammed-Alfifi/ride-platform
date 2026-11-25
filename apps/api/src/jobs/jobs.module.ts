@@ -7,6 +7,7 @@ import { DriversModule } from '../drivers/drivers.module';
 import { RenewalsService } from '../subscriptions/renewals.service';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { TripGenerator } from '../trips/trip.generator';
+import { RunsService } from '../runs/runs.service';
 import { TripWatch } from '../trips/trip.watch';
 import { MetricsService } from '../monitoring/metrics.service';
 import { TripsModule } from '../trips/trips.module';
@@ -43,6 +44,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
     private readonly compliance: ComplianceService,
     private readonly renewals: RenewalsService,
     private readonly tripGenerator: TripGenerator,
+    private readonly runs: RunsService,
     private readonly tripWatch: TripWatch,
     private readonly metrics: MetricsService,
   ) {}
@@ -82,7 +84,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
       async (job) =>
         this.metrics.track<unknown>(job.name, () => {
           if (job.name === 'renewals') return this.renewals.run();
-          if (job.name === 'trips') return this.tripGenerator.generate();
+          if (job.name === 'trips') return this.tripsAndRuns();
           if (job.name === 'watch') return this.tripWatch.run();
           if (job.name === 'purge') return this.tripWatch.purge();
           return this.compliance.scan();
@@ -92,7 +94,13 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
     this.worker.on('failed', (job, err) => this.logger.error(`Job ${job?.id} failed: ${err.message}`));
     this.logger.log('Daily jobs scheduled (Asia/Riyadh): trips 00:10, purge 03:30, renewals 05:00, compliance scan 06:00, trip watch every 2 min');
     // Catch up after downtime: make sure today's and tomorrow's trips exist.
-    await this.metrics.track('trips', () => this.tripGenerator.generate()).catch((err: Error) => this.logger.error(`Trip generation failed: ${err.message}`));
+    await this.metrics.track('trips', () => this.tripsAndRuns()).catch((err: Error) => this.logger.error(`Trip generation failed: ${err.message}`));
+  }
+
+  /** Trips for today and tomorrow, then every car's run planned over them. */
+  private async tripsAndRuns(): Promise<{ created: number; runs: unknown }> {
+    const created = await this.tripGenerator.generate();
+    return { created, runs: await this.runs.planUpcoming() };
   }
 
   async onApplicationShutdown(): Promise<void> {

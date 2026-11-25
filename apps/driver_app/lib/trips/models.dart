@@ -20,6 +20,8 @@ class DriverTrip {
     this.passengerName,
     this.arrivedAt,
     this.serviceClass = 'commute',
+    this.plannedPickupAt,
+    this.stopSeq,
   });
 
   factory DriverTrip.fromJson(Map<String, dynamic> j) {
@@ -36,6 +38,8 @@ class DriverTrip {
       passengerName: j['passengerName'] as String?,
       arrivedAt: j['arrivedAt'] == null ? null : DateTime.parse(j['arrivedAt'] as String),
       serviceClass: j['serviceClass'] as String? ?? 'commute',
+      plannedPickupAt: j['plannedPickupAt'] == null ? null : DateTime.parse(j['plannedPickupAt'] as String),
+      stopSeq: (j['stopSeq'] as num?)?.toInt(),
     );
   }
 
@@ -57,6 +61,13 @@ class DriverTrip {
   /// commute | education. Education trips end only after the vehicle-empty check.
   final String serviceClass;
   bool get education => serviceClass == 'education';
+
+  /// From the planned run: when to be at this pick-up, and its place among the run's stops.
+  final DateTime? plannedPickupAt;
+  final int? stopSeq;
+
+  /// The time to show and sort by: the run's plan when there is one, else the rider's chosen time.
+  DateTime get pickupTime => plannedPickupAt ?? scheduledAt;
 
   bool get active => status == 'en_route' || status == 'arrived' || status == 'on_board';
   bool get open => status == 'scheduled' || active;

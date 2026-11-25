@@ -97,6 +97,26 @@ services:
       - api
       - admin
 
+  # Optional road routing (docs/phase-7.md). Start with:  docker compose --profile routing up -d
+  # after preparing the map once with ./routing.sh. Then set OSRM_URL and VROOM_URL in server.env.
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v5.27.1
+    profiles: ['routing']
+    restart: unless-stopped
+    command: ['osrm-routed', '--algorithm', 'mld', '--max-table-size', '200', '/data/gcc-states-latest.osrm']
+    volumes:
+      - ./routing:/data:ro
+
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    profiles: ['routing']
+    restart: unless-stopped
+    # The API sends its own travel-time table, so VROOM needs no map of its own.
+    environment:
+      VROOM_ROUTER: osrm
+    depends_on:
+      - osrm
+
 volumes:
   db_data:
   redis_data:

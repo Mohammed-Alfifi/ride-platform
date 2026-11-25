@@ -315,6 +315,7 @@ class Trip {
     required this.serviceDate,
     required this.leg,
     required this.scheduledAt,
+    this.plannedPickupAt,
     required this.status,
     required this.pickup,
     required this.dropoff,
@@ -334,6 +335,7 @@ class Trip {
       serviceDate: j['serviceDate'] as String,
       leg: j['leg'] as String,
       scheduledAt: DateTime.parse(j['scheduledAt'] as String),
+      plannedPickupAt: j['plannedPickupAt'] == null ? null : DateTime.parse(j['plannedPickupAt'] as String),
       status: j['status'] as String,
       pickup: TripSpot.fromJson(j['pickup'] as Map<String, dynamic>),
       dropoff: TripSpot.fromJson(j['dropoff'] as Map<String, dynamic>),
@@ -351,6 +353,12 @@ class Trip {
   final String serviceDate;
   final String leg;
   final DateTime scheduledAt;
+
+  /// When the car is planned to reach the pick-up, once the night's run is planned.
+  final DateTime? plannedPickupAt;
+
+  /// The pick-up time to show: the planned one when known, else the time the rider chose.
+  DateTime get pickupTime => plannedPickupAt ?? scheduledAt;
   final String status; // scheduled | en_route | arrived | on_board | completed | no_show | skipped | cancelled
   final TripSpot pickup;
   final TripSpot dropoff;

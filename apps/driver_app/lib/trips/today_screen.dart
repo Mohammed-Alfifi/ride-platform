@@ -228,7 +228,7 @@ class _NextTripCard extends StatelessWidget {
                   ],
                 ),
               ),
-              _Clock(time: trip.scheduledAt),
+              _Clock(time: trip.pickupTime),
             ],
           ),
           const SizedBox(height: 16),
@@ -406,7 +406,7 @@ class _TripRow extends StatelessWidget {
       child: ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Text(
-          DateFormat.Hm('en').format(trip.scheduledAt.toLocal()),
+          DateFormat.Hm('en').format(trip.pickupTime.toLocal()),
           textDirection: TextDirection.ltr,
           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700, fontFeatures: [FontFeature.tabularFigures()]),
         ),

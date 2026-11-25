@@ -8,7 +8,12 @@ class TodayTrips extends AsyncNotifier<List<DriverTrip>> {
   ApiClient get _api => ref.read(apiClientProvider);
 
   @override
-  Future<List<DriverTrip>> build() async => (await _api.getList('/v1/driver/trips')).map(DriverTrip.fromJson).toList();
+  Future<List<DriverTrip>> build() async {
+    final trips = (await _api.getList('/v1/driver/trips')).map(DriverTrip.fromJson).toList();
+    // Drive in the planned order: the run's pick-up times (the rider's chosen time otherwise).
+    trips.sort((a, b) => a.pickupTime.compareTo(b.pickupTime));
+    return trips;
+  }
 
   Future<void> refresh() async => state = await AsyncValue.guard(build);
 

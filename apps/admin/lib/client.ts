@@ -356,3 +356,52 @@ export interface TripLive {
   distanceMeters: number | null;
   route: { lat: number; lng: number }[];
 }
+
+// ---------------------------------------------------------------- runs (phase 7)
+
+export interface RunStop {
+  seq: number;
+  kind: 'pickup' | 'dropoff';
+  tripId: string;
+  tripStatus: TripStatus;
+  place: string;
+  rider: string | null;
+  lat: number;
+  lng: number;
+  plannedAt: string;
+  offsetMinutes: number | null;
+}
+
+export interface RunView {
+  id: string;
+  driverId: string;
+  driverName: string | null;
+  serviceDate: string;
+  leg: 'outbound' | 'return';
+  status: 'planned' | 'in_progress' | 'completed' | 'cancelled';
+  plannedStartAt: string;
+  plannedEndAt: string;
+  driveMinutes: number;
+  lateMinutes: number;
+  optimizer: string;
+  routing: string;
+  riders: number;
+  stops: RunStop[];
+}
+
+export interface DriverSuggestion {
+  driverId: string;
+  name: string | null;
+  seats: number;
+  riders: number;
+  addedMinutes: number;
+  fitsWindows: boolean;
+}
+
+export interface Substitute {
+  driverId: string;
+  name: string | null;
+  phone: string;
+  etaMinutes: number | null;
+  locationAt: string | null;
+}

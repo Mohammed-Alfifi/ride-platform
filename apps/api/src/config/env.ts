@@ -107,6 +107,22 @@ export const envSchema = z
       .default(''),
     /** Bump when the guardian transport contract for education plans changes. */
     GUARDIAN_CONTRACT_VERSION: z.string().max(20).default('2026-11'),
+
+    // --- Runs and routing (phase 7) ---
+    /** Self-hosted OSRM (Saudi OpenStreetMap extract). Empty: straight-line estimates. */
+    OSRM_URL: z.string().url().optional().or(z.literal('')).default(''),
+    /** Self-hosted VROOM route optimizer. Empty: the built-in optimizer plans every run. */
+    VROOM_URL: z.string().url().optional().or(z.literal('')).default(''),
+    ROUTING_TIMEOUT_MS: z.coerce.number().int().min(200).max(30_000).default(4000),
+    /** A rider may be picked up this many minutes before the time they chose... */
+    RUN_PICKUP_EARLY_MINUTES: z.coerce.number().int().min(0).max(60).default(10),
+    /** ...and at the latest this many minutes after it. */
+    RUN_PICKUP_LATE_MINUTES: z.coerce.number().int().min(0).max(60).default(10),
+    /** Longest acceptable ride: this times the direct trip, plus RUN_MAX_RIDE_EXTRA_MINUTES. */
+    RUN_MAX_RIDE_FACTOR: z.coerce.number().min(1).max(5).default(1.6),
+    RUN_MAX_RIDE_EXTRA_MINUTES: z.coerce.number().int().min(0).max(120).default(10),
+    /** Time at each stop for getting in or out. */
+    RUN_STOP_SECONDS: z.coerce.number().int().min(0).max(600).default(60),
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
     /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),

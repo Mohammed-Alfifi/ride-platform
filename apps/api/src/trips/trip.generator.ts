@@ -12,8 +12,30 @@ import { trips } from '../database/schema';
 @Injectable()
 export class TripGenerator {
   private readonly logger = new Logger(TripGenerator.name);
+  private readonly listeners: ((driverIds: string[]) => Promise<unknown>)[] = [];
 
   constructor(@Inject(DB) private readonly db: Database) {}
+
+  /**
+   * Called with the drivers whose upcoming trips just changed (a rider joined, left, paused or
+   * moved). The run planner listens so each car's order is redone. Never throws to the caller.
+   */
+  onDriversChanged(fn: (driverIds: string[]) => Promise<unknown>): void {
+    this.listeners.push(fn);
+  }
+
+  async driversChanged(driverIds: (string | null | undefined)[]): Promise<void> {
+    const ids = [...new Set(driverIds.filter((d): d is string => Boolean(d)))];
+    if (ids.length === 0) return;
+    for (const fn of this.listeners) {
+      await fn(ids).catch((err: Error) => this.logger.error(`Re-planning runs failed: ${err.message}`));
+    }
+  }
+
+  private async driverOf(subscriptionId: string): Promise<string | null> {
+    const [row] = await this.db.execute<{ driver_id: string | null }>(sql`SELECT driver_id FROM subscriptions WHERE id = ${subscriptionId}`).then((r) => r.rows);
+    return row?.driver_id ?? null;
+  }
 
   async generate(opts: { from?: string; days?: number; subscriptionId?: string } = {}): Promise<number> {
     const from = opts.from ?? riyadhToday();
@@ -25,6 +47,8 @@ export class TripGenerator {
       created += await this.forDay(day, 'return', opts.subscriptionId);
     }
     if (created > 0) this.logger.log(`Created ${created} trips from ${from} (${days} days)`);
+    // One subscription's new trips change its driver's runs; the nightly run plans everyone after.
+    if (opts.subscriptionId && created > 0) await this.driversChanged([await this.driverOf(opts.subscriptionId)]);
     return created;
   }
 
@@ -66,7 +90,8 @@ export class TripGenerator {
           opts.until ? sql`${trips.serviceDate} <= ${opts.until}` : undefined,
         ),
       )
-      .returning({ id: trips.id });
+      .returning({ id: trips.id, driverId: trips.driverId });
+    if (rows.length > 0) await this.driversChanged(rows.map((r) => r.driverId));
     return rows.length;
   }
 
@@ -87,6 +112,10 @@ export class TripGenerator {
 
   /** New regular driver: every trip that has not started moves to them. */
   async reassignFuture(subscriptionId: string, driverId: string | null): Promise<void> {
+    const before = await this.db
+      .selectDistinct({ driverId: trips.driverId })
+      .from(trips)
+      .where(and(eq(trips.subscriptionId, subscriptionId), eq(trips.status, 'scheduled'), gte(trips.serviceDate, riyadhToday())));
     await this.db
       .update(trips)
       .set({ driverId })
@@ -97,5 +126,6 @@ export class TripGenerator {
           gte(trips.serviceDate, riyadhToday()),
         ),
       );
+    await this.driversChanged([...before.map((b) => b.driverId), driverId]);
   }
 }
