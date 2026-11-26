@@ -22,6 +22,8 @@ import {
   Gender,
 } from '../database/schema';
 import { LicensesService } from '../compliance/licenses.service';
+import { MeetingPointsService } from '../meeting-points/meeting-points.module';
+import { CancelPreviewView, WalletService } from '../wallet/wallet.module';
 import { rulesFor } from '../compliance/rules';
 import { ContractView, guardianContract } from '../compliance/contract';
 import { TripGenerator } from '../trips/trip.generator';
@@ -57,6 +59,8 @@ export class SubscriptionsService {
     private readonly tripGenerator: TripGenerator,
     private readonly promos: PromosService,
     private readonly licenses: LicensesService,
+    private readonly meetingPoints: MeetingPointsService,
+    private readonly wallet: WalletService,
   ) {}
 
   // ------------------------------------------------------------------ places
@@ -114,9 +118,18 @@ export class SubscriptionsService {
       WHERE z.id = ${plan.plan.zoneId} AND p.id = ${dto.pickupPlaceId} AND d.id = ${dto.dropoffPlaceId}`);
     const { inside, meters } = geo.rows[0];
     const distanceKm = Math.max(1, Math.ceil((Number(meters) / 1000) * ROAD_FACTOR));
-    const reason = !inside ? 'PLACE_OUTSIDE_ZONE' : distanceKm > plan.plan.maxDistanceKm ? 'PLAN_DISTANCE_EXCEEDED' : null;
+    // Meeting-point plans: the rider walks to the nearest point of the zone.
+    const meetingPoint = plan.plan.pickupMode === 'meeting_point' ? await this.meetingPoints.nearest(plan.plan.zoneId, dto.pickupPlaceId) : null;
+    const reason = !inside
+      ? 'PLACE_OUTSIDE_ZONE'
+      : distanceKm > plan.plan.maxDistanceKm
+        ? 'PLAN_DISTANCE_EXCEEDED'
+        : plan.plan.pickupMode === 'meeting_point' && !meetingPoint
+          ? 'NO_MEETING_POINT_NEARBY'
+          : null;
     const promo = dto.promoCode ? await this.promos.resolve(dto.promoCode, plan.plan.partnerId) : null;
     const discount = promo ? discountFor(promo, plan.plan.priceHalalas) : 0;
+    const wallet = await this.wallet.toUse(riderId, plan.plan.partnerId, plan.plan.priceHalalas - discount);
 
     return {
       planId: plan.plan.id,
@@ -130,7 +143,11 @@ export class SubscriptionsService {
       tripType: plan.plan.tripType,
       promoCode: promo?.code ?? null,
       discountHalalas: discount,
-      firstPaymentHalalas: plan.plan.priceHalalas - discount,
+      walletHalalas: wallet,
+      firstPaymentHalalas: plan.plan.priceHalalas - discount - wallet,
+      meetingPoint: meetingPoint ? { ...meetingPoint.point, walkMeters: meetingPoint.walkMeters } : null,
+      periodDays: plan.plan.periodDays,
+      renewable: plan.plan.renewable,
     };
   }
 
@@ -139,6 +156,7 @@ export class SubscriptionsService {
   async subscribe(riderId: string, dto: CreateSubscriptionDto): Promise<SubscribeResult> {
     const quote = await this.quote(riderId, dto);
     if (quote.reason === 'PLACE_OUTSIDE_ZONE') throw new AppError('PLACE_OUTSIDE_ZONE');
+    if (quote.reason === 'NO_MEETING_POINT_NEARBY') throw new AppError('NO_MEETING_POINT_NEARBY', { meters: this.env.MEETING_POINT_MAX_WALK_M });
     if (quote.reason === 'PLAN_DISTANCE_EXCEEDED') {
       throw new AppError('PLAN_DISTANCE_EXCEEDED', { distanceKm: quote.distanceKm, maxKm: quote.maxDistanceKm });
     }
@@ -164,6 +182,15 @@ export class SubscriptionsService {
 
     const plan = (await this.db.query.plans.findFirst({ where: eq(plans.id, dto.planId) }))!;
     if (dto.memberId) await this.ownMember(riderId, dto.memberId);
+    if (plan.oncePerRider) await this.assertFirstTrial(riderId, plan.id);
+    if (plan.periodDays && plan.periodDays < 7) {
+      // A short period must contain at least one of the chosen days, or nothing would run.
+      const first = addDays(riyadhToday(), 1);
+      const hit = Array.from({ length: plan.periodDays }, (_, i) => new Date(`${addDays(first, i)}T00:00:00Z`).getUTCDay()).some((d) =>
+        dto.days.includes(d),
+      );
+      if (!hit) throw new AppError('TRIAL_NO_SERVICE_DAY');
+    }
 
     // The regulation asks for the rider's prior consent before a trip is shared with others.
     if (dto.sharedRideConsent !== true) throw new AppError('SHARED_RIDE_CONSENT_REQUIRED');
@@ -191,7 +218,11 @@ export class SubscriptionsService {
         returnTime: quote.tripType === 'round_trip' ? (dto.returnTime as string) : null,
         distanceKm: quote.distanceKm,
         priceHalalas: plan.priceHalalas,
-        autoRenew: dto.saveCard !== false,
+        // A one-period plan (a trial) ends by itself at the end of its period.
+        autoRenew: plan.renewable && dto.saveCard !== false,
+        cancelAtPeriodEnd: !plan.renewable,
+        periodDays: plan.periodDays,
+        meetingPointId: quote.meetingPoint?.id ?? null,
         memberId: dto.memberId ?? null,
         promoCodeId: promo?.id ?? null,
         discountHalalas: quote.discountHalalas,
@@ -333,8 +364,35 @@ export class SubscriptionsService {
     return this.view(riderId, id);
   }
 
-  async cancel(riderId: string, id: string): Promise<SubscriptionView> {
+  /** What each way of cancelling gives, shown to the rider before they choose. */
+  async cancelPreview(riderId: string, id: string): Promise<CancelPreviewView> {
     const sub = await this.own(riderId, id);
+    const refund = this.wallet.refundFor(sub);
+    return {
+      lastServiceDay: sub.status === 'active' ? sub.currentPeriodEnd : null,
+      remainingTrips: refund.remainingTrips,
+      creditHalalas: refund.creditHalalas,
+      canCancelNow: sub.status === 'active' && refund.remainingTrips > 0,
+    };
+  }
+
+  /**
+   * period_end (default): stop renewing; service runs to the end of the paid period.
+   * now: stop today; the trips left in the paid period come back as wallet credit.
+   */
+  async cancel(riderId: string, id: string, mode: 'period_end' | 'now' = 'period_end'): Promise<SubscriptionView> {
+    const sub = await this.own(riderId, id);
+    if (mode === 'now' && sub.status === 'active') {
+      const refund = this.wallet.refundFor(sub);
+      const today = riyadhToday();
+      await this.db
+        .update(subscriptions)
+        .set({ status: 'cancelled', autoRenew: false, cancelAtPeriodEnd: false, currentPeriodEnd: today })
+        .where(eq(subscriptions.id, sub.id));
+      await this.tripGenerator.cancelFuture(sub.id, { from: addDays(today, 1), reason: 'subscription cancelled' });
+      await this.wallet.creditRefund(sub, refund.creditHalalas);
+      return this.view(riderId, id);
+    }
     if (sub.status === 'pending_payment') {
       await this.db.update(subscriptions).set({ status: 'cancelled' }).where(eq(subscriptions.id, sub.id));
     } else if (sub.status === 'active' || sub.status === 'past_due') {
@@ -423,6 +481,16 @@ export class SubscriptionsService {
     const partner = (await this.db.query.partners.findFirst({ where: eq(partners.id, plan.partnerId) }))!;
     const licence = await this.licenses.find(plan.partnerId, plan.serviceClass);
     return guardianContract(this.env.GUARDIAN_CONTRACT_VERSION, plan, partner, licence);
+  }
+
+  /** A trial plan is for a first try only: once per rider and partner, whatever its status since. */
+  private async assertFirstTrial(riderId: string, planId: string): Promise<void> {
+    const [row] = await this.db.execute<{ n: number }>(sql`
+      SELECT count(*)::int AS n FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+      WHERE s.rider_id = ${riderId} AND p.once_per_rider
+        AND p.partner_id = (SELECT partner_id FROM plans WHERE id = ${planId})
+        AND EXISTS (SELECT 1 FROM payments x WHERE x.subscription_id = s.id AND x.status = 'paid')`).then((r) => r.rows);
+    if ((row?.n ?? 0) > 0) throw new AppError('TRIAL_ALREADY_USED');
   }
 
   /** Who rides, as a gender: what the rider just told us (saved), or what we already know. */

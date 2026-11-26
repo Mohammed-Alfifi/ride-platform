@@ -261,4 +261,27 @@ class RiderStrings {
   }
 
   String daysList(List<int> days) => days.map((d) => weekDays[d]).join(ar ? '، ' : ', ');
+
+  // Meeting points, short plans and the wallet.
+  String meetAt(String name, int meters) => _s('نلتقي بك عند $name، على بعد $meters م مشيًا من بيتك', 'We meet you at $name, a $meters m walk from home');
+  String get noMeetingPointNearby => _s('لا توجد نقطة التقاء قريبة من موقعك لهذه الباقة.', 'There is no meeting point near you for this plan.');
+  String periodFor(int days) => _s('مدة الباقة $days أيام', 'This plan lasts $days days');
+  String get oneTime => _s('لا تتجدد تلقائيًا', 'Does not renew');
+  String walletUsed(String amount) => _s('خصم $amount ر.س من رصيد محفظتك', '$amount SAR taken off with your wallet credit');
+  String get wallet => _s('المحفظة', 'Wallet');
+  String walletBalance(String amount) => _s('رصيدك $amount ر.س', 'Your balance: $amount SAR');
+  String get walletHint => _s('يُخصم الرصيد تلقائيًا من دفعتك القادمة.', 'Credit is taken off your next payment automatically.');
+  String get walletEmpty => _s('لا توجد حركات بعد.', 'No activity yet.');
+  String walletKind(String kind) => switch (kind) {
+        'compensation' => _s('تعويض عن رحلة متأخرة أو فائتة', 'Credit for a late or missed trip'),
+        'refund' => _s('رصيد عن الرحلات المتبقية', 'Credit for the trips left'),
+        'redeem' => _s('خصم من دفعة', 'Used on a payment'),
+        _ => _s('تعديل من فريق الخدمة', 'Adjustment by the service team'),
+      };
+  String get cancelTitle => _s('إيقاف الاشتراك', 'Stop the subscription');
+  String cancelAtEnd(String day) => _s('حتى نهاية الفترة: تستمر رحلاتك حتى $day ثم يتوقف.', 'At period end: your trips run until $day, then it stops.');
+  String cancelNowText(int trips, String amount) =>
+      _s('الآن: نلغي $trips رحلة متبقية ونضيف $amount ر.س إلى محفظتك.', 'Now: we cancel the $trips trips left and add $amount SAR to your wallet.');
+  String get cancelAtEndButton => _s('عند نهاية الفترة', 'At period end');
+  String get cancelNowButton => _s('الآن مع رصيد', 'Now, for credit');
 }

@@ -21,6 +21,7 @@ class BillingScreen extends ConsumerWidget {
     final t = RiderStrings.of(context);
     final invoices = ref.watch(invoicesProvider);
     final cards = ref.watch(cardsProvider);
+    final wallet = ref.watch(walletProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -29,10 +30,41 @@ class BillingScreen extends ConsumerWidget {
         onRefresh: () async {
           ref.invalidate(invoicesProvider);
           ref.invalidate(cardsProvider);
+          ref.invalidate(walletProvider);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
           children: [
+            Text(t.wallet, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            ...wallet.when(
+              loading: () => [const LinearProgressIndicator()],
+              error: (e, _) => [Text(describeError(context, e))],
+              data: (w) => [
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.account_balance_wallet_outlined),
+                    title: Text(t.walletBalance(t.sar(w.balanceHalalas))),
+                    subtitle: Text(t.walletHint),
+                  ),
+                ),
+                if (w.entries.isEmpty)
+                  Padding(padding: const EdgeInsets.all(8), child: Text(t.walletEmpty, style: theme.textTheme.bodySmall))
+                else
+                  for (final e in w.entries.take(10))
+                    ListTile(
+                      dense: true,
+                      title: Text(t.walletKind(e.kind)),
+                      subtitle: e.note(t.ar) == null ? null : Text(e.note(t.ar)!),
+                      trailing: Text(
+                        '${e.amountHalalas > 0 ? '+' : '−'}${t.sar(e.amountHalalas.abs())}',
+                        textDirection: TextDirection.ltr,
+                        style: TextStyle(fontWeight: FontWeight.w600, color: e.amountHalalas > 0 ? Brand.route : null),
+                      ),
+                    ),
+              ],
+            ),
+            const SizedBox(height: 16),
             Text(t.cards, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             ...cards.when(

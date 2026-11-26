@@ -6,6 +6,7 @@ import { AppError } from '../common/errors';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
 import { LicensesService } from '../compliance/licenses.service';
+import { MeetingPointsService } from '../meeting-points/meeting-points.module';
 import { partners, Plan, plans, ServiceClass, zones } from '../database/schema';
 import {
   CoverageView,
@@ -29,6 +30,7 @@ export class ZonesService {
     @Inject(DB) private readonly db: Database,
     private readonly audit: AuditService,
     private readonly licenses: LicensesService,
+    private readonly meetingPoints: MeetingPointsService,
   ) {}
 
   // ------------------------------------------------------------------ zones
@@ -131,6 +133,7 @@ export class ZonesService {
     assertPartnerAccess(actor, zone.partnerId);
     const serviceClass = dto.serviceClass ?? 'commute';
     this.assertPlanRules(serviceClass, dto.requiresEscort ?? false);
+    await this.assertMeetingPoints(zone.id, dto.pickupMode ?? 'door');
     await this.licenses.assertCanSell(zone.partnerId, serviceClass, dto.priceHalalas);
     const [row] = await this.db
       .insert(plans)
@@ -152,6 +155,7 @@ export class ZonesService {
     const sent = Object.fromEntries(Object.entries(dto).filter(([, v]) => v !== undefined)) as UpdatePlanDto;
     const next = { ...before, ...sent };
     this.assertPlanRules(next.serviceClass, next.requiresEscort);
+    if (next.active) await this.assertMeetingPoints(next.zoneId, next.pickupMode);
     // Turning a plan off is always allowed; anything that leaves it on sale is checked.
     if (next.active) await this.licenses.assertCanSell(before.partnerId, next.serviceClass, next.priceHalalas);
     const [row] = await this.db.update(plans).set(dto).where(eq(plans.id, id)).returning();
@@ -160,6 +164,13 @@ export class ZonesService {
   }
 
   // ------------------------------------------------------------------ helpers
+
+  /** A meeting-point plan needs somewhere to meet before it is offered. */
+  private async assertMeetingPoints(zoneId: string, mode: 'door' | 'meeting_point'): Promise<void> {
+    if (mode === 'meeting_point' && (await this.meetingPoints.countActive(zoneId)) === 0) {
+      throw new AppError('PLAN_RULES_INVALID', {}, ['add a meeting point to this zone first']);
+    }
+  }
 
   /** An escort is an education transport rule; asking it of a commute plan is a mistake. */
   private assertPlanRules(serviceClass: ServiceClass, requiresEscort: boolean): void {
@@ -268,6 +279,10 @@ export function presentPlan(p: Plan): PlanView {
     serviceClass: p.serviceClass,
     womenOnly: p.womenOnly,
     requiresEscort: p.requiresEscort,
+    pickupMode: p.pickupMode,
+    periodDays: p.periodDays,
+    renewable: p.renewable,
+    oncePerRider: p.oncePerRider,
     active: p.active,
   };
 }

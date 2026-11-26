@@ -215,7 +215,28 @@ export interface PlanView {
   serviceClass: ServiceClass;
   womenOnly: boolean;
   requiresEscort: boolean;
+  pickupMode: 'door' | 'meeting_point';
+  periodDays: number | null;
+  renewable: boolean;
+  oncePerRider: boolean;
   active: boolean;
+}
+
+export interface MeetingPointView {
+  id: string;
+  zoneId: string;
+  nameAr: string;
+  nameEn: string;
+  lat: number;
+  lng: number;
+  active: boolean;
+}
+
+export type WalletKind = 'compensation' | 'refund' | 'redeem' | 'adjustment';
+
+export interface WalletView {
+  balances: { partnerId: string; partnerNameAr: string; partnerNameEn: string; balanceHalalas: number }[];
+  entries: { id: string; partnerId: string; kind: WalletKind; amountHalalas: number; noteAr: string; noteEn: string; tripId: string | null; createdAt: string }[];
 }
 
 export interface ExpiringItem {
@@ -234,6 +255,7 @@ export type SubscriptionStatus = 'pending_payment' | 'active' | 'past_due' | 'pa
 export interface AdminSubscription {
   id: string;
   status: SubscriptionStatus;
+  riderId: string;
   riderName: string | null;
   riderPhone: string;
   planNameAr: string;

@@ -81,8 +81,8 @@ export class QuoteDto {
 export class QuoteView {
   @ApiProperty() planId!: string;
   @ApiProperty() eligible!: boolean;
-  @ApiProperty({ nullable: true, type: String, enum: ['PLACE_OUTSIDE_ZONE', 'PLAN_DISTANCE_EXCEEDED'] })
-  reason!: 'PLACE_OUTSIDE_ZONE' | 'PLAN_DISTANCE_EXCEEDED' | null;
+  @ApiProperty({ nullable: true, type: String, enum: ['PLACE_OUTSIDE_ZONE', 'PLAN_DISTANCE_EXCEEDED', 'NO_MEETING_POINT_NEARBY'] })
+  reason!: 'PLACE_OUTSIDE_ZONE' | 'PLAN_DISTANCE_EXCEEDED' | 'NO_MEETING_POINT_NEARBY' | null;
   @ApiProperty({ description: 'Estimated road distance (straight line x 1.3), km' }) distanceKm!: number;
   @ApiProperty() maxDistanceKm!: number;
   @ApiProperty({ description: 'Monthly, VAT included' }) priceHalalas!: number;
@@ -91,7 +91,19 @@ export class QuoteView {
   @ApiProperty({ enum: ['round_trip', 'one_way'] }) tripType!: string;
   @ApiProperty({ nullable: true, type: String }) promoCode!: string | null;
   @ApiProperty({ description: 'Taken off the first month' }) discountHalalas!: number;
+  @ApiProperty({ description: "Wallet credit with this partner taken off the first payment" }) walletHalalas!: number;
   @ApiProperty() firstPaymentHalalas!: number;
+  @ApiProperty({ nullable: true, type: Object, description: 'Meeting-point plans: where to meet and how far to walk' })
+  meetingPoint!: { id: string; nameAr: string; nameEn: string; lat: number; lng: number; walkMeters: number } | null;
+  @ApiProperty({ nullable: true, type: Number, description: 'Days per period; null = a calendar month' }) periodDays!: number | null;
+  @ApiProperty({ description: 'false: one period only (a trial)' }) renewable!: boolean;
+}
+
+export class CancelDto {
+  @ApiPropertyOptional({ enum: ['period_end', 'now'], default: 'period_end', description: 'now: stop today, credit the trips left to the wallet' })
+  @IsOptional()
+  @IsIn(['period_end', 'now'])
+  mode?: 'period_end' | 'now';
 }
 
 export class CreateSubscriptionDto extends QuoteDto {

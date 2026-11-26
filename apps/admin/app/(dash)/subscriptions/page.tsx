@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ApiError, DriverPage } from '@/lib/client';
 import { useApp } from '@/components/Providers';
 import { FormDialog, LoadState, useLoad } from '@/components/ui';
+import RiderWallet from '@/components/RiderWallet';
 import { DriverSuggestions } from '@/components/Suggestions';
 import { AdminSubscription, api, Page, SubscriptionStatus } from '@/lib/client';
 import { formatDay, formatSar, formatSaudiPhone } from '@/lib/format';
@@ -24,6 +25,7 @@ export default function SubscriptionsPage() {
   const { t, lang, notify, profile } = useApp();
   const [paying, setPaying] = useState<AdminSubscription | null>(null);
   const canRecord = profile?.role !== 'dispatcher';
+  const [walletFor, setWalletFor] = useState<AdminSubscription | null>(null);
   const [tab, setTab] = useState<SubscriptionStatus | 'all'>('active');
   const [page, setPage] = useState(1);
   const list = useLoad(() => {
@@ -166,6 +168,9 @@ export default function SubscriptionsPage() {
                               {t.subscriptions.recordPayment}
                             </button>
                           )}
+                          <button type="button" className="btn btn-sm btn-quiet" onClick={() => setWalletFor(s)}>
+                            {t.wallet.open}
+                          </button>
                         </td>
                       )}
                     </tr>
@@ -189,6 +194,10 @@ export default function SubscriptionsPage() {
           </div>
         )}
       </section>
+      <RiderWallet
+        rider={walletFor && { id: walletFor.riderId, name: walletFor.riderName ?? formatSaudiPhone(walletFor.riderPhone), partnerId: walletFor.partnerId }}
+        onClose={() => setWalletFor(null)}
+      />
       <FormDialog
         open={paying !== null}
         title={t.subscriptions.recordTitle}

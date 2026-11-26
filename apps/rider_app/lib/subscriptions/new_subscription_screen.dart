@@ -343,9 +343,15 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
                 ),
             if (_loadingQuote) const _Loading(),
             if (_quote != null && !_quote!.eligible)
-              _Notice(_quote!.reason == 'PLAN_DISTANCE_EXCEEDED'
-                  ? t.distanceTooFar(_quote!.distanceKm, _quote!.maxDistanceKm)
-                  : t.outsideZone),
+              _Notice(switch (_quote!.reason) {
+                'PLAN_DISTANCE_EXCEEDED' => t.distanceTooFar(_quote!.distanceKm, _quote!.maxDistanceKm),
+                'NO_MEETING_POINT_NEARBY' => t.noMeetingPointNearby,
+                _ => t.outsideZone,
+              }),
+            if (_quote?.eligible == true && _quote!.meetingPoint != null)
+              _Notice(t.meetAt(_quote!.meetingPoint!.name(t.ar), _quote!.meetingPoint!.walkMeters)),
+            if (_quote?.eligible == true && _quote!.periodDays != null)
+              _Notice(_quote!.renewable ? t.periodFor(_quote!.periodDays!) : '${t.periodFor(_quote!.periodDays!)} · ${t.oneTime}'),
           ],
           if (routeDone && _plan != null && _quote?.eligible == true) ...[
             _SectionTitle(t.stepSchedule),
@@ -428,6 +434,14 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
                   ),
                 ]),
               ),
+            if (_quote!.walletHalalas > 0) ...[
+              const SizedBox(height: 8),
+              Row(children: [
+                const Icon(Icons.account_balance_wallet_outlined, color: Brand.sunDeep),
+                const SizedBox(width: 10),
+                Expanded(child: Text(t.walletUsed(t.sar(_quote!.walletHalalas)))),
+              ]),
+            ],
             const SizedBox(height: 12),
             if (!manual)
               SwitchListTile(

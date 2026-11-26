@@ -5,6 +5,7 @@ import { useApp } from '@/components/Providers';
 import { FormDialog, LoadState, StatusBadge, useLoad } from '@/components/ui';
 import { api, ApiError, PlanView, ZoneView } from '@/lib/client';
 import { formatSar } from '@/lib/format';
+import { fill } from '@/lib/i18n';
 
 export default function PlansPage() {
   const { t, lang, profile, notify } = useApp();
@@ -33,6 +34,10 @@ export default function PlansPage() {
         serviceClass: text('serviceClass') || 'commute',
         womenOnly: form.get('womenOnly') === 'on',
         requiresEscort: text('serviceClass') === 'education' && form.get('requiresEscort') === 'on',
+        pickupMode: text('pickupMode') || 'door',
+        periodDays: text('periodDays') ? Number(text('periodDays')) : null,
+        renewable: form.get('renewable') === 'on',
+        oncePerRider: form.get('oncePerRider') === 'on',
       },
     });
     setAdding(false);
@@ -91,12 +96,14 @@ export default function PlansPage() {
                       {t.plans[p.serviceClass]}
                       {p.womenOnly && <span className="badge badge-muted plan-tag">{t.plans.womenOnly}</span>}
                       {p.requiresEscort && <span className="badge badge-muted plan-tag">{t.plans.requiresEscort}</span>}
+                      {p.pickupMode === 'meeting_point' && <span className="badge badge-muted plan-tag">{t.plans.meeting_point}</span>}
+                      {p.oncePerRider && <span className="badge badge-muted plan-tag">{t.plans.trial}</span>}
                     </td>
                     <td>{t.plans[p.tripType]}</td>
                     <td className="tabnum">{p.daysPerWeek}</td>
                     <td className="tabnum">{p.maxDistanceKm}</td>
                     <td className="tabnum">
-                      {formatSar(p.priceHalalas, lang)} {t.plans.perMonth}
+                      {formatSar(p.priceHalalas, lang)} {p.periodDays ? `/ ${fill(t.plans.daysN, { n: p.periodDays })}` : t.plans.perMonth}
                     </td>
                     <td>
                       <StatusBadge status={p.active ? 'active' : 'suspended'} />
@@ -173,6 +180,33 @@ export default function PlansPage() {
             <input id="maxDistanceKm" name="maxDistanceKm" className="input num" type="number" min={1} max={200} defaultValue={15} required />
           </div>
         </div>
+        <div className="row">
+          <div className="field">
+            <label htmlFor="pickupMode">{t.plans.pickupMode}</label>
+            <select id="pickupMode" name="pickupMode" className="select" defaultValue="door" aria-describedby="pickup-hint">
+              <option value="door">{t.plans.door}</option>
+              <option value="meeting_point">{t.plans.meeting_point}</option>
+            </select>
+            <span className="hint" id="pickup-hint">
+              {t.plans.pickupHint}
+            </span>
+          </div>
+          <div className="field">
+            <label htmlFor="periodDays">
+              {t.plans.periodDays} ({t.common.optional})
+            </label>
+            <input id="periodDays" name="periodDays" className="input num" type="number" min={1} max={28} aria-describedby="period-hint" />
+            <span className="hint" id="period-hint">
+              {t.plans.periodHint}
+            </span>
+          </div>
+        </div>
+        <label className="check">
+          <input type="checkbox" name="renewable" defaultChecked /> {t.plans.renewable}
+        </label>
+        <label className="check">
+          <input type="checkbox" name="oncePerRider" /> {t.plans.oncePerRider}
+        </label>
         <label className="check">
           <input type="checkbox" name="womenOnly" /> {t.plans.womenOnly}
         </label>

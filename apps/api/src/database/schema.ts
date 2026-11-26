@@ -14,6 +14,7 @@ import {
   uniqueIndex,
   uuid,
   varchar,
+  type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 
 /**
@@ -49,6 +50,8 @@ export const localeEnum = pgEnum('user_locale', ['ar', 'en']);
  * - commute: adults to work, private cars of Saudi drivers (ride-hailing mediation regulation).
  * - education: students and staff of schools and universities (education transport regulation).
  */
+export const pickupModeEnum = pgEnum('pickup_mode', ['door', 'meeting_point']);
+
 export const SERVICE_CLASSES = ['commute', 'education'] as const;
 export type ServiceClass = (typeof SERVICE_CLASSES)[number];
 export const serviceClassEnum = pgEnum('service_class', SERVICE_CLASSES);
@@ -363,6 +366,14 @@ export const plans = pgTable(
     womenOnly: boolean('women_only').notNull().default(false),
     /** Young students: an adult escort must be on board. */
     requiresEscort: boolean('requires_escort').notNull().default(false),
+    /** door: picked up at home; meeting_point: at the nearest meeting point, for a lower price. */
+    pickupMode: pickupModeEnum('pickup_mode').notNull().default('door'),
+    /** Length of one paid period in days; null = a calendar month. 7 = weekly pass. */
+    periodDays: integer('period_days'),
+    /** false: one period only, no renewal (a trial). */
+    renewable: boolean('renewable').notNull().default(true),
+    /** A rider may buy this plan once per partner (trials). */
+    oncePerRider: boolean('once_per_rider').notNull().default(false),
     active: boolean('active').notNull().default(true),
     ...timestamps,
   },
@@ -511,6 +522,10 @@ export const subscriptions = pgTable(
     /** Education plans: the transport contract the guardian accepted, by version. */
     contractVersion: varchar('contract_version', { length: 20 }),
     contractAcceptedAt: timestamp('contract_accepted_at', { withTimezone: true }),
+    /** Meeting-point plans: where this rider gets in (outbound) and out (return). */
+    meetingPointId: uuid('meeting_point_id').references((): AnyPgColumn => meetingPoints.id, { onDelete: 'set null' }),
+    /** Copied from the plan: days per paid period (null = calendar month). */
+    periodDays: integer('period_days'),
     ...timestamps,
   },
   (t) => [
@@ -541,6 +556,8 @@ export const payments = pgTable(
     amountHalalas: integer('amount_halalas').notNull(),
     /** The platform's commission and the partner's share, fixed when the payment is created. */
     discountHalalas: integer('discount_halalas').notNull().default(0),
+    /** Part of discountHalalas paid from the rider's wallet credit with this partner. */
+    walletHalalas: integer('wallet_halalas').notNull().default(0),
     platformFeeHalalas: integer('platform_fee_halalas').notNull(),
     partnerShareHalalas: integer('partner_share_halalas').notNull(),
     status: paymentStatusEnum('status').notNull().default('initiated'),
@@ -1018,3 +1035,70 @@ export const runStops = pgTable(
 
 export type Run = typeof runs.$inferSelect;
 export type RunStop = typeof runStops.$inferSelect;
+
+// ---------------------------------------------------------------- phase 8: meeting points and wallet
+
+/**
+ * A spot where riders of meeting-point plans gather (a mosque car park, a metro station). The car
+ * stops once for everyone there, so these plans cost less than door-to-door.
+ */
+export const meetingPoints = pgTable(
+  'meeting_points',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    zoneId: uuid('zone_id')
+      .notNull()
+      .references(() => zones.id, { onDelete: 'cascade' }),
+    nameAr: varchar('name_ar', { length: 120 }).notNull(),
+    nameEn: varchar('name_en', { length: 120 }).notNull(),
+    location: point('location').notNull(),
+    active: boolean('active').notNull().default(true),
+    ...timestamps,
+  },
+  (t) => [index('meeting_points_zone_idx').on(t.zoneId), index('meeting_points_location_gix').using('gist', t.location)],
+);
+
+export const WALLET_KINDS = ['compensation', 'refund', 'redeem', 'adjustment'] as const;
+export type WalletKind = (typeof WALLET_KINDS)[number];
+export const walletKindEnum = pgEnum('wallet_kind', WALLET_KINDS);
+
+/**
+ * The rider's credit with one partner, as a ledger: compensation for a missed or late trip,
+ * unused days when cancelling now, adjustments by the team (+), and use at payment (-).
+ * Credit cannot be withdrawn as cash; it lowers the rider's next payments to that partner.
+ */
+export const walletEntries = pgTable(
+  'wallet_entries',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    riderId: uuid('rider_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    kind: walletKindEnum('kind').notNull(),
+    /** Halalas: positive adds credit, negative uses it. */
+    amountHalalas: integer('amount_halalas').notNull(),
+    tripId: uuid('trip_id').references(() => trips.id, { onDelete: 'set null' }),
+    subscriptionId: uuid('subscription_id').references(() => subscriptions.id, { onDelete: 'set null' }),
+    paymentId: uuid('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+    noteAr: varchar('note_ar', { length: 200 }).notNull(),
+    noteEn: varchar('note_en', { length: 200 }).notNull(),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('wallet_entries_rider_idx').on(t.riderId, t.partnerId),
+    // One compensation per trip, one use per payment: jobs and retries can run twice safely.
+    uniqueIndex('wallet_entries_trip_uq').on(t.tripId, t.kind),
+    uniqueIndex('wallet_entries_payment_uq').on(t.paymentId, t.kind),
+    check('wallet_entries_amount_ck', sql`${t.amountHalalas} <> 0`),
+  ],
+);
+
+export type MeetingPoint = typeof meetingPoints.$inferSelect;
+export type WalletEntry = typeof walletEntries.$inferSelect;

@@ -23,6 +23,7 @@ import {
 import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutResult, PAYMENT_GATEWAY, PaymentGateway, SavedCard } from './gateway';
 import { InvoicesService } from './invoices.service';
+import { WalletService } from '../wallet/wallet.module';
 import { TripGenerator } from '../trips/trip.generator';
 import { PromosService } from '../services/promos.service';
 
@@ -57,6 +58,7 @@ export class BillingService {
     private readonly tripGenerator: TripGenerator,
     private readonly promos: PromosService,
     private readonly audit: AuditService,
+    private readonly wallet: WalletService,
   ) {}
 
   get manual(): boolean {
@@ -238,7 +240,8 @@ export class BillingService {
     const sub = (await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, paid.subscriptionId) })) as Subscription;
     const cardId = savedCard ? await this.saveCard(paid.riderId, savedCard) : null;
     await this.applyPaidPeriod(sub, paid, cardId);
-    if (paid.discountHalalas > 0 && sub.promoCodeId) await this.promos.markUsed(sub.promoCodeId);
+    await this.wallet.redeem(paid);
+    if (paid.discountHalalas - paid.walletHalalas > 0 && sub.promoCodeId) await this.promos.markUsed(sub.promoCodeId);
     // Trips for the paid days that fall within the next two days, without waiting for the nightly run.
     await this.tripGenerator.generate({ subscriptionId: sub.id });
     await this.invoices.issue(paid, await this.description(sub));
@@ -291,7 +294,8 @@ export class BillingService {
 
   private async applyPaidPeriod(sub: Subscription, payment: PaymentRow, cardId: string | null): Promise<void> {
     const start = payment.periodStart ?? addDays(riyadhToday(), 1);
-    const end = monthlyPeriodEnd(start);
+    // A calendar month, or the plan's own length (a weekly pass, a trial).
+    const end = sub.periodDays ? addDays(start, sub.periodDays - 1) : monthlyPeriodEnd(start);
     // A late payment for a period already covered must not shorten the subscription.
     if (sub.currentPeriodEnd && sub.currentPeriodEnd >= end) return;
     await this.db
@@ -342,7 +346,10 @@ export class BillingService {
   ): Promise<PaymentRow> {
     const partner = await this.db.query.partners.findFirst({ where: eq(partners.id, sub.partnerId) });
     // A discount code applies to the first payment only.
-    const discount = purpose === 'start' ? sub.discountHalalas : 0;
+    const promo = purpose === 'start' ? sub.discountHalalas : 0;
+    // The rider's credit with this partner comes off what is left, keeping the gateway minimum.
+    const wallet = await this.wallet.toUse(sub.riderId, sub.partnerId, sub.priceHalalas - promo);
+    const discount = promo + wallet;
     const amount = sub.priceHalalas - discount;
     const fee = Math.round((amount * (partner?.commissionBps ?? 0)) / 10_000);
     const [row] = await this.db
@@ -355,6 +362,7 @@ export class BillingService {
         provider,
         amountHalalas: amount,
         discountHalalas: discount,
+        walletHalalas: wallet,
         platformFeeHalalas: fee,
         partnerShareHalalas: amount - fee,
         periodStart,

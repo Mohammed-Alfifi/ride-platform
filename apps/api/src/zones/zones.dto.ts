@@ -147,6 +147,27 @@ export class CreatePlanDto {
   @IsOptional()
   @IsBoolean()
   requiresEscort?: boolean;
+  @ApiPropertyOptional({ enum: ['door', 'meeting_point'], default: 'door', description: 'meeting_point: riders gather at the nearest meeting point' })
+  @IsOptional()
+  @IsIn(['door', 'meeting_point'])
+  pickupMode?: 'door' | 'meeting_point';
+
+  @ApiPropertyOptional({ nullable: true, type: Number, description: 'Days per paid period (7 = weekly pass); empty = a calendar month' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(28)
+  periodDays?: number | null;
+
+  @ApiPropertyOptional({ default: true, description: 'false: one period only (a trial)' })
+  @IsOptional()
+  @IsBoolean()
+  renewable?: boolean;
+
+  @ApiPropertyOptional({ default: false, description: 'Each rider may buy it once (trials)' })
+  @IsOptional()
+  @IsBoolean()
+  oncePerRider?: boolean;
 }
 
 export class UpdatePlanDto extends PartialType(OmitType(CreatePlanDto, ['zoneId'] as const)) {
@@ -169,6 +190,10 @@ export class PlanView {
   @ApiProperty({ enum: SERVICE_CLASSES }) serviceClass!: ServiceClass;
   @ApiProperty() womenOnly!: boolean;
   @ApiProperty() requiresEscort!: boolean;
+  @ApiProperty({ enum: ['door', 'meeting_point'] }) pickupMode!: 'door' | 'meeting_point';
+  @ApiProperty({ nullable: true, type: Number }) periodDays!: number | null;
+  @ApiProperty() renewable!: boolean;
+  @ApiProperty() oncePerRider!: boolean;
   @ApiProperty() active!: boolean;
 }
 

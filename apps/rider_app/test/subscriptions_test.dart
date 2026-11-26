@@ -56,6 +56,40 @@ void main() {
     expect(c.plans.single.roundTrip, isFalse);
   });
 
+  test('meeting point, wallet and cancel preview', () {
+    final q = Quote.fromJson({
+      'eligible': true,
+      'reason': null,
+      'distanceKm': 4,
+      'maxDistanceKm': 10,
+      'priceHalalas': 50000,
+      'vatHalalas': 6522,
+      'discountHalalas': 5000,
+      'walletHalalas': 3000,
+      'periodDays': 7,
+      'renewable': false,
+      'meetingPoint': {'id': 'm', 'nameAr': 'موقف الجامع', 'nameEn': 'Mosque car park', 'walkMeters': 170},
+    });
+    expect(q.firstPaymentHalalas, 42000);
+    expect(q.meetingPoint!.name(true), 'موقف الجامع');
+    expect(q.periodDays, 7);
+    expect(q.renewable, isFalse);
+    final w = Wallet.fromJson({
+      'balances': [
+        {'partnerId': 'a', 'balanceHalalas': 1500},
+        {'partnerId': 'b', 'balanceHalalas': 500},
+      ],
+      'entries': [
+        {'kind': 'compensation', 'amountHalalas': 1000, 'createdAt': '2026-11-20T21:40:00.000Z', 'noteAr': null, 'noteEn': null},
+      ],
+    });
+    expect(w.balanceHalalas, 2000);
+    expect(w.entries.single.kind, 'compensation');
+    final p = CancelPreview.fromJson({'lastServiceDay': '2026-12-20', 'remainingTrips': 30, 'creditHalalas': 30000, 'canCancelNow': true});
+    expect(p.canCancelNow, isTrue);
+    expect(Plan.fromJson({'id': 'p', 'nameAr': 'ب', 'nameEn': 'B', 'tripType': 'one_way', 'daysPerWeek': 1, 'priceHalalas': 3000, 'maxDistanceKm': 5, 'pickupMode': 'meeting_point', 'periodDays': 3, 'renewable': false}).meetingPoint, isTrue);
+  });
+
   test('Riyadh calendar day and money', () {
     expect(riyadhToday(DateTime.utc(2026, 10, 17, 21, 30)), '2026-10-18');
     expect(riyadhToday(DateTime.utc(2026, 10, 17, 20, 59)), '2026-10-17');
