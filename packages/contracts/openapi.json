@@ -2283,6 +2283,30 @@
         ]
       }
     },
+    "/v1/org-payments/{id}/return": {
+      "get": {
+        "operationId": "PaymentCallbacksController_orgReturned",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "An organization’s invoice payment page returns here, then back to its dashboard",
+        "tags": [
+          "payments: callbacks"
+        ]
+      }
+    },
     "/v1/payments/{id}/return": {
       "get": {
         "operationId": "PaymentCallbacksController_returned",
@@ -2530,6 +2554,42 @@
         "summary": "Payments with totals: collected, platform commission and partner share",
         "tags": [
           "admin: billing"
+        ]
+      }
+    },
+    "/v1/org/invoices/{id}/checkout": {
+      "post": {
+        "operationId": "OrgPaymentsController_checkout",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgCheckoutView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Open the gateway’s payment page for an unpaid invoice",
+        "tags": [
+          "organization"
         ]
       }
     },
@@ -8079,6 +8139,26 @@
           "method"
         ]
       },
+      "OrgCheckoutView": {
+        "type": "object",
+        "properties": {
+          "paymentId": {
+            "type": "string"
+          },
+          "checkoutUrl": {
+            "type": "string",
+            "description": "The gateway’s payment page"
+          },
+          "amountHalalas": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "paymentId",
+          "checkoutUrl",
+          "amountHalalas"
+        ]
+      },
       "CompleteTripDto": {
         "type": "object",
         "properties": {
@@ -8888,6 +8968,10 @@
           "overdue": {
             "type": "number",
             "description": "Unpaid invoices past their due date"
+          },
+          "openCreditHalalas": {
+            "type": "number",
+            "description": "Credits owed to it, for its next invoice"
           }
         },
         "required": [
@@ -8909,7 +8993,8 @@
           "members",
           "seats",
           "unpaidHalalas",
-          "overdue"
+          "overdue",
+          "openCreditHalalas"
         ]
       },
       "CreateOrganizationDto": {
@@ -9115,8 +9200,17 @@
             "type": "number",
             "description": "Subscription periods billed"
           },
+          "grossHalalas": {
+            "type": "number",
+            "description": "The organization’s share of those periods"
+          },
+          "creditHalalas": {
+            "type": "number",
+            "description": "Credits taken off"
+          },
           "totalHalalas": {
-            "type": "number"
+            "type": "number",
+            "description": "To pay: gross less credits"
           },
           "vatHalalas": {
             "type": "number"
@@ -9155,6 +9249,8 @@
           "month",
           "number",
           "lines",
+          "grossHalalas",
+          "creditHalalas",
           "totalHalalas",
           "vatHalalas",
           "status",
@@ -9209,6 +9305,41 @@
           "amountHalalas"
         ]
       },
+      "OrgCreditView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "compensation",
+              "cancellation"
+            ]
+          },
+          "amountHalalas": {
+            "type": "number"
+          },
+          "noteAr": {
+            "type": "string"
+          },
+          "noteEn": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "amountHalalas",
+          "noteAr",
+          "noteEn",
+          "createdAt"
+        ]
+      },
       "OrgInvoiceDetailView": {
         "type": "object",
         "properties": {
@@ -9234,8 +9365,17 @@
             "type": "number",
             "description": "Subscription periods billed"
           },
+          "grossHalalas": {
+            "type": "number",
+            "description": "The organization’s share of those periods"
+          },
+          "creditHalalas": {
+            "type": "number",
+            "description": "Credits taken off"
+          },
           "totalHalalas": {
-            "type": "number"
+            "type": "number",
+            "description": "To pay: gross less credits"
           },
           "vatHalalas": {
             "type": "number"
@@ -9270,6 +9410,12 @@
             "items": {
               "$ref": "#/components/schemas/OrgInvoiceLineView"
             }
+          },
+          "credits": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrgCreditView"
+            }
           }
         },
         "required": [
@@ -9280,6 +9426,8 @@
           "month",
           "number",
           "lines",
+          "grossHalalas",
+          "creditHalalas",
           "totalHalalas",
           "vatHalalas",
           "status",
@@ -9288,7 +9436,8 @@
           "overdue",
           "paidAt",
           "reference",
-          "items"
+          "items",
+          "credits"
         ]
       },
       "PayOrgInvoiceDto": {
@@ -9391,6 +9540,14 @@
           },
           "unpaidHalalas": {
             "type": "number"
+          },
+          "openCreditHalalas": {
+            "type": "number",
+            "description": "Credits owed to it, for its next invoice"
+          },
+          "payOnline": {
+            "type": "boolean",
+            "description": "Invoices can be paid online"
           }
         },
         "required": [
@@ -9405,7 +9562,9 @@
           "plans",
           "members",
           "seats",
-          "unpaidHalalas"
+          "unpaidHalalas",
+          "openCreditHalalas",
+          "payOnline"
         ]
       },
       "AddMemberDto": {

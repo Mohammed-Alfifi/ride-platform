@@ -3,16 +3,20 @@
 import { useApp } from '@/components/Providers';
 import { OrgInvoiceView } from '@/lib/client';
 import { formatDay, formatSar } from '@/lib/format';
+import { fill } from '@/lib/i18n';
 
 /** Organization invoices, for the organization itself or for the partner (who can record payment). */
 export function OrgInvoiceTable({
   invoices,
   htmlBase,
   onPay,
+  payLabel,
 }: {
   invoices: OrgInvoiceView[];
   htmlBase: 'org/invoices' | 'admin/organization-invoices';
   onPay?: (inv: OrgInvoiceView) => void;
+  /** Defaults to recording a payment (the partner's side). */
+  payLabel?: string;
 }) {
   const { t, lang } = useApp();
   return (
@@ -43,7 +47,10 @@ export function OrgInvoiceTable({
               </td>
               <td className="tabnum nowrap">{inv.month}</td>
               <td className="tabnum">{inv.lines}</td>
-              <td className="tabnum">{formatSar(inv.totalHalalas, lang)}</td>
+              <td className="tabnum">
+                {formatSar(inv.totalHalalas, lang)}
+                {inv.creditHalalas > 0 && <span className="sub">{fill(t.orgInvoice.afterCredit, { amount: formatSar(inv.creditHalalas, lang) })}</span>}
+              </td>
               <td className="tabnum nowrap">{formatDay(inv.dueDate, lang)}</td>
               <td>
                 <span className={`badge badge-${inv.status === 'paid' ? 'active' : inv.overdue ? 'suspended' : 'pending'}`}>
@@ -54,7 +61,7 @@ export function OrgInvoiceTable({
                 <td className="actions">
                   {inv.status === 'issued' && (
                     <button type="button" className="btn btn-sm" onClick={() => onPay(inv)}>
-                      {t.orgs.recordPayment}
+                      {payLabel ?? t.orgs.recordPayment}
                     </button>
                   )}
                 </td>

@@ -5,6 +5,7 @@ import { Env } from '../config/env';
 import { BillingService } from '../payments/billing.service';
 import { PAYMENT_GATEWAY, PaymentGateway } from '../payments/gateway';
 import { InvoicesService } from '../payments/invoices.service';
+import { OrgPaymentsService } from '../payments/org-payments.service';
 import { MoyasarGateway } from '../payments/moyasar.gateway';
 import { ManualGateway } from '../payments/manual.gateway';
 import { SandboxGateway } from '../payments/sandbox.gateway';
@@ -15,6 +16,7 @@ import {
   AdminBillingController,
   InvoicesController,
   PaymentCallbacksController,
+  OrgPaymentsController,
   RiderController,
 } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
@@ -37,7 +39,7 @@ export function createGateway(env: Env, redis: Redis): PaymentGateway {
 
 @Module({
   imports: [TripsModule],
-  controllers: [RiderController, InvoicesController, PaymentCallbacksController, AdminBillingController],
+  controllers: [RiderController, InvoicesController, PaymentCallbacksController, AdminBillingController, OrgPaymentsController],
   providers: [
     { provide: PAYMENT_GATEWAY, inject: [ENV, REDIS], useFactory: createGateway },
     InvoicesService,
@@ -45,6 +47,7 @@ export function createGateway(env: Env, redis: Redis): PaymentGateway {
     SubscriptionsService,
     RenewalsService,
     PromosService,
+    OrgPaymentsService,
   ],
   exports: [RenewalsService, BillingService, PromosService],
 })

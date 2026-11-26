@@ -291,11 +291,13 @@ export class BillingService {
     return paid;
   }
 
-  async syncByProviderId(providerPaymentId: string): Promise<void> {
+  /** True when the provider id belongs to a rider payment. */
+  async syncByProviderId(providerPaymentId: string): Promise<boolean> {
     const payment = await this.db.query.payments.findFirst({
       where: and(eq(payments.provider, this.gateway.name), eq(payments.providerPaymentId, providerPaymentId)),
     });
     if (payment) await this.sync(payment.id);
+    return Boolean(payment);
   }
 
   webhookPaymentId(body: unknown): string | null {

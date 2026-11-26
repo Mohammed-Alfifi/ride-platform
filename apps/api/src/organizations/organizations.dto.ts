@@ -112,6 +112,7 @@ export class OrganizationView {
   @ApiProperty({ description: 'Members with a running subscription paid by the organization' }) seats!: number;
   @ApiProperty({ description: 'Issued and not yet paid, halalas' }) unpaidHalalas!: number;
   @ApiProperty({ description: 'Unpaid invoices past their due date' }) overdue!: number;
+  @ApiProperty({ description: 'Credits owed to it, for its next invoice' }) openCreditHalalas!: number;
 }
 
 export class OrgPlanView {
@@ -137,6 +138,8 @@ export class OrgProfileView {
   @ApiProperty() members!: number;
   @ApiProperty() seats!: number;
   @ApiProperty() unpaidHalalas!: number;
+  @ApiProperty({ description: 'Credits owed to it, for its next invoice' }) openCreditHalalas!: number;
+  @ApiProperty({ description: 'Invoices can be paid online' }) payOnline!: boolean;
 }
 
 export class CreateOrgAdminDto {
@@ -276,7 +279,9 @@ export class OrgInvoiceView {
   @ApiProperty() month!: string;
   @ApiProperty() number!: string;
   @ApiProperty({ description: 'Subscription periods billed' }) lines!: number;
-  @ApiProperty() totalHalalas!: number;
+  @ApiProperty({ description: 'The organization’s share of those periods' }) grossHalalas!: number;
+  @ApiProperty({ description: 'Credits taken off' }) creditHalalas!: number;
+  @ApiProperty({ description: 'To pay: gross less credits' }) totalHalalas!: number;
   @ApiProperty() vatHalalas!: number;
   @ApiProperty({ enum: ['issued', 'paid', 'void'] }) status!: string;
   @ApiProperty() issuedAt!: string;
@@ -295,8 +300,24 @@ export class OrgInvoiceLineView {
   @ApiProperty() amountHalalas!: number;
 }
 
+export class OrgCreditView {
+  @ApiProperty() id!: string;
+  @ApiProperty({ enum: ['compensation', 'cancellation'] }) kind!: 'compensation' | 'cancellation';
+  @ApiProperty() amountHalalas!: number;
+  @ApiProperty() noteAr!: string;
+  @ApiProperty() noteEn!: string;
+  @ApiProperty() createdAt!: string;
+}
+
 export class OrgInvoiceDetailView extends OrgInvoiceView {
   @ApiProperty({ type: [OrgInvoiceLineView] }) items!: OrgInvoiceLineView[];
+  @ApiProperty({ type: [OrgCreditView] }) credits!: OrgCreditView[];
+}
+
+export class OrgCheckoutView {
+  @ApiProperty() paymentId!: string;
+  @ApiProperty({ description: 'The gateway’s payment page' }) checkoutUrl!: string;
+  @ApiProperty() amountHalalas!: number;
 }
 
 /** The organization paying for a rider's subscription, as shown in the quote and the subscription. */

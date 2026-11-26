@@ -104,6 +104,7 @@ const messages: Record<Locale, Record<ErrorCode, string>> = {
     ORG_INVOICE_NOT_FOUND: 'الفاتورة غير موجودة.',
     ORG_INVOICE_PAID: 'هذه الفاتورة مسددة.',
     ORG_NOTHING_TO_INVOICE: 'لا توجد مبالغ جديدة على الجهة لهذا الشهر.',
+    ORG_ONLINE_PAYMENT_UNAVAILABLE: 'الدفع الإلكتروني غير مفعّل لدى مقدم الخدمة. سدّد بالتحويل البنكي.',
     INTERNAL: 'حدث خطأ غير متوقع. حاول مرة أخرى.',
   },
   en: {
@@ -207,6 +208,7 @@ const messages: Record<Locale, Record<ErrorCode, string>> = {
     ORG_INVOICE_NOT_FOUND: 'Invoice not found.',
     ORG_INVOICE_PAID: 'This invoice is already paid.',
     ORG_NOTHING_TO_INVOICE: 'Nothing new to bill the organization for this month.',
+    ORG_ONLINE_PAYMENT_UNAVAILABLE: 'Online payment is not enabled by the provider. Please pay by bank transfer.',
     INTERNAL: 'Something went wrong. Please try again.',
   },
 };

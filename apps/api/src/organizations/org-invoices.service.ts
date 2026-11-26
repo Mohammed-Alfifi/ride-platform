@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import QRCode from 'qrcode';
-import { and, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../auth/auth.types';
 import { AppError } from '../common/errors';
@@ -12,6 +12,7 @@ import { DB, Database } from '../database/database.module';
 import {
   Organization,
   OrganizationInvoice,
+  organizationCredits,
   organizationInvoices,
   organizations,
   orgInvoiceSequences,
@@ -21,7 +22,7 @@ import {
 } from '../database/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { vatIncluded, zatcaQr } from '../payments/zatca';
-import { OrgInvoiceDetailView, OrgInvoiceLineView, OrgInvoiceView, PayOrgInvoiceDto } from './organizations.dto';
+import { OrgCreditView, OrgInvoiceDetailView, OrgInvoiceLineView, OrgInvoiceView, PayOrgInvoiceDto } from './organizations.dto';
 
 /** The first moment of the month after `month` (YYYY-MM), Riyadh time. */
 function monthEnd(month: string): Date {
@@ -76,7 +77,23 @@ export class OrgInvoicesService {
         )
         .for('update');
       if (due.length === 0) throw new AppError('ORG_NOTHING_TO_INVOICE');
-      const total = due.reduce((a, p) => a + p.org, 0);
+      const gross = due.reduce((a, p) => a + p.org, 0);
+      // Credits owed to the organization come off, oldest first, never past the invoice's own amount;
+      // what does not fit waits for the next month.
+      const open = await tx
+        .select({ id: organizationCredits.id, amount: organizationCredits.amountHalalas })
+        .from(organizationCredits)
+        .where(and(eq(organizationCredits.organizationId, org.id), isNull(organizationCredits.orgInvoiceId), lt(organizationCredits.createdAt, monthEnd(month))))
+        .orderBy(asc(organizationCredits.createdAt))
+        .for('update');
+      const applied: string[] = [];
+      let credit = 0;
+      for (const c of open) {
+        if (credit + c.amount > gross) break;
+        credit += c.amount;
+        applied.push(c.id);
+      }
+      const total = gross - credit;
       const issuedAt = new Date();
       const year = Number(riyadhToday(issuedAt).slice(0, 4));
       const sellerName = partner.legalName ?? partner.nameAr;
@@ -100,6 +117,8 @@ export class OrgInvoicesService {
           buyerVatNumber: org.vatNumber,
           buyerCrNumber: org.crNumber,
           lines: due.length,
+          grossHalalas: gross,
+          creditHalalas: credit,
           totalHalalas: total,
           vatHalalas: vat,
           platformFeeHalalas: fee,
@@ -107,8 +126,11 @@ export class OrgInvoicesService {
           qrTlv: partner.vatNumber ? zatcaQr({ sellerName, vatNumber: partner.vatNumber, timestamp: issuedAt, totalHalalas: total, vatHalalas: vat }) : null,
           issuedAt,
           dueDate: addDays(riyadhToday(issuedAt), this.env.ORG_INVOICE_DUE_DAYS),
+          // Nothing left to pay once the credits are taken off.
+          ...(total === 0 ? { status: 'paid' as const, paidAt: issuedAt, method: 'credit' } : {}),
         })
         .returning();
+      if (applied.length) await tx.update(organizationCredits).set({ orgInvoiceId: row.id }).where(inArray(organizationCredits.id, applied));
       await tx
         .update(payments)
         .set({ orgInvoiceId: row.id })
@@ -206,7 +228,7 @@ export class OrgInvoicesService {
 
   async detail(inv: OrganizationInvoice): Promise<OrgInvoiceDetailView> {
     const org = (await this.db.query.organizations.findFirst({ where: eq(organizations.id, inv.organizationId) })) as Organization;
-    return { ...this.present(inv, org.nameAr, org.nameEn), items: await this.items(inv) };
+    return { ...this.present(inv, org.nameAr, org.nameEn), items: await this.items(inv), credits: await this.credits(inv) };
   }
 
   async pay(actor: AuthUser, id: string, dto: PayOrgInvoiceDto, ip?: string): Promise<OrgInvoiceView> {
@@ -229,6 +251,22 @@ export class OrgInvoicesService {
     });
     const org = (await this.db.query.organizations.findFirst({ where: eq(organizations.id, inv.organizationId) })) as Organization;
     return this.present(paid, org.nameAr, org.nameEn);
+  }
+
+  private async credits(inv: OrganizationInvoice): Promise<OrgCreditView[]> {
+    const rows = await this.db.select().from(organizationCredits).where(eq(organizationCredits.orgInvoiceId, inv.id)).orderBy(asc(organizationCredits.createdAt));
+    return rows.map(presentCredit);
+  }
+
+  /** Credits not yet taken off an invoice. */
+  async openCredits(orgId: string): Promise<OrgCreditView[]> {
+    const rows = await this.db
+      .select()
+      .from(organizationCredits)
+      .where(and(eq(organizationCredits.organizationId, orgId), isNull(organizationCredits.orgInvoiceId)))
+      .orderBy(desc(organizationCredits.createdAt))
+      .limit(200);
+    return rows.map(presentCredit);
   }
 
   private async items(inv: OrganizationInvoice): Promise<OrgInvoiceLineView[]> {
@@ -274,6 +312,8 @@ export class OrgInvoicesService {
       month: inv.month,
       number: inv.number,
       lines: inv.lines,
+      grossHalalas: inv.grossHalalas,
+      creditHalalas: inv.creditHalalas,
       totalHalalas: inv.totalHalalas,
       vatHalalas: inv.vatHalalas,
       status: inv.status,
@@ -288,6 +328,7 @@ export class OrgInvoicesService {
   /** A printable bilingual tax invoice with one line per member period. */
   async html(inv: OrganizationInvoice): Promise<string> {
     const items = await this.items(inv);
+    const credits = await this.credits(inv);
     const sar = (h: number) => (h / 100).toFixed(2);
     const esc = (s: string | null) => (s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string);
     const qr = inv.qrTlv ? await QRCode.toString(inv.qrTlv, { type: 'svg', margin: 0, width: 140 }) : '';
@@ -314,9 +355,20 @@ ${inv.buyerCrNumber ? `<tr><td>السجل التجاري · CR</td><td class="n"
 </table></div></div>
 <div class="muted">خدمة نقل مجدولة لشهر ${esc(inv.month)} · Scheduled transport, ${esc(inv.month)}</div>
 <table><thead><tr><th>العضو · Member</th><th>الباقة · Plan</th><th class="n">بداية الفترة · From</th><th class="n">SAR</th></tr></thead><tbody>${rows}</tbody></table>
-<table><tr><td>المبلغ قبل الضريبة · Subtotal</td><td class="n">${sar(inv.totalHalalas - inv.vatHalalas)} SAR</td></tr>
+${
+  credits.length
+    ? `<div class="muted">خصم مستحق للجهة · Credits</div><table><tbody>${credits
+        .map((c) => `<tr><td>${esc(c.noteAr)} <span class="muted">${esc(c.createdAt.slice(0, 10))}</span></td><td class="n">−${sar(c.amountHalalas)}</td></tr>`)
+        .join('')}</tbody></table>`
+    : ''
+}
+<table>${inv.creditHalalas ? `<tr><td>قيمة الاشتراكات · Subscriptions</td><td class="n">${sar(inv.grossHalalas)} SAR</td></tr><tr><td>الخصم · Credits</td><td class="n">−${sar(inv.creditHalalas)} SAR</td></tr>` : ''}<tr><td>المبلغ قبل الضريبة · Subtotal</td><td class="n">${sar(inv.totalHalalas - inv.vatHalalas)} SAR</td></tr>
 <tr><td>ضريبة القيمة المضافة · VAT</td><td class="n">${sar(inv.vatHalalas)} SAR</td></tr>
 <tr class="total"><td>الإجمالي · Total</td><td class="n">${sar(inv.totalHalalas)} SAR</td></tr></table>
 ${qr ? `<div>${qr}</div>` : ''}</body></html>`;
   }
+}
+
+function presentCredit(c: typeof organizationCredits.$inferSelect): OrgCreditView {
+  return { id: c.id, kind: c.kind, amountHalalas: c.amountHalalas, noteAr: c.noteAr, noteEn: c.noteEn, createdAt: c.createdAt.toISOString() };
 }

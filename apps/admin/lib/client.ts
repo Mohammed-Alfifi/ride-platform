@@ -448,6 +448,7 @@ export interface OrganizationView {
   seats: number;
   unpaidHalalas: number;
   overdue: number;
+  openCreditHalalas: number;
 }
 
 export interface OrgAdminView {
@@ -466,6 +467,8 @@ export interface OrgInvoiceView {
   month: string;
   number: string;
   lines: number;
+  grossHalalas: number;
+  creditHalalas: number;
   totalHalalas: number;
   vatHalalas: number;
   status: 'issued' | 'paid' | 'void';
@@ -489,6 +492,8 @@ export interface OrgProfileView {
   members: number;
   seats: number;
   unpaidHalalas: number;
+  openCreditHalalas: number;
+  payOnline: boolean;
 }
 
 export type MemberSubscriptionStatus = 'pending_payment' | 'active' | 'past_due' | 'paused' | 'cancelled' | 'expired';
