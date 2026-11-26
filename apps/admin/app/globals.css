@@ -2313,3 +2313,90 @@ code.route {
   padding: 8px 0;
   border-bottom: 1px solid var(--line);
 }
+
+/* ---------- Organizations ---------- */
+
+.stats-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.page-head .btns {
+  display: flex;
+  gap: 0.5rem;
+}
+.steps {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.25rem;
+  color: var(--ink-soft);
+}
+.steps li + li {
+  margin-top: 0.25rem;
+}
+th.num-col,
+td.num-col {
+  text-align: center;
+}
+.cell-alert {
+  color: var(--amber);
+  font-weight: 600;
+}
+tfoot th,
+tfoot td {
+  font-weight: 600;
+  border-top: 1px solid var(--line);
+}
+textarea.bulk-rows {
+  width: 100%;
+  min-height: 12rem;
+  font-family: inherit;
+  resize: vertical;
+}
+.plan-picks {
+  display: grid;
+  gap: 0.25rem;
+  max-height: 12rem;
+  overflow: auto;
+  padding: 0.5rem 0;
+}
+@media (max-width: 860px) {
+  .stats-3 {
+    grid-template-columns: 1fr;
+  }
+  .stats-3 .stat + .stat {
+    border-inline-start: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+.panel-hint {
+  margin: 0;
+  padding: 0.75rem 1rem 0;
+}
+.nowrap {
+  white-space: nowrap;
+}
+.panel + .panel {
+  margin-top: 1.5rem;
+}
+fieldset.field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+fieldset.field legend {
+  padding: 0;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+/* The menu has outgrown short screens: it scrolls above the account box. */
+@media (min-width: 861px) {
+  .sidebar .nav {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+dialog.sheet-wide {
+  width: min(56rem, calc(100vw - 2rem));
+}

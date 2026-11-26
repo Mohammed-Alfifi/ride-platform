@@ -24,6 +24,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { CheckoutResult, PAYMENT_GATEWAY, PaymentGateway, SavedCard } from './gateway';
 import { InvoicesService } from './invoices.service';
 import { WalletService } from '../wallet/wallet.module';
+import { OrganizationsService, splitPrice } from '../organizations/organizations.service';
 import { TripGenerator } from '../trips/trip.generator';
 import { PromosService } from '../services/promos.service';
 
@@ -59,6 +60,7 @@ export class BillingService {
     private readonly promos: PromosService,
     private readonly audit: AuditService,
     private readonly wallet: WalletService,
+    private readonly orgs: OrganizationsService,
   ) {}
 
   get manual(): boolean {
@@ -87,6 +89,8 @@ export class BillingService {
       if (waiting) return waiting;
     }
     const payment = await this.createRow(sub, purpose, opts.periodStart ?? null, opts.idempotencyKey ?? null);
+    // Nothing left for the rider (the organization pays all of it): no payment page.
+    if (payment.amountHalalas === 0) return this.settleWithoutCharge(payment);
     const rider = await this.db.query.users.findFirst({ where: eq(users.id, sub.riderId) });
     const card = await this.defaultCard(sub.riderId);
     let result: CheckoutResult;
@@ -120,6 +124,7 @@ export class BillingService {
     const existing = await this.db.query.payments.findFirst({ where: eq(payments.idempotencyKey, idempotencyKey) });
     if (existing) return existing;
     const payment = await this.createRow(sub, 'renewal', periodStart, idempotencyKey);
+    if (payment.amountHalalas === 0) return this.settleWithoutCharge(payment);
     const saved: SavedCard = {
       cardId: card.providerCardId,
       customerId: card.providerCustomerId,
@@ -148,6 +153,23 @@ export class BillingService {
       this.logger.warn(`Renewal charge failed for subscription ${sub.id}: ${(err as Error).message}`);
       return this.fail(payment, 'charge_failed');
     }
+  }
+
+  /** Whether the rider's organization pays the whole of the next period. */
+  async fullyCovered(sub: Subscription): Promise<boolean> {
+    const org = await this.orgs.sponsorFor(sub.riderId, sub.partnerId, sub.planId);
+    return org !== null && splitPrice(sub.priceHalalas, org.coverageBps).member === 0;
+  }
+
+  /** A period with nothing to charge (paid by the organization, or by credit) is paid as soon as it is created. */
+  private async settleWithoutCharge(payment: PaymentRow): Promise<PaymentRow> {
+    const [paid] = await this.db
+      .update(payments)
+      .set({ status: 'paid', paidAt: new Date(), method: payment.orgHalalas > 0 ? 'organization' : 'credit', providerPaymentId: `free_${payment.id}` })
+      .where(and(eq(payments.id, payment.id), eq(payments.status, 'initiated')))
+      .returning();
+    if (!paid) return (await this.db.query.payments.findFirst({ where: eq(payments.id, payment.id) })) as PaymentRow;
+    return this.afterPaid(paid, null);
   }
 
   /** Confirms a payment with the provider and applies the result. Safe to call any number of times. */
@@ -244,13 +266,26 @@ export class BillingService {
     if (paid.discountHalalas - paid.walletHalalas > 0 && sub.promoCodeId) await this.promos.markUsed(sub.promoCodeId);
     // Trips for the paid days that fall within the next two days, without waiting for the nightly run.
     await this.tripGenerator.generate({ subscriptionId: sub.id });
-    await this.invoices.issue(paid, await this.description(sub));
+    // The rider's invoice covers what the rider paid; the organization's share is on its monthly invoice.
+    if (paid.amountHalalas > 0) await this.invoices.issue(paid, await this.description(sub));
+    const org = paid.orgHalalas > 0 ? await this.orgs.name(paid.organizationId) : null;
+    const start = paid.purpose === 'start';
     await this.notifications.notify([paid.riderId], {
       kind: 'payment_paid',
-      titleAr: paid.purpose === 'start' ? 'تم تفعيل اشتراكك' : 'تم تجديد اشتراكك',
-      titleEn: paid.purpose === 'start' ? 'Your subscription is active' : 'Your subscription is renewed',
-      bodyAr: `تم استلام ${(paid.amountHalalas / 100).toFixed(2)} ريال. الفاتورة متاحة في التطبيق.`,
-      bodyEn: `We received SAR ${(paid.amountHalalas / 100).toFixed(2)}. Your invoice is in the app.`,
+      titleAr: start ? 'تم تفعيل اشتراكك' : 'تم تجديد اشتراكك',
+      titleEn: start ? 'Your subscription is active' : 'Your subscription is renewed',
+      bodyAr:
+        paid.amountHalalas > 0
+          ? `تم استلام ${(paid.amountHalalas / 100).toFixed(2)} ريال${org ? ` وتحملت ${org.nameAr} الباقي` : ''}. الفاتورة متاحة في التطبيق.`
+          : org
+            ? `تتحمل ${org.nameAr} قيمة هذه الفترة.`
+            : 'غُطيت هذه الفترة من رصيد محفظتك.',
+      bodyEn:
+        paid.amountHalalas > 0
+          ? `We received SAR ${(paid.amountHalalas / 100).toFixed(2)}${org ? `; ${org.nameEn} paid the rest` : ''}. Your invoice is in the app.`
+          : org
+            ? `${org.nameEn} pays for this period.`
+            : 'This period was paid from your wallet credit.',
       data: { paymentId: paid.id, subscriptionId: paid.subscriptionId },
     });
     return paid;
@@ -305,6 +340,8 @@ export class BillingService {
         currentPeriodStart: start,
         currentPeriodEnd: end,
         renewalAttempts: 0,
+        organizationId: payment.organizationId,
+        orgShareBps: sub.priceHalalas > 0 ? Math.round((payment.orgHalalas * 10_000) / sub.priceHalalas) : 0,
         ...(cardId && !sub.paymentMethodId ? { paymentMethodId: cardId } : {}),
       })
       .where(eq(subscriptions.id, sub.id));
@@ -345,12 +382,14 @@ export class BillingService {
     provider: string = this.gateway.name,
   ): Promise<PaymentRow> {
     const partner = await this.db.query.partners.findFirst({ where: eq(partners.id, sub.partnerId) });
-    // A discount code applies to the first payment only.
-    const promo = purpose === 'start' ? sub.discountHalalas : 0;
-    // The rider's credit with this partner comes off what is left, keeping the gateway minimum.
-    const wallet = await this.wallet.toUse(sub.riderId, sub.partnerId, sub.priceHalalas - promo);
+    // The rider's organization pays its share first; a discount code (first payment only) and the
+    // rider's credit come off what is left, keeping the gateway minimum.
+    const sponsor = await this.orgs.sponsorFor(sub.riderId, sub.partnerId, sub.planId);
+    const split = splitPrice(sub.priceHalalas, sponsor?.coverageBps ?? 0);
+    const promo = purpose === 'start' ? Math.min(sub.discountHalalas, split.member) : 0;
+    const wallet = await this.wallet.toUse(sub.riderId, sub.partnerId, split.member - promo);
     const discount = promo + wallet;
-    const amount = sub.priceHalalas - discount;
+    const amount = split.member - discount;
     const fee = Math.round((amount * (partner?.commissionBps ?? 0)) / 10_000);
     const [row] = await this.db
       .insert(payments)
@@ -363,6 +402,8 @@ export class BillingService {
         amountHalalas: amount,
         discountHalalas: discount,
         walletHalalas: wallet,
+        organizationId: sponsor?.id ?? null,
+        orgHalalas: split.org,
         platformFeeHalalas: fee,
         partnerShareHalalas: amount - fee,
         periodStart,

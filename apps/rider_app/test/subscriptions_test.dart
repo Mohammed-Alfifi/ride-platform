@@ -90,6 +90,21 @@ void main() {
     expect(Plan.fromJson({'id': 'p', 'nameAr': 'ب', 'nameEn': 'B', 'tripType': 'one_way', 'daysPerWeek': 1, 'priceHalalas': 3000, 'maxDistanceKm': 5, 'pickupMode': 'meeting_point', 'periodDays': 3, 'renewable': false}).meetingPoint, isTrue);
   });
 
+  test('a company paying all or part of the price', () {
+    Quote q(int bps, int org) => Quote.fromJson({
+          'eligible': true,
+          'distanceKm': 4,
+          'maxDistanceKm': 10,
+          'priceHalalas': 60000,
+          'vatHalalas': 7826,
+          'sponsor': {'organizationId': 'o', 'nameAr': 'شركة النخبة', 'nameEn': 'Elite', 'coverageBps': bps, 'orgHalalas': org},
+        });
+    expect(q(10000, 60000).firstPaymentHalalas, 0);
+    expect(q(10000, 60000).sponsor!.full, isTrue);
+    expect(q(5000, 30000).firstPaymentHalalas, 30000);
+    expect(q(5000, 30000).sponsor!.name(true), 'شركة النخبة');
+  });
+
   test('Riyadh calendar day and money', () {
     expect(riyadhToday(DateTime.utc(2026, 10, 17, 21, 30)), '2026-10-18');
     expect(riyadhToday(DateTime.utc(2026, 10, 17, 20, 59)), '2026-10-17');

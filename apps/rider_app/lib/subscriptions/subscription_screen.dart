@@ -203,6 +203,7 @@ class _BodyState extends ConsumerState<_Body> {
           subtitle: s.card == null ? t.noCard : '${s.card!.brand} •••• ${s.card!.last4}',
         ),
         _Row(icon: Icons.apartment_outlined, title: t.serviceBy, subtitle: t.ar ? s.partnerNameAr : s.partnerNameEn),
+        if (s.sponsor(t.ar) != null) _Row(icon: Icons.business_center_outlined, title: t.paidBy, subtitle: s.sponsor(t.ar)!),
         if (s.live) ...[const SizedBox(height: 16), UpcomingTrips(subscriptionId: s.id)],
         const SizedBox(height: 20),
         if (s.status == 'active' && !pauseOpen && !pausedThisPeriod) ...[

@@ -24,6 +24,7 @@ import {
 import { LicensesService } from '../compliance/licenses.service';
 import { MeetingPointsService } from '../meeting-points/meeting-points.module';
 import { CancelPreviewView, WalletService } from '../wallet/wallet.module';
+import { OrganizationsService, splitPrice } from '../organizations/organizations.service';
 import { rulesFor } from '../compliance/rules';
 import { ContractView, guardianContract } from '../compliance/contract';
 import { TripGenerator } from '../trips/trip.generator';
@@ -61,6 +62,7 @@ export class SubscriptionsService {
     private readonly licenses: LicensesService,
     private readonly meetingPoints: MeetingPointsService,
     private readonly wallet: WalletService,
+    private readonly orgs: OrganizationsService,
   ) {}
 
   // ------------------------------------------------------------------ places
@@ -127,9 +129,12 @@ export class SubscriptionsService {
         : plan.plan.pickupMode === 'meeting_point' && !meetingPoint
           ? 'NO_MEETING_POINT_NEARBY'
           : null;
+    // A member of a company or school with this partner: the organization pays its share first.
+    const sponsor = await this.orgs.sponsorFor(riderId, plan.plan.partnerId, plan.plan.id);
+    const split = splitPrice(plan.plan.priceHalalas, sponsor?.coverageBps ?? 0);
     const promo = dto.promoCode ? await this.promos.resolve(dto.promoCode, plan.plan.partnerId) : null;
-    const discount = promo ? discountFor(promo, plan.plan.priceHalalas) : 0;
-    const wallet = await this.wallet.toUse(riderId, plan.plan.partnerId, plan.plan.priceHalalas - discount);
+    const discount = promo ? Math.min(discountFor(promo, plan.plan.priceHalalas), split.member) : 0;
+    const wallet = await this.wallet.toUse(riderId, plan.plan.partnerId, split.member - discount);
 
     return {
       planId: plan.plan.id,
@@ -144,7 +149,8 @@ export class SubscriptionsService {
       promoCode: promo?.code ?? null,
       discountHalalas: discount,
       walletHalalas: wallet,
-      firstPaymentHalalas: plan.plan.priceHalalas - discount - wallet,
+      firstPaymentHalalas: split.member - discount - wallet,
+      sponsor: this.orgs.sponsorView(sponsor, plan.plan.priceHalalas),
       meetingPoint: meetingPoint ? { ...meetingPoint.point, walkMeters: meetingPoint.walkMeters } : null,
       periodDays: plan.plan.periodDays,
       renewable: plan.plan.renewable,
@@ -223,6 +229,7 @@ export class SubscriptionsService {
         cancelAtPeriodEnd: !plan.renewable,
         periodDays: plan.periodDays,
         meetingPointId: quote.meetingPoint?.id ?? null,
+        organizationId: quote.sponsor?.organizationId ?? null,
         memberId: dto.memberId ?? null,
         promoCodeId: promo?.id ?? null,
         discountHalalas: quote.discountHalalas,
@@ -320,6 +327,7 @@ export class SubscriptionsService {
       payUrl: pending?.checkoutUrl ?? null,
       pendingPaymentId: pending?.id ?? null,
       amountDueHalalas: pending?.amountHalalas ?? null,
+      sponsor: await this.orgs.name(sub.organizationId),
       createdAt: sub.createdAt.toISOString(),
     };
   }

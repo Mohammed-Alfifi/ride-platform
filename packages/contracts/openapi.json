@@ -381,7 +381,8 @@
                 "driver",
                 "partner_admin",
                 "dispatcher",
-                "super_admin"
+                "super_admin",
+                "org_admin"
               ]
             }
           },
@@ -4463,6 +4464,890 @@
         ]
       }
     },
+    "/v1/admin/organizations": {
+      "get": {
+        "operationId": "AdminOrganizationsController_list",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrganizationView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      },
+      "post": {
+        "operationId": "AdminOrganizationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrganizationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a company or school that pays for its people",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{id}": {
+      "get": {
+        "operationId": "AdminOrganizationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      },
+      "patch": {
+        "operationId": "AdminOrganizationsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOrganizationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrganizationView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the agreement; coverage and plans apply from each member’s next payment",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{id}/members": {
+      "get": {
+        "operationId": "AdminOrganizationsController_members",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Name, phone or reference",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{id}/admins": {
+      "get": {
+        "operationId": "AdminOrganizationsController_admins",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrgAdminView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      },
+      "post": {
+        "operationId": "AdminOrganizationsController_addAdmin",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOrgAdminDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgAdminView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "An account that signs in to the dashboard for this organization only",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organization-invoices": {
+      "get": {
+        "operationId": "AdminOrganizationsController_invoicesList",
+        "parameters": [
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrgInvoiceView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organizations/{id}/invoices": {
+      "get": {
+        "operationId": "AdminOrganizationsController_orgInvoices",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrgInvoiceView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      },
+      "post": {
+        "operationId": "AdminOrganizationsController_issue",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IssueOrgInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgInvoiceDetailView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Issue the month’s invoice now (the run on the 1st does it otherwise)",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organization-invoices/{id}": {
+      "get": {
+        "operationId": "AdminOrganizationsController_invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgInvoiceDetailView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organization-invoices/{id}/html": {
+      "get": {
+        "operationId": "AdminOrganizationsController_invoiceHtml",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organization-invoices/{id}/pay": {
+      "post": {
+        "operationId": "AdminOrganizationsController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayOrgInvoiceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgInvoiceView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Record the organization’s transfer",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/admin/organization-invoices/run/{month}": {
+      "post": {
+        "operationId": "AdminOrganizationsController_run",
+        "parameters": [
+          {
+            "name": "month",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Run the monthly invoicing for a month again (it only bills what was not billed)",
+        "tags": [
+          "admin: organizations"
+        ]
+      }
+    },
+    "/v1/org": {
+      "get": {
+        "operationId": "OrgPortalController_profile",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgProfileView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/members": {
+      "get": {
+        "operationId": "OrgPortalController_members",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Name, phone or reference",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MemberView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "organization"
+        ]
+      },
+      "post": {
+        "operationId": "OrgPortalController_addMember",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add someone the organization pays for, by the phone they use in the rider app",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/members/bulk": {
+      "post": {
+        "operationId": "OrgPortalController_bulk",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkMembersDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkResultView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add up to 500 members at once (e.g. pasted from a spreadsheet)",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/members/{id}": {
+      "delete": {
+        "operationId": "OrgPortalController_removeMember",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Stop paying for a member from their next period",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/attendance": {
+      "get": {
+        "operationId": "OrgPortalController_attendance",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttendanceView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Trips per member in a date range (92 days at most)",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/attendance.csv": {
+      "get": {
+        "operationId": "OrgPortalController_attendanceCsv",
+        "parameters": [
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-01",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-30",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Every trip in the range as a spreadsheet",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/invoices": {
+      "get": {
+        "operationId": "OrgPortalController_invoicesList",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/OrgInvoiceView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/invoices/{id}": {
+      "get": {
+        "operationId": "OrgPortalController_invoice",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrgInvoiceDetailView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/v1/org/invoices/{id}/html": {
+      "get": {
+        "operationId": "OrgPortalController_invoiceHtml",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "organization"
+        ]
+      }
+    },
     "/v1/app-config": {
       "get": {
         "operationId": "PublicPilotController_config",
@@ -5002,7 +5887,8 @@
               "driver",
               "partner_admin",
               "dispatcher",
-              "super_admin"
+              "super_admin",
+              "org_admin"
             ]
           },
           "audience": {
@@ -5017,6 +5903,12 @@
             "type": "string",
             "nullable": true,
             "format": "uuid"
+          },
+          "organizationId": {
+            "type": "string",
+            "nullable": true,
+            "format": "uuid",
+            "description": "org_admin: the organization managed"
           },
           "locale": {
             "type": "string",
@@ -5063,6 +5955,7 @@
           "role",
           "audience",
           "partnerId",
+          "organizationId",
           "locale",
           "gender",
           "status",
@@ -6541,6 +7434,34 @@
           "dropoffPlaceId"
         ]
       },
+      "SponsorView": {
+        "type": "object",
+        "properties": {
+          "organizationId": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "coverageBps": {
+            "type": "number"
+          },
+          "orgHalalas": {
+            "type": "number",
+            "description": "Paid by the organization each period"
+          }
+        },
+        "required": [
+          "organizationId",
+          "nameAr",
+          "nameEn",
+          "coverageBps",
+          "orgHalalas"
+        ]
+      },
       "QuoteView": {
         "type": "object",
         "properties": {
@@ -6611,6 +7532,16 @@
           "renewable": {
             "type": "boolean",
             "description": "false: one period only (a trial)"
+          },
+          "sponsor": {
+            "nullable": true,
+            "description": "The rider’s company or school, when it pays (part of) this plan",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SponsorView"
+              }
+            ]
           }
         },
         "required": [
@@ -6629,7 +7560,23 @@
           "firstPaymentHalalas",
           "meetingPoint",
           "periodDays",
-          "renewable"
+          "renewable",
+          "sponsor"
+        ]
+      },
+      "OrgNameView": {
+        "type": "object",
+        "properties": {
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "nameAr",
+          "nameEn"
         ]
       },
       "SubscriptionView": {
@@ -6722,6 +7669,16 @@
             "nullable": true,
             "description": "Amount of the waiting payment (after any discount)"
           },
+          "sponsor": {
+            "nullable": true,
+            "description": "The organization paying (part of) this subscription",
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/OrgNameView"
+              }
+            ]
+          },
           "member": {
             "type": "object",
             "nullable": true,
@@ -6775,6 +7732,7 @@
           "payUrl",
           "pendingPaymentId",
           "amountDueHalalas",
+          "sponsor",
           "member",
           "driver",
           "serviceClass",
@@ -7014,31 +7972,59 @@
           "id": {
             "type": "string"
           },
+          "phone": {
+            "type": "string"
+          },
           "name": {
             "type": "string"
           },
-          "relation": {
-            "type": "string"
-          },
-          "note": {
+          "reference": {
             "type": "string",
             "nullable": true
           },
-          "gender": {
+          "joined": {
+            "type": "boolean",
+            "description": "Has a rider account with this number"
+          },
+          "subscriptionStatus": {
             "type": "string",
             "nullable": true,
             "enum": [
-              "male",
-              "female"
+              "pending_payment",
+              "active",
+              "past_due",
+              "paused",
+              "cancelled",
+              "expired"
             ]
+          },
+          "planNameAr": {
+            "type": "string",
+            "nullable": true
+          },
+          "planNameEn": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentPeriodEnd": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
           }
         },
         "required": [
           "id",
+          "phone",
           "name",
-          "relation",
-          "note",
-          "gender"
+          "reference",
+          "joined",
+          "subscriptionStatus",
+          "planNameAr",
+          "planNameEn",
+          "currentPeriodEnd",
+          "createdAt"
         ]
       },
       "CreateMemberDto": {
@@ -7823,6 +8809,768 @@
           "riderId",
           "amountHalalas",
           "note"
+        ]
+      },
+      "OrganizationView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "partnerNameAr": {
+            "type": "string"
+          },
+          "partnerNameEn": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "school"
+            ]
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "legalName": {
+            "type": "string"
+          },
+          "crNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "vatNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "contactPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "coverageBps": {
+            "type": "number"
+          },
+          "planIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          },
+          "members": {
+            "type": "number"
+          },
+          "seats": {
+            "type": "number",
+            "description": "Members with a running subscription paid by the organization"
+          },
+          "unpaidHalalas": {
+            "type": "number",
+            "description": "Issued and not yet paid, halalas"
+          },
+          "overdue": {
+            "type": "number",
+            "description": "Unpaid invoices past their due date"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "partnerNameAr",
+          "partnerNameEn",
+          "kind",
+          "nameAr",
+          "nameEn",
+          "legalName",
+          "crNumber",
+          "vatNumber",
+          "address",
+          "contactPhone",
+          "coverageBps",
+          "planIds",
+          "status",
+          "members",
+          "seats",
+          "unpaidHalalas",
+          "overdue"
+        ]
+      },
+      "CreateOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Super admins only; others use their own partner"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "school"
+            ]
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "شركة المراعي - فرع الخرج"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Almarai - Al Kharj"
+          },
+          "legalName": {
+            "type": "string",
+            "description": "The buyer on the tax invoice"
+          },
+          "crNumber": {
+            "type": "object",
+            "example": "1010123456"
+          },
+          "vatNumber": {
+            "type": "object",
+            "example": "300000000000003"
+          },
+          "address": {
+            "type": "object"
+          },
+          "contactPhone": {
+            "type": "object",
+            "example": "0501234567"
+          },
+          "coverageBps": {
+            "type": "number",
+            "example": 10000,
+            "description": "Share of each subscription the organization pays, basis points (100 to 10000)"
+          },
+          "planIds": {
+            "description": "Plans its members may take",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "nameAr",
+          "nameEn",
+          "legalName",
+          "coverageBps",
+          "planIds"
+        ]
+      },
+      "UpdateOrganizationDto": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Super admins only; others use their own partner"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "school"
+            ]
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "شركة المراعي - فرع الخرج"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Almarai - Al Kharj"
+          },
+          "legalName": {
+            "type": "string",
+            "description": "The buyer on the tax invoice"
+          },
+          "crNumber": {
+            "type": "object",
+            "example": "1010123456"
+          },
+          "vatNumber": {
+            "type": "object",
+            "example": "300000000000003"
+          },
+          "address": {
+            "type": "object"
+          },
+          "contactPhone": {
+            "type": "object",
+            "example": "0501234567"
+          },
+          "coverageBps": {
+            "type": "number",
+            "example": 10000,
+            "description": "Share of each subscription the organization pays, basis points (100 to 10000)"
+          },
+          "planIds": {
+            "description": "Plans its members may take",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          }
+        }
+      },
+      "OrgAdminView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "pending",
+              "suspended"
+            ]
+          },
+          "lastLoginAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "phone",
+          "name",
+          "status",
+          "lastLoginAt"
+        ]
+      },
+      "CreateOrgAdminDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "0501234567"
+          },
+          "name": {
+            "type": "string",
+            "example": "منسقة شؤون الموظفين"
+          }
+        },
+        "required": [
+          "phone",
+          "name"
+        ]
+      },
+      "OrgInvoiceView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "organizationNameAr": {
+            "type": "string"
+          },
+          "organizationNameEn": {
+            "type": "string"
+          },
+          "month": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "number",
+            "description": "Subscription periods billed"
+          },
+          "totalHalalas": {
+            "type": "number"
+          },
+          "vatHalalas": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "issued",
+              "paid",
+              "void"
+            ]
+          },
+          "issuedAt": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "organizationNameAr",
+          "organizationNameEn",
+          "month",
+          "number",
+          "lines",
+          "totalHalalas",
+          "vatHalalas",
+          "status",
+          "issuedAt",
+          "dueDate",
+          "overdue",
+          "paidAt",
+          "reference"
+        ]
+      },
+      "IssueOrgInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string",
+            "example": "2026-11"
+          }
+        },
+        "required": [
+          "month"
+        ]
+      },
+      "OrgInvoiceLineView": {
+        "type": "object",
+        "properties": {
+          "memberName": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "planNameAr": {
+            "type": "string"
+          },
+          "planNameEn": {
+            "type": "string"
+          },
+          "periodStart": {
+            "type": "string"
+          },
+          "amountHalalas": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "memberName",
+          "reference",
+          "planNameAr",
+          "planNameEn",
+          "periodStart",
+          "amountHalalas"
+        ]
+      },
+      "OrgInvoiceDetailView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          },
+          "organizationNameAr": {
+            "type": "string"
+          },
+          "organizationNameEn": {
+            "type": "string"
+          },
+          "month": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string"
+          },
+          "lines": {
+            "type": "number",
+            "description": "Subscription periods billed"
+          },
+          "totalHalalas": {
+            "type": "number"
+          },
+          "vatHalalas": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "issued",
+              "paid",
+              "void"
+            ]
+          },
+          "issuedAt": {
+            "type": "string"
+          },
+          "dueDate": {
+            "type": "string"
+          },
+          "overdue": {
+            "type": "boolean"
+          },
+          "paidAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrgInvoiceLineView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "organizationId",
+          "organizationNameAr",
+          "organizationNameEn",
+          "month",
+          "number",
+          "lines",
+          "totalHalalas",
+          "vatHalalas",
+          "status",
+          "issuedAt",
+          "dueDate",
+          "overdue",
+          "paidAt",
+          "reference",
+          "items"
+        ]
+      },
+      "PayOrgInvoiceDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "bank_transfer",
+              "cash"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "method"
+        ]
+      },
+      "OrgPlanView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "priceHalalas": {
+            "type": "number"
+          },
+          "orgHalalas": {
+            "type": "number",
+            "description": "What the organization pays per period"
+          },
+          "memberHalalas": {
+            "type": "number",
+            "description": "What the member pays per period"
+          }
+        },
+        "required": [
+          "id",
+          "nameAr",
+          "nameEn",
+          "priceHalalas",
+          "orgHalalas",
+          "memberHalalas"
+        ]
+      },
+      "OrgProfileView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "company",
+              "school"
+            ]
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "partnerNameAr": {
+            "type": "string"
+          },
+          "partnerNameEn": {
+            "type": "string"
+          },
+          "coverageBps": {
+            "type": "number"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "active",
+              "suspended"
+            ]
+          },
+          "plans": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OrgPlanView"
+            }
+          },
+          "members": {
+            "type": "number"
+          },
+          "seats": {
+            "type": "number"
+          },
+          "unpaidHalalas": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "nameAr",
+          "nameEn",
+          "partnerNameAr",
+          "partnerNameEn",
+          "coverageBps",
+          "status",
+          "plans",
+          "members",
+          "seats",
+          "unpaidHalalas"
+        ]
+      },
+      "AddMemberDto": {
+        "type": "object",
+        "properties": {
+          "phone": {
+            "type": "string",
+            "example": "0501234567",
+            "description": "The number they sign in to the rider app with (a guardian’s for a student)"
+          },
+          "name": {
+            "type": "string",
+            "example": "سارة العتيبي"
+          },
+          "reference": {
+            "type": "object",
+            "example": "E-1043",
+            "description": "Employee number, or a student’s grade and class"
+          }
+        },
+        "required": [
+          "phone",
+          "name"
+        ]
+      },
+      "BulkMembersDto": {
+        "type": "object",
+        "properties": {
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddMemberDto"
+            }
+          }
+        },
+        "required": [
+          "members"
+        ]
+      },
+      "BulkRowError": {
+        "type": "object",
+        "properties": {
+          "row": {
+            "type": "number"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "AUTH_PHONE_INVALID",
+              "ORG_MEMBER_ELSEWHERE",
+              "DUPLICATE"
+            ]
+          }
+        },
+        "required": [
+          "row",
+          "phone",
+          "code"
+        ]
+      },
+      "BulkResultView": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "number"
+          },
+          "existing": {
+            "type": "number",
+            "description": "Already members of this organization"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BulkRowError"
+            }
+          }
+        },
+        "required": [
+          "added",
+          "existing",
+          "errors"
+        ]
+      },
+      "AttendanceRow": {
+        "type": "object",
+        "properties": {
+          "memberId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "planned": {
+            "type": "number",
+            "description": "Trips planned in the range"
+          },
+          "rode": {
+            "type": "number",
+            "description": "Rode"
+          },
+          "excused": {
+            "type": "number",
+            "description": "Told the driver they would not ride"
+          },
+          "noShow": {
+            "type": "number",
+            "description": "Did not come out"
+          },
+          "missed": {
+            "type": "number",
+            "description": "The car did not come, or was cancelled by the partner"
+          },
+          "late": {
+            "type": "number",
+            "description": "Rode, but the car came late"
+          }
+        },
+        "required": [
+          "memberId",
+          "name",
+          "reference",
+          "planned",
+          "rode",
+          "excused",
+          "noShow",
+          "missed",
+          "late"
+        ]
+      },
+      "AttendanceView": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AttendanceRow"
+            }
+          },
+          "totals": {
+            "description": "Sums; memberId and name are empty",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/AttendanceRow"
+              }
+            ]
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "rows",
+          "totals"
         ]
       },
       "JoinDto": {
