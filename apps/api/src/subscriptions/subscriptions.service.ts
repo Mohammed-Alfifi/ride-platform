@@ -18,7 +18,12 @@ import {
   familyMembers,
   driverProfiles,
   vehicles,
+  users,
+  Gender,
 } from '../database/schema';
+import { LicensesService } from '../compliance/licenses.service';
+import { rulesFor } from '../compliance/rules';
+import { ContractView, guardianContract } from '../compliance/contract';
 import { TripGenerator } from '../trips/trip.generator';
 import { discountFor, PromosService } from '../services/promos.service';
 import { BillingService, PaymentView } from '../payments/billing.service';
@@ -51,6 +56,7 @@ export class SubscriptionsService {
     private readonly invoiceService: InvoicesService,
     private readonly tripGenerator: TripGenerator,
     private readonly promos: PromosService,
+    private readonly licenses: LicensesService,
   ) {}
 
   // ------------------------------------------------------------------ places
@@ -95,6 +101,9 @@ export class SubscriptionsService {
       .then((r) => r[0]);
     if (!plan) throw new AppError('PLAN_NOT_FOUND');
     if (!plan.plan.active || !plan.zoneActive || plan.partnerStatus !== 'active') throw new AppError('PLAN_UNAVAILABLE');
+    // A lapsed licence or a price outside the approved range takes the plan off sale.
+    const gate = await this.licenses.sellable([plan.plan]);
+    if (!gate.canSell(plan.plan.partnerId, plan.plan.serviceClass, plan.plan.priceHalalas)) throw new AppError('PLAN_UNAVAILABLE');
     await this.ownPlace(riderId, dto.pickupPlaceId);
     await this.ownPlace(riderId, dto.dropoffPlaceId);
 
@@ -155,6 +164,19 @@ export class SubscriptionsService {
 
     const plan = (await this.db.query.plans.findFirst({ where: eq(plans.id, dto.planId) }))!;
     if (dto.memberId) await this.ownMember(riderId, dto.memberId);
+
+    // The regulation asks for the rider's prior consent before a trip is shared with others.
+    if (dto.sharedRideConsent !== true) throw new AppError('SHARED_RIDE_CONSENT_REQUIRED');
+    const needsContract = rulesFor(plan.serviceClass, this.env).guardianContract;
+    if (needsContract && dto.guardianContractVersion !== this.env.GUARDIAN_CONTRACT_VERSION) {
+      throw new AppError('GUARDIAN_CONTRACT_REQUIRED');
+    }
+    const passengerGender = await this.passengerGender(riderId, dto.memberId, dto.passengerGender);
+    if (plan.womenOnly) {
+      if (!passengerGender) throw new AppError('GENDER_REQUIRED');
+      if (passengerGender !== 'female') throw new AppError('WOMEN_ONLY_PLAN');
+    }
+    const now = new Date();
     const promo = quote.promoCode ? await this.promos.resolve(quote.promoCode, plan.partnerId) : null;
     const [sub] = await this.db
       .insert(subscriptions)
@@ -173,6 +195,11 @@ export class SubscriptionsService {
         memberId: dto.memberId ?? null,
         promoCodeId: promo?.id ?? null,
         discountHalalas: quote.discountHalalas,
+        passengerGender,
+        womenOnly: plan.womenOnly,
+        sharedRideConsentAt: now,
+        contractVersion: needsContract ? this.env.GUARDIAN_CONTRACT_VERSION : null,
+        contractAcceptedAt: needsContract ? now : null,
       })
       .returning();
 
@@ -242,6 +269,9 @@ export class SubscriptionsService {
       planNameEn: plan.nameEn,
       partnerNameAr: partner.nameAr,
       partnerNameEn: partner.nameEn,
+      serviceClass: plan.serviceClass,
+      womenOnly: sub.womenOnly,
+      contractVersion: sub.contractVersion,
       pickup: placeRows.find((p) => p.id === sub.pickupPlaceId) as PlaceView,
       dropoff: placeRows.find((p) => p.id === sub.dropoffPlaceId) as PlaceView,
       days: sub.days,
@@ -370,20 +400,41 @@ export class SubscriptionsService {
       .from(familyMembers)
       .where(and(eq(familyMembers.ownerId, riderId), isNull(familyMembers.deletedAt)))
       .orderBy(familyMembers.createdAt);
-    return rows.map((m) => ({ id: m.id, name: m.name, relation: m.relation, note: m.note }));
+    return rows.map((m) => ({ id: m.id, name: m.name, relation: m.relation, note: m.note, gender: m.gender }));
   }
 
   async addMember(riderId: string, dto: CreateMemberDto): Promise<MemberView> {
     const [m] = await this.db
       .insert(familyMembers)
-      .values({ ownerId: riderId, name: dto.name.trim(), relation: dto.relation, note: dto.note?.trim() || null })
+      .values({ ownerId: riderId, name: dto.name.trim(), relation: dto.relation, note: dto.note?.trim() || null, gender: dto.gender ?? null })
       .returning();
-    return { id: m.id, name: m.name, relation: m.relation, note: m.note };
+    return { id: m.id, name: m.name, relation: m.relation, note: m.note, gender: m.gender };
   }
 
   async removeMember(riderId: string, id: string): Promise<void> {
     await this.ownMember(riderId, id);
     await this.db.update(familyMembers).set({ deletedAt: new Date() }).where(eq(familyMembers.id, id));
+  }
+
+  /** The contract a guardian reads and accepts before subscribing to an education plan. */
+  async contract(planId: string): Promise<ContractView> {
+    const plan = await this.db.query.plans.findFirst({ where: eq(plans.id, planId) });
+    if (!plan || !plan.active) throw new AppError('PLAN_NOT_FOUND');
+    const partner = (await this.db.query.partners.findFirst({ where: eq(partners.id, plan.partnerId) }))!;
+    const licence = await this.licenses.find(plan.partnerId, plan.serviceClass);
+    return guardianContract(this.env.GUARDIAN_CONTRACT_VERSION, plan, partner, licence);
+  }
+
+  /** Who rides, as a gender: what the rider just told us (saved), or what we already know. */
+  private async passengerGender(riderId: string, memberId: string | undefined, given: Gender | undefined): Promise<Gender | null> {
+    if (memberId) {
+      const m = await this.db.query.familyMembers.findFirst({ where: eq(familyMembers.id, memberId) });
+      if (given && given !== m?.gender) await this.db.update(familyMembers).set({ gender: given }).where(eq(familyMembers.id, memberId));
+      return given ?? m?.gender ?? null;
+    }
+    const u = await this.db.query.users.findFirst({ columns: { gender: true }, where: eq(users.id, riderId) });
+    if (given && given !== u?.gender) await this.db.update(users).set({ gender: given }).where(eq(users.id, riderId));
+    return given ?? u?.gender ?? null;
   }
 
   private async ownMember(riderId: string, id: string): Promise<void> {

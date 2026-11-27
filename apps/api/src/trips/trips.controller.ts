@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Que
 import { ApiBearerAuth, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsBoolean,
   IsIn,
   ArrayMaxSize,
   ArrayMinSize,
@@ -75,6 +76,13 @@ class LocationReport {
   points!: LocationPoint[];
 }
 
+class CompleteTripDto {
+  @ApiPropertyOptional({ description: 'Education trips: the driver checked that no student is left in the vehicle' })
+  @IsOptional()
+  @IsBoolean()
+  cabinChecked?: boolean;
+}
+
 class AssignDriverDto {
   @ApiProperty({ format: 'uuid', nullable: true, description: 'null removes the driver' })
   @IsOptional()
@@ -119,8 +127,8 @@ export class DriverTripsController {
   @Post('trips/:id/complete')
   @HttpCode(200)
   @ApiOperation({ summary: 'Dropped off (within 500 m of the drop-off when the location is known)' })
-  complete(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<TripView> {
-    return this.trips.complete(u, id);
+  complete(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CompleteTripDto): Promise<TripView> {
+    return this.trips.complete(u, id, new Date(), { cabinChecked: dto.cabinChecked });
   }
 
   @Post('trips/:id/no-show')

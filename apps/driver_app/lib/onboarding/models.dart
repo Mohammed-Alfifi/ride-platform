@@ -6,6 +6,10 @@ const documentTypes = [
   'vehicle_registration',
   'vehicle_insurance',
   'periodic_inspection',
+  'criminal_record',
+  'professional_driver_card',
+  'operating_card',
+  'first_aid_certificate',
 ];
 
 class PartnerSummary {
@@ -45,6 +49,7 @@ class VehicleInfo {
     required this.color,
     required this.seats,
     required this.eligibleUntil,
+    this.escortName,
   });
   final String plateLetters;
   final String plateNumbers;
@@ -54,6 +59,8 @@ class VehicleInfo {
   final String color;
   final int seats;
   final String eligibleUntil;
+  /// Adult escort on board, for plans of young students.
+  final String? escortName;
 
   factory VehicleInfo.fromJson(Map<String, dynamic> j) => VehicleInfo(
         plateLetters: j['plateLetters'] as String,
@@ -64,6 +71,7 @@ class VehicleInfo {
         color: j['color'] as String,
         seats: (j['seats'] as num).toInt(),
         eligibleUntil: j['eligibleUntil'] as String,
+        escortName: j['escortName'] as String?,
       );
 }
 
@@ -103,9 +111,22 @@ class Onboarding {
     this.vehicle,
     this.rejectionReason,
     this.complianceReason,
+    this.requirements = const [],
   });
 
   final String status; // not_joined | draft | submitted | approved | rejected
+  /// Document types this driver must upload; depends on what the partner is licensed for.
+  final List<String> requirements;
+
+  /// Required types in the order the app asks for them; the base list if the server sent none.
+  List<String> get requiredTypes => requirements.isEmpty
+      ? documentTypes.take(6).toList()
+      : [
+          for (final type in documentTypes)
+            if (requirements.contains(type)) type,
+          for (final type in requirements)
+            if (!documentTypes.contains(type)) type,
+        ];
   final PartnerSummary? partner;
   final DriverDetails? details;
   final VehicleInfo? vehicle;
@@ -137,6 +158,10 @@ class Onboarding {
         rejectionReason: j['rejectionReason'] as String?,
         complianceHold: j['complianceHold'] == true,
         complianceReason: j['complianceReason'] as String?,
+        requirements: [
+          for (final r in (j['requirements'] as List<dynamic>? ?? const []))
+            (r as Map<String, dynamic>)['type'] as String,
+        ],
       );
 }
 

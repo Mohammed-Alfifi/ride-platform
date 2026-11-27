@@ -5,7 +5,8 @@ import { AppError } from '../common/errors';
 import { riyadhToday } from '../common/saudi';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
-import { driverProfiles, subscriptions, Trip, tripPoints, trips, TripStatus, users, vehicles } from '../database/schema';
+import { driverProfiles, Plan, plans, ServiceClass, subscriptions, Trip, tripPoints, trips, TripStatus, users, vehicles } from '../database/schema';
+import { ComplianceService } from '../drivers/compliance.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { distanceMeters, etaMinutes } from './geo';
 import { LivePosition, LiveStore } from './live.store';
@@ -56,6 +57,9 @@ export interface TripView {
   pickedUpAt: string | null;
   completedAt: string | null;
   endedReason: string | null;
+  /** education trips end with the vehicle-empty check (send cabinChecked on complete). */
+  serviceClass: ServiceClass;
+  cabinCheckedAt: string | null;
 }
 
 export interface LiveView {
@@ -81,6 +85,7 @@ interface TripRow {
   make: string | null;
   model: string | null;
   color: string | null;
+  serviceClass: ServiceClass;
 }
 
 const riderUser = aliasedTable(users, 'rider_user');
@@ -93,6 +98,7 @@ export class TripsService {
     private readonly live: LiveStore,
     private readonly generator: TripGenerator,
     private readonly notifications: NotificationsService,
+    private readonly compliance: ComplianceService,
   ) {}
 
   // ------------------------------------------------------------------ reading
@@ -114,6 +120,7 @@ export class TripsService {
         make: vehicles.make,
         model: vehicles.model,
         color: vehicles.color,
+        serviceClass: sql<ServiceClass>`(SELECT p.service_class FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.id = ${trips.subscriptionId})`,
       })
       .from(trips)
       .innerJoin(riderUser, eq(riderUser.id, trips.riderId))
@@ -155,6 +162,8 @@ export class TripsService {
       pickedUpAt: t.pickedUpAt?.toISOString() ?? null,
       completedAt: t.completedAt?.toISOString() ?? null,
       endedReason: t.endedReason,
+      serviceClass: r.serviceClass,
+      cabinCheckedAt: t.cabinCheckedAt?.toISOString() ?? null,
     };
   }
 
@@ -175,6 +184,11 @@ export class TripsService {
     await this.assertCanDrive(driver.id);
     const trip = await this.ownTrip(driver.id, tripId);
     if (trip.status !== 'scheduled' || trip.serviceDate !== riyadhToday(now)) throw new AppError('TRIP_INVALID_STATE');
+    const plan = await this.planOfSubscription(trip.subscriptionId);
+    if (plan.requiresEscort) {
+      const v = await this.db.query.vehicles.findFirst({ columns: { escortName: true }, where: eq(vehicles.driverId, driver.id) });
+      if (!v?.escortName) throw new AppError('ESCORT_REQUIRED');
+    }
     if (now.getTime() < trip.scheduledAt.getTime() - START_WINDOW_MINUTES * 60_000) {
       throw new AppError('TRIP_TOO_EARLY', { minutes: START_WINDOW_MINUTES });
     }
@@ -200,11 +214,18 @@ export class TripsService {
     return this.one(eq(trips.id, trip.id));
   }
 
-  async complete(driver: AuthUser, tripId: string, now = new Date()): Promise<TripView> {
+  /** Drop-off. Education trips end only once the driver confirms no student is left in the vehicle. */
+  async complete(driver: AuthUser, tripId: string, now = new Date(), opts: { cabinChecked?: boolean } = {}): Promise<TripView> {
     const trip = await this.ownTrip(driver.id, tripId);
     if (trip.status !== 'on_board') throw new AppError('TRIP_INVALID_STATE');
+    const plan = await this.planOfSubscription(trip.subscriptionId);
+    if (plan.serviceClass === 'education' && opts.cabinChecked !== true) throw new AppError('CABIN_CHECK_REQUIRED');
     await this.assertNear(driver.id, trip.dropoff, COMPLETE_RADIUS_M);
-    await this.move(trip, 'on_board', { status: 'completed', completedAt: now });
+    await this.move(trip, 'on_board', {
+      status: 'completed',
+      completedAt: now,
+      cabinCheckedAt: plan.serviceClass === 'education' ? now : null,
+    });
     await this.tell(trip, 'trip_completed', 'وصل بالسلامة', 'Arrived safely', `تم الوصول إلى ${trip.dropoffName}.`, `Arrived at ${trip.dropoffName}.`);
     return this.one(eq(trips.id, trip.id));
   }
@@ -391,7 +412,7 @@ export class TripsService {
     assertPartnerAccess(actor, trip.partnerId);
     if (trip.status !== 'scheduled') throw new AppError('TRIP_INVALID_STATE');
     if (driverId) {
-      await this.assertAssignable(driverId, trip.partnerId);
+      await this.assertAssignable(driverId, trip.partnerId, await this.planOfSubscription(trip.subscriptionId));
       await this.assertTripSeat(driverId, trip);
     }
     await this.db.update(trips).set({ driverId }).where(eq(trips.id, trip.id));
@@ -414,7 +435,7 @@ export class TripsService {
     if (!sub) throw new AppError('SUBSCRIPTION_NOT_FOUND');
     assertPartnerAccess(actor, sub.partnerId);
     if (driverId) {
-      await this.assertAssignable(driverId, sub.partnerId);
+      await this.assertAssignable(driverId, sub.partnerId, await this.planOfSubscription(sub.id));
       if (driverId !== sub.driverId) await this.assertSubscriptionSeat(driverId, sub);
     }
     await this.db.update(subscriptions).set({ driverId }).where(eq(subscriptions.id, sub.id));
@@ -504,11 +525,36 @@ export class TripsService {
     if (p.complianceHold) throw new AppError('DRIVER_ON_HOLD');
   }
 
-  private async assertAssignable(driverId: string, partnerId: string): Promise<void> {
+  /** Approved, not on hold, of the same partner, and meeting the rules of the plan's class. */
+  private async assertAssignable(driverId: string, partnerId: string, plan: Pick<Plan, 'serviceClass' | 'requiresEscort'>): Promise<void> {
     const p = await this.db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, driverId) });
     if (!p || p.status !== 'approved' || p.partnerId !== partnerId || p.complianceHold) {
       throw new AppError('DRIVER_NOT_AVAILABLE');
     }
+    const issues = await this.compliance.qualify(driverId, plan);
+    if (issues.length > 0) throw new AppError('DRIVER_NOT_QUALIFIED', { issues: issues.join(', ') }, issues);
+  }
+
+  private async planOfSubscription(subscriptionId: string): Promise<Plan> {
+    const [row] = await this.db
+      .select({ plan: plans })
+      .from(subscriptions)
+      .innerJoin(plans, eq(plans.id, subscriptions.planId))
+      .where(eq(subscriptions.id, subscriptionId));
+    if (!row) throw new AppError('SUBSCRIPTION_NOT_FOUND');
+    return row.plan;
+  }
+
+  /**
+   * Women-only riders share the car only with women; other riders never join a women-only car.
+   * `others` are the riders already in the car at that time.
+   */
+  private assertSeating(
+    me: { womenOnly: boolean; passengerGender: string | null },
+    others: { womenOnly: number; notFemale: number },
+  ): void {
+    if (me.womenOnly && others.notFemale > 0) throw new AppError('SEATING_RULES');
+    if (me.passengerGender !== 'female' && others.womenOnly > 0) throw new AppError('SEATING_RULES');
   }
 
   private async seatsOf(driverId: string): Promise<number> {
@@ -524,24 +570,33 @@ export class TripsService {
     const seats = await this.seatsOf(driverId);
     const near = (col: string, time: string | null) =>
       time ? sql`(${sql.raw(col)} IS NOT NULL AND abs(extract(epoch from (${sql.raw(col)}::time - ${time}::time))) <= 1800)` : sql`false`;
-    const [row] = await this.db.execute<{ n: number }>(sql`
-      SELECT count(*)::int AS n FROM subscriptions
+    const [row] = await this.db.execute<{ n: number; wo: number; nf: number }>(sql`
+      SELECT count(*)::int AS n,
+             count(*) FILTER (WHERE women_only)::int AS wo,
+             count(*) FILTER (WHERE passenger_gender IS DISTINCT FROM 'female')::int AS nf
+      FROM subscriptions
       WHERE driver_id = ${driverId} AND id <> ${sub.id}
         AND status IN ('active', 'past_due', 'paused', 'pending_payment')
         AND days && ${sql.raw(`ARRAY[${sub.days.map(Number).join(',')}]::int[]`)}
         AND (${near('outbound_time', sub.outboundTime)} OR ${near('return_time', sub.returnTime)})`).then((r) => r.rows);
     if ((row?.n ?? 0) + 1 > seats) throw new AppError('DRIVER_FULL', { seats });
+    this.assertSeating(sub, { womenOnly: row?.wo ?? 0, notFemale: row?.nf ?? 0 });
   }
 
   /** A substitute for one trip needs a free seat at that time on that day. */
   private async assertTripSeat(driverId: string, trip: Trip): Promise<void> {
     const seats = await this.seatsOf(driverId);
-    const [row] = await this.db.execute<{ n: number }>(sql`
-      SELECT count(*)::int AS n FROM trips
-      WHERE driver_id = ${driverId} AND id <> ${trip.id} AND service_date = ${trip.serviceDate}
-        AND status NOT IN ('cancelled', 'skipped', 'no_show', 'completed')
-        AND abs(extract(epoch from (scheduled_at - ${trip.scheduledAt.toISOString()}::timestamptz))) <= 1800`).then((r) => r.rows);
+    const [row] = await this.db.execute<{ n: number; wo: number; nf: number }>(sql`
+      SELECT count(*)::int AS n,
+             count(*) FILTER (WHERE s.women_only)::int AS wo,
+             count(*) FILTER (WHERE s.passenger_gender IS DISTINCT FROM 'female')::int AS nf
+      FROM trips t JOIN subscriptions s ON s.id = t.subscription_id
+      WHERE t.driver_id = ${driverId} AND t.id <> ${trip.id} AND t.service_date = ${trip.serviceDate}
+        AND t.status NOT IN ('cancelled', 'skipped', 'no_show', 'completed')
+        AND abs(extract(epoch from (t.scheduled_at - ${trip.scheduledAt.toISOString()}::timestamptz))) <= 1800`).then((r) => r.rows);
     if ((row?.n ?? 0) + 1 > seats) throw new AppError('DRIVER_FULL', { seats });
+    const mine = (await this.db.query.subscriptions.findFirst({ where: eq(subscriptions.id, trip.subscriptionId) }))!;
+    this.assertSeating(mine, { womenOnly: row?.wo ?? 0, notFemale: row?.nf ?? 0 });
   }
 
   private timeOf(trip: Pick<Trip, 'scheduledAt'>): string {

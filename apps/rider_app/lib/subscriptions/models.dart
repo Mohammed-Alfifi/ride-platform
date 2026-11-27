@@ -34,6 +34,8 @@ class Plan {
     required this.daysPerWeek,
     required this.priceHalalas,
     required this.maxDistanceKm,
+    this.serviceClass = 'commute',
+    this.womenOnly = false,
   });
 
   factory Plan.fromJson(Map<String, dynamic> j) => Plan(
@@ -44,6 +46,8 @@ class Plan {
         daysPerWeek: _int(j['daysPerWeek']),
         priceHalalas: _int(j['priceHalalas']),
         maxDistanceKm: _int(j['maxDistanceKm']),
+        serviceClass: j['serviceClass'] as String? ?? 'commute',
+        womenOnly: j['womenOnly'] as bool? ?? false,
       );
 
   final String id;
@@ -53,8 +57,11 @@ class Plan {
   final int daysPerWeek;
   final int priceHalalas;
   final int maxDistanceKm;
+  final String serviceClass; // commute | education
+  final bool womenOnly;
 
   bool get roundTrip => tripType == 'round_trip';
+  bool get education => serviceClass == 'education';
   String name(bool ar) => ar ? nameAr : nameEn;
 }
 
@@ -378,4 +385,26 @@ class LiveTrip {
   final double? heading;
   final int? etaMinutes;
   final int? distanceMeters;
+}
+
+/// The transport contract a guardian accepts before an education plan.
+class TransportContract {
+  const TransportContract({required this.version, required this.titleAr, required this.titleEn, required this.clausesAr, required this.clausesEn});
+
+  factory TransportContract.fromJson(Map<String, dynamic> j) => TransportContract(
+        version: j['version'] as String,
+        titleAr: j['titleAr'] as String,
+        titleEn: j['titleEn'] as String,
+        clausesAr: (j['clausesAr'] as List).cast<String>(),
+        clausesEn: (j['clausesEn'] as List).cast<String>(),
+      );
+
+  final String version;
+  final String titleAr;
+  final String titleEn;
+  final List<String> clausesAr;
+  final List<String> clausesEn;
+
+  String title(bool ar) => ar ? titleAr : titleEn;
+  List<String> clauses(bool ar) => ar ? clausesAr : clausesEn;
 }

@@ -1,7 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Max, MaxLength, Min } from 'class-validator';
-import { ROLES, type Role } from '../database/schema';
+import { GENDERS, ROLES, type Gender, type Role } from '../database/schema';
 import { UserView } from './user.presenter';
 
 const ADMIN_ROLE_VALUES = ['partner_admin', 'dispatcher', 'super_admin'] as const;
@@ -18,6 +18,11 @@ export class UpdateMeDto {
   @IsOptional()
   @IsIn(['ar', 'en'])
   locale?: 'ar' | 'en';
+
+  @ApiPropertyOptional({ enum: GENDERS, description: 'Used for women-only rides; never shown to other riders' })
+  @IsOptional()
+  @IsIn(GENDERS as unknown as string[])
+  gender?: Gender;
 }
 
 export class ListUsersQuery {

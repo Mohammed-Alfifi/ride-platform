@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { addDays } from '../src/common/saudi';
 import { driverProfiles, notifications, tripPoints, trips, users, vehicles } from '../src/database/schema';
 import { TripGenerator } from '../src/trips/trip.generator';
-import { bearer, createPartner, createStaff, createTestApp, daysFromToday, newPhone, signIn, SignedIn, TestContext } from './helpers';
+import { bearer, createPartner, createStaff, createTestApp, daysFromToday, newPhone, signIn, SignedIn, TestContext, qualifyDriver } from './helpers';
 
 const RIMAL = {
   type: 'Polygon',
@@ -39,6 +39,7 @@ describe('Trips, live tracking and dispatch (e2e)', () => {
       .values({ phone, role: 'driver', audience: 'driver', partnerId: partner, name: 'سائق', status: status === 'approved' ? 'active' : 'pending' })
       .returning({ id: users.id });
     await ctx.db.insert(driverProfiles).values({ userId: u.id, partnerId: partner, fullName: `سائق ${plate}`, status });
+    await qualifyDriver(ctx, u.id, partner);
     await ctx.db.insert(vehicles).values({
       driverId: u.id,
       partnerId: partner,
@@ -74,7 +75,7 @@ describe('Trips, live tracking and dispatch (e2e)', () => {
     const school = (await place('school', SCHOOL)).body.id;
 
     const res = await ctx.http().post('/v1/subscriptions').set(bearer(rider.accessToken))
-      .send({ planId: plan.body.id, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime: '06:30', returnTime: '13:30' })
+      .send({ planId: plan.body.id, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime: '06:30', returnTime: '13:30', sharedRideConsent: true })
       .expect(201);
     subId = res.body.subscription.id;
     await ctx.http().post(`${pathOf(res.body.payment.checkoutUrl)}/pay`).expect(303);

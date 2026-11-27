@@ -78,6 +78,15 @@ class RiderStrings {
   String km(int n) => _s('$n كم', '$n km');
   String get monthlyTotal => _s('الإجمالي الشهري', 'Monthly total');
   String vatIncluded(String vat) => _s('يشمل ضريبة القيمة المضافة $vat ريال', 'Includes VAT of SAR $vat');
+  String get shareConsent => _s('أوافق على مشاركة السيارة مع ركاب آخرين في نفس المسار', 'I agree to share the car with other riders on the same route');
+  String get shareConsentHint => _s('شرط من الهيئة العامة للنقل قبل أي رحلة مشتركة.', 'Required by the Transport General Authority before any shared ride.');
+  String get readContract => _s('اقرأ عقد النقل ووافق عليه', 'Read and accept the transport contract');
+  String get contractAccepted => _s('وافقت على عقد النقل', 'Transport contract accepted');
+  String get contractRequiredHint => _s('باقات الطلاب تتطلب عقد نقل بين ولي الأمر والناقل المرخص.', 'Student plans need a transport contract between the guardian and the licensed carrier.');
+  String get acceptContract => _s('أوافق على العقد', 'I accept the contract');
+  String get notNow => _s('ليس الآن', 'Not now');
+  String get womenOnlyConfirm => _s('أؤكد أن الراكبة أنثى', 'I confirm the rider is a woman');
+  String get womenOnlyHint => _s('هذه الباقة للنساء فقط، ولا تشاركها السيارة إلا نساء.', 'This plan is for women only; only women share the car.');
   String get saveCard => _s('احفظ البطاقة للتجديد التلقائي كل شهر', 'Save my card to renew automatically each month');
   String get saveCardHint => _s(
         'نخصم في آخر يوم من الشهر فقط، ويمكنك الإلغاء أو حذف البطاقة متى شئت.',

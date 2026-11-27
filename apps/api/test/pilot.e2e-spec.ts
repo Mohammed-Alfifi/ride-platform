@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { AccessService } from '../src/auth/access.service';
 import { deviceTokens, driverProfiles, joinRequests, notifications, payments, subscriptions, trips, users, vehicles } from '../src/database/schema';
 import { TripWatch } from '../src/trips/trip.watch';
-import { bearer, createPartner, createStaff, createTestApp, newPhone, SignedIn, TestContext } from './helpers';
+import { bearer, createPartner, createStaff, createTestApp, newPhone, SignedIn, TestContext, qualifyDriver } from './helpers';
 
 const RIMAL = {
   type: 'Polygon',
@@ -54,7 +54,7 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
     return http()
       .post('/v1/subscriptions')
       .set(bearer(rider.accessToken))
-      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime, returnTime })
+      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime, returnTime, sharedRideConsent: true })
       .expect(status);
   }
 
@@ -77,6 +77,7 @@ describe('Invite-only pilot: access codes, join requests, manual payments, safet
     const [d] = await ctx.db.insert(users).values({ phone: newPhone(), role: 'driver', audience: 'driver', partnerId, status: 'active', name: 'سعد' }).returning();
     driverId = d.id;
     await ctx.db.insert(driverProfiles).values({ userId: d.id, partnerId, fullName: 'سعد محمد', status: 'approved' });
+    await qualifyDriver(ctx, d.id, partnerId);
     // A small car: one passenger seat, so the capacity rule shows.
     await ctx.db.insert(vehicles).values({ driverId: d.id, partnerId, plateLetters: 'KHD', plateNumbers: '7341', make: 'Toyota', model: 'Camry', year: new Date().getFullYear(), color: 'أبيض', seats: 1 });
 

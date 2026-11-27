@@ -12,7 +12,7 @@ import { ENV } from '../src/config/config.module';
 import { Env, loadEnv } from '../src/config/env';
 import { DB, Database } from '../src/database/database.module';
 import { runMigrations } from '../src/database/migrate';
-import { partners, users, type Role } from '../src/database/schema';
+import { DOCUMENT_TYPES, documents, driverProfiles, EXPIRING_DOCUMENTS, partners, users, type Role } from '../src/database/schema';
 import { REDIS } from '../src/redis/redis.module';
 
 /** Captures outgoing SMS so tests can read the code a real user would receive. */
@@ -148,4 +148,26 @@ export function withCheckDigit(first9: string): string {
     if (isValidSaudiNationalId(first9 + d)) return first9 + d;
   }
   throw new Error('no check digit');
+}
+
+/**
+ * Gives a driver made directly in the database what the class rules ask: Saudi, an adult of 40,
+ * and every document type on file, accepted and valid for a year. Tests about one missing or
+ * expired paper remove or change that paper afterwards.
+ */
+export async function qualifyDriver(ctx: TestContext, driverId: string, partnerId: string): Promise<void> {
+  await ctx.db.update(driverProfiles).set({ saudiConfirmed: true, dateOfBirth: '1986-01-15' }).where(sql`${driverProfiles.userId} = ${driverId}`);
+  await ctx.db.insert(documents).values(
+    DOCUMENT_TYPES.map((type) => ({
+      driverId,
+      partnerId,
+      type,
+      storageKey: `test/${driverId}/${type}`,
+      mime: 'image/jpeg',
+      sizeBytes: 2048,
+      sha256: '0'.repeat(64),
+      expiresAt: EXPIRING_DOCUMENTS.includes(type) ? daysFromToday(365) : null,
+      status: 'accepted' as const,
+    })),
+  );
 }

@@ -44,6 +44,19 @@ export const userStatusEnum = pgEnum('user_status', ['active', 'pending', 'suspe
 export const partnerStatusEnum = pgEnum('partner_status', ['active', 'suspended']);
 export const localeEnum = pgEnum('user_locale', ['ar', 'en']);
 
+/**
+ * The regulated activity a plan is sold under. Each class has its own licence and rules:
+ * - commute: adults to work, private cars of Saudi drivers (ride-hailing mediation regulation).
+ * - education: students and staff of schools and universities (education transport regulation).
+ */
+export const SERVICE_CLASSES = ['commute', 'education'] as const;
+export type ServiceClass = (typeof SERVICE_CLASSES)[number];
+export const serviceClassEnum = pgEnum('service_class', SERVICE_CLASSES);
+
+export const GENDERS = ['male', 'female'] as const;
+export type Gender = (typeof GENDERS)[number];
+export const genderEnum = pgEnum('gender', GENDERS);
+
 const timestamps = {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true })
@@ -90,6 +103,8 @@ export const users = pgTable(
     partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'restrict' }),
     name: varchar('name', { length: 120 }),
     locale: localeEnum('locale').notNull().default('ar'),
+    /** Used for women-only rides and seating rules; never shown to other riders. */
+    gender: genderEnum('gender'),
     status: userStatusEnum('status').notNull().default('active'),
     /** Bumped to revoke every access token of the user immediately. */
     tokenVersion: integer('token_version').notNull().default(0),
@@ -174,8 +189,24 @@ export const DOCUMENT_TYPES = [
   'vehicle_registration',
   'vehicle_insurance',
   'periodic_inspection',
+  /** Education transport: the authority's professional driver card. */
+  'professional_driver_card',
+  /** Clean criminal record; renewed every year. */
+  'criminal_record',
+  /** The authority's operating card for the vehicle. */
+  'operating_card',
+  'first_aid_certificate',
 ] as const;
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+/** Documents every driver uploads when joining, whatever the service class. */
+export const BASE_DOCUMENTS: readonly DocumentType[] = [
+  'national_id',
+  'driving_license',
+  'driver_photo',
+  'vehicle_registration',
+  'vehicle_insurance',
+  'periodic_inspection',
+];
 /** Documents whose expiry date must be recorded and is watched by the compliance scan. */
 export const EXPIRING_DOCUMENTS: readonly DocumentType[] = [
   'national_id',
@@ -183,6 +214,10 @@ export const EXPIRING_DOCUMENTS: readonly DocumentType[] = [
   'vehicle_registration',
   'vehicle_insurance',
   'periodic_inspection',
+  'professional_driver_card',
+  'criminal_record',
+  'operating_card',
+  'first_aid_certificate',
 ];
 
 export const onboardingStatusEnum = pgEnum('driver_onboarding_status', ['draft', 'submitted', 'approved', 'rejected']);
@@ -239,6 +274,8 @@ export const vehicles = pgTable(
     color: varchar('color', { length: 30 }).notNull(),
     /** Passenger seats, not counting the driver. */
     seats: integer('seats').notNull(),
+    /** The adult escort who rides with young students, when a plan requires one. */
+    escortName: varchar('escort_name', { length: 120 }),
     ...timestamps,
   },
   (t) => [
@@ -321,6 +358,11 @@ export const plans = pgTable(
     priceHalalas: integer('price_halalas').notNull(),
     /** Longest one-way distance this plan covers. */
     maxDistanceKm: integer('max_distance_km').notNull(),
+    serviceClass: serviceClassEnum('service_class').notNull().default('commute'),
+    /** Only women ride together in the car. */
+    womenOnly: boolean('women_only').notNull().default(false),
+    /** Young students: an adult escort must be on board. */
+    requiresEscort: boolean('requires_escort').notNull().default(false),
     active: boolean('active').notNull().default(true),
     ...timestamps,
   },
@@ -460,6 +502,15 @@ export const subscriptions = pgTable(
     promoCodeId: uuid('promo_code_id').references(() => promoCodes.id, { onDelete: 'set null' }),
     /** Taken off the first payment only. */
     discountHalalas: integer('discount_halalas').notNull().default(0),
+    /** Gender of the person riding, captured at subscription for seating rules. */
+    passengerGender: genderEnum('passenger_gender'),
+    /** Copied from the plan: this rider only shares the car with women. */
+    womenOnly: boolean('women_only').notNull().default(false),
+    /** The rider's prior consent to share the car with other riders (required by the regulation). */
+    sharedRideConsentAt: timestamp('shared_ride_consent_at', { withTimezone: true }),
+    /** Education plans: the transport contract the guardian accepted, by version. */
+    contractVersion: varchar('contract_version', { length: 20 }),
+    contractAcceptedAt: timestamp('contract_accepted_at', { withTimezone: true }),
     ...timestamps,
   },
   (t) => [
@@ -592,6 +643,8 @@ export const trips = pgTable(
     arrivedAt: timestamp('arrived_at', { withTimezone: true }),
     pickedUpAt: timestamp('picked_up_at', { withTimezone: true }),
     completedAt: timestamp('completed_at', { withTimezone: true }),
+    /** Education trips: the driver confirmed no student is left in the vehicle. */
+    cabinCheckedAt: timestamp('cabin_checked_at', { withTimezone: true }),
     endedReason: varchar('ended_reason', { length: 200 }),
     ...timestamps,
   },
@@ -639,6 +692,7 @@ export const familyMembers = pgTable(
     relation: varchar('relation', { length: 20 }).notNull(), // child | spouse | parent | other
     /** School, class or workplace: helps the driver at the gate. */
     note: varchar('note', { length: 120 }),
+    gender: genderEnum('gender'),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
@@ -859,3 +913,42 @@ export type Subscription = typeof subscriptions.$inferSelect;
 export type PaymentRow = typeof payments.$inferSelect;
 export type PaymentMethod = typeof paymentMethods.$inferSelect;
 export type Invoice = typeof invoices.$inferSelect;
+
+// ---------------------------------------------------------------- phase 6: regulatory compliance
+
+/**
+ * A partner's licence from the Transport General Authority for one service class.
+ * Plans of a class can be sold only while the partner holds a verified, unexpired licence for it.
+ * The approved pricing range, when set, bounds every plan price of that class.
+ */
+export const partnerLicenses = pgTable(
+  'partner_licenses',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    serviceClass: serviceClassEnum('service_class').notNull(),
+    licenseNumber: varchar('license_number', { length: 40 }).notNull(),
+    /** The authority's unified code, shown to riders in the app. */
+    unifiedCode: varchar('unified_code', { length: 40 }),
+    expiresAt: date('expires_at').notNull(),
+    /** Monthly price range approved with the pricing method, VAT included, halalas. */
+    minPriceHalalas: integer('min_price_halalas'),
+    maxPriceHalalas: integer('max_price_halalas'),
+    pricingReference: varchar('pricing_reference', { length: 80 }),
+    /** A platform admin checked the licence against the authority's records. Any edit clears it. */
+    verifiedAt: timestamp('verified_at', { withTimezone: true }),
+    verifiedBy: uuid('verified_by').references(() => users.id, { onDelete: 'set null' }),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('partner_licenses_class_uq').on(t.partnerId, t.serviceClass),
+    check(
+      'partner_licenses_price_ck',
+      sql`${t.minPriceHalalas} IS NULL OR ${t.maxPriceHalalas} IS NULL OR ${t.minPriceHalalas} <= ${t.maxPriceHalalas}`,
+    ),
+  ],
+);
+
+export type PartnerLicense = typeof partnerLicenses.$inferSelect;

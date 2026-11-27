@@ -57,10 +57,28 @@ class _TodayViewState extends ConsumerState<TodayView> with WidgetsBindingObserv
   }
 
   Future<void> _act(DriverTrip trip, String action) async {
+    // Education transport rule: before ending the trip, walk the vehicle and confirm no student is left.
+    final cabinCheck = action == 'complete' && trip.education;
+    if (cabinCheck) {
+      final t = TripStrings.of(context);
+      final ok = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => AlertDialog(
+          title: Text(t.cabinCheckTitle),
+          content: Text(t.cabinCheckBody),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t.notYet)),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(t.cabinChecked)),
+          ],
+        ),
+      );
+      if (ok != true || !mounted) return;
+    }
     setState(() => _busy = trip.id);
     try {
       await _reporter.flush(); // the server checks distance against the latest position
-      await ref.read(todayTripsProvider.notifier).act(trip.id, action);
+      await ref.read(todayTripsProvider.notifier).act(trip.id, action, cabinChecked: cabinCheck);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(describeError(context, e))));
     } finally {
@@ -422,6 +440,13 @@ class TripStrings {
   String _t(String a, String e) => ar ? a : e;
 
   String get today => _t('رحلات اليوم', 'Today');
+  String get cabinCheckTitle => _t('تأكد من خلو المركبة', 'Check the vehicle is empty');
+  String get cabinCheckBody => _t(
+        'امشِ على المقاعد حتى آخر المركبة وتأكد أنه لم يبقَ أي طالب قبل إنهاء الرحلة.',
+        'Walk to the back seats and make sure no student is left before ending the trip.',
+      );
+  String get cabinChecked => _t('تأكدت، المركبة خالية', 'Checked, the vehicle is empty');
+  String get notYet => _t('ليس بعد', 'Not yet');
   String get help => _t('المساعدة', 'Help');
   String get account => _t('حسابي', 'My account');
   String progress(int done, int total) => _t('أنجزت $done من $total رحلة', '$done of $total trips done');

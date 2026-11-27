@@ -1,10 +1,12 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, asc, eq, inArray, isNull, lte, ne, SQL } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lte, ne, SQL, sql } from 'drizzle-orm';
+import { ageOn, NEWLY_REQUIRED, requiredDocuments, rulesFor } from '../compliance/rules';
+import { licensedClasses } from '../compliance/licenses.service';
 import { addDays, daysBetween, riyadhToday, vehicleEligibleUntil } from '../common/saudi';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
-import { documents, DocumentType, driverProfiles, EXPIRING_DOCUMENTS, users, vehicles } from '../database/schema';
+import { documents, DocumentType, driverProfiles, EXPIRING_DOCUMENTS, partnerLicenses, Plan, ServiceClass, users, vehicles } from '../database/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ExpiringItem } from './drivers.dto';
 
@@ -15,7 +17,22 @@ const DOC_NAMES: Record<DocumentType, { ar: string; en: string }> = {
   vehicle_registration: { ar: 'استمارة المركبة', en: 'vehicle registration' },
   vehicle_insurance: { ar: 'تأمين المركبة', en: 'vehicle insurance' },
   periodic_inspection: { ar: 'الفحص الدوري', en: 'periodic inspection' },
+  professional_driver_card: { ar: 'بطاقة السائق المهني', en: 'professional driver card' },
+  criminal_record: { ar: 'شهادة خلو السوابق', en: 'criminal record certificate' },
+  operating_card: { ar: 'بطاقة التشغيل', en: 'operating card' },
+  first_aid_certificate: { ar: 'شهادة الإسعافات الأولية', en: 'first aid certificate' },
 };
+
+/** Reasons a driver may not serve a plan of a class (checked when assigning). */
+export type QualificationIssue =
+  | `document_missing:${DocumentType}`
+  | `document_expired:${DocumentType}`
+  | 'driver_too_young'
+  | 'driver_not_saudi'
+  | 'vehicle_missing'
+  | 'vehicle_seats'
+  | 'vehicle_too_old'
+  | 'escort_missing';
 
 export interface ComplianceIssue {
   code: 'document_expired' | 'document_missing' | 'vehicle_too_old';
@@ -49,17 +66,21 @@ export class ComplianceService {
     if (!profile || profile.status !== 'approved') return [];
 
     const issues: ComplianceIssue[] = [];
-    const current = await this.db
-      .select()
-      .from(documents)
-      .where(and(eq(documents.driverId, driverId), isNull(documents.supersededAt), ne(documents.status, 'rejected')));
-    for (const type of EXPIRING_DOCUMENTS) {
+    const classes = await this.classesServed(driverId, profile.partnerId);
+    const inGrace = Boolean(this.env.COMPLIANCE_GRACE_UNTIL) && today <= this.env.COMPLIANCE_GRACE_UNTIL;
+    const current = await this.currentDocuments(driverId);
+    for (const type of requiredDocuments(classes, this.env).filter((t) => EXPIRING_DOCUMENTS.includes(t))) {
       const doc = current.find((d) => d.type === type);
-      if (!doc) issues.push({ code: 'document_missing', type });
-      else if (doc.expiresAt && doc.expiresAt <= today) issues.push({ code: 'document_expired', type });
+      if (!doc) {
+        // A document this phase made mandatory: during the grace period, drivers keep working.
+        if (inGrace && NEWLY_REQUIRED.includes(type)) continue;
+        issues.push({ code: 'document_missing', type });
+      } else if (doc.expiresAt && doc.expiresAt <= today) issues.push({ code: 'document_expired', type });
     }
+    // The strictest age limit among the classes the driver serves.
+    const maxAge = Math.min(...classes.map((c) => rulesFor(c, this.env).vehicleMaxAgeYears));
     const vehicle = await this.db.query.vehicles.findFirst({ where: eq(vehicles.driverId, driverId) });
-    if (vehicle && vehicleEligibleUntil(vehicle.year, this.env.VEHICLE_MAX_AGE_YEARS).toISOString().slice(0, 10) <= today) {
+    if (vehicle && vehicleEligibleUntil(vehicle.year, maxAge).toISOString().slice(0, 10) <= today) {
       issues.push({ code: 'vehicle_too_old' });
     }
 
@@ -72,6 +93,53 @@ export class ComplianceService {
         .where(eq(driverProfiles.userId, driverId));
     }
     return issues;
+  }
+
+  /**
+   * Whether the driver meets the rules of the plan's class, beyond the hold above:
+   * their age, the documents of that class, the car's seats and age, and the escort.
+   * Returns the issues; empty means qualified.
+   */
+  async qualify(driverId: string, plan: Pick<Plan, 'serviceClass' | 'requiresEscort'>, today = riyadhToday()): Promise<QualificationIssue[]> {
+    const rules = rulesFor(plan.serviceClass, this.env);
+    const out: QualificationIssue[] = [];
+    const profile = await this.db.query.driverProfiles.findFirst({ where: eq(driverProfiles.userId, driverId) });
+    if (!profile?.saudiConfirmed) out.push('driver_not_saudi');
+    if (!profile?.dateOfBirth || ageOn(profile.dateOfBirth, today) < rules.minDriverAge) out.push('driver_too_young');
+    const inGrace = Boolean(this.env.COMPLIANCE_GRACE_UNTIL) && today <= this.env.COMPLIANCE_GRACE_UNTIL;
+    const current = await this.currentDocuments(driverId);
+    for (const type of requiredDocuments([plan.serviceClass], this.env)) {
+      const doc = current.find((d) => d.type === type);
+      // Commute keeps the grace period for new papers; education never sells without them.
+      if (!doc) {
+        if (inGrace && plan.serviceClass === 'commute' && NEWLY_REQUIRED.includes(type)) continue;
+        out.push(`document_missing:${type}`);
+      } else if (doc.expiresAt && doc.expiresAt <= today) out.push(`document_expired:${type}`);
+    }
+    const vehicle = await this.db.query.vehicles.findFirst({ where: eq(vehicles.driverId, driverId) });
+    if (!vehicle) out.push('vehicle_missing');
+    else {
+      if (vehicle.seats < rules.minSeats || vehicle.seats > rules.maxSeats) out.push('vehicle_seats');
+      if (vehicleEligibleUntil(vehicle.year, rules.vehicleMaxAgeYears).toISOString().slice(0, 10) <= today) out.push('vehicle_too_old');
+      if (plan.requiresEscort && !vehicle.escortName) out.push('escort_missing');
+    }
+    return out;
+  }
+
+  /** Classes the driver serves: those of the plans of riders assigned to them, else the partner's licences. */
+  private async classesServed(driverId: string, partnerId: string | null): Promise<ServiceClass[]> {
+    const rows = await this.db.execute<{ c: ServiceClass }>(sql`
+      SELECT DISTINCT p.service_class AS c FROM subscriptions s JOIN plans p ON p.id = s.plan_id
+      WHERE s.driver_id = ${driverId} AND s.status IN ('active', 'past_due', 'paused', 'pending_payment')`);
+    const assigned = rows.rows.map((r) => r.c);
+    return assigned.length ? assigned : licensedClasses(this.db, partnerId);
+  }
+
+  private currentDocuments(driverId: string) {
+    return this.db
+      .select()
+      .from(documents)
+      .where(and(eq(documents.driverId, driverId), isNull(documents.supersededAt), ne(documents.status, 'rejected')));
   }
 
   /** The daily job. Safe to run more than once a day: notifications are de-duplicated. */
@@ -135,6 +203,27 @@ export class ComplianceService {
       } else if (!nowHeld && driver.hold) {
         result.holdsCleared++;
       }
+    }
+
+    // 3. Partner licences about to expire: once a licence lapses, its plans come off sale.
+    const licences = await this.db
+      .select()
+      .from(partnerLicenses)
+      .where(and(isNotNull(partnerLicenses.verifiedAt), lte(partnerLicenses.expiresAt, horizon)));
+    for (const l of licences) {
+      const daysLeft = daysBetween(today, l.expiresAt);
+      const bucket = daysLeft <= 0 ? 0 : thresholds.find((t) => daysLeft <= t);
+      if (bucket === undefined) continue;
+      const cls = l.serviceClass === 'education' ? { ar: 'النقل التعليمي', en: 'education transport' } : { ar: 'نقل الموظفين', en: 'commute' };
+      result.warnings += await this.notifications.notify(await this.adminsOf(l.partnerId, adminCache), {
+        kind: 'license_expiring',
+        titleAr: daysLeft <= 0 ? `انتهى ترخيص ${cls.ar}` : `ترخيص ${cls.ar} ينتهي بعد ${daysLeft} يوما`,
+        titleEn: daysLeft <= 0 ? `Your ${cls.en} licence has expired` : `Your ${cls.en} licence expires in ${daysLeft} days`,
+        bodyAr: 'تتوقف باقات هذه الفئة عن البيع عند انتهاء الترخيص. حدّث بيانات الترخيص بعد تجديده.',
+        bodyEn: 'Plans of this class stop selling when the licence expires. Update the licence once renewed.',
+        data: { licenseId: l.id, expiresAt: l.expiresAt },
+        dedupeKey: `licence:${l.id}:${l.expiresAt}:${bucket}`,
+      });
     }
 
     this.logger.log(`Compliance scan ${today}: ${JSON.stringify(result)}`);

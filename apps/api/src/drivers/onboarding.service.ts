@@ -7,9 +7,11 @@ import { isValidSaudiNationalId, normalizePlateLetters, riyadhToday, vehicleElig
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
+import { licensedClasses } from '../compliance/licenses.service';
+import { requiredDocuments, rulesFor } from '../compliance/rules';
 import {
-  DOCUMENT_TYPES,
   DocumentRow,
+  DocumentType,
   documents,
   DriverProfile,
   driverProfiles,
@@ -44,7 +46,8 @@ export class OnboardingService {
       : undefined;
     const vehicle = await this.db.query.vehicles.findFirst({ where: eq(vehicles.driverId, driverId) });
     const current = await this.docs.current(driverId);
-    const missing = this.missing(profile, Boolean(vehicle), current);
+    const required = await this.required(profile);
+    const missing = this.missing(profile, Boolean(vehicle), current, required);
 
     return {
       status: profile?.partnerId ? profile.status : 'not_joined',
@@ -59,7 +62,7 @@ export class OnboardingService {
         : null,
       vehicle: vehicle ? presentVehicle(vehicle, this.env.VEHICLE_MAX_AGE_YEARS) : null,
       documents: current.map(presentDocument),
-      requirements: requirementsFor(current),
+      requirements: requirementsFor(current, required),
       missing,
       canSubmit: missing.length === 0 && (profile?.status === 'draft' || profile?.status === 'rejected'),
       rejectionReason: profile?.status === 'rejected' ? profile.rejectionReason : null,
@@ -127,8 +130,9 @@ export class OnboardingService {
     const profile = await this.editable(driverId);
     const letters = normalizePlateLetters(dto.plateLetters);
     if (!letters) throw new AppError('VEHICLE_PLATE_INVALID');
-    const until = vehicleEligibleUntil(dto.year, this.env.VEHICLE_MAX_AGE_YEARS).toISOString().slice(0, 10);
-    if (until <= riyadhToday()) throw new AppError('VEHICLE_TOO_OLD', { maxYears: this.env.VEHICLE_MAX_AGE_YEARS });
+    const maxYears = await this.vehicleMaxAge(profile.partnerId);
+    const until = vehicleEligibleUntil(dto.year, maxYears).toISOString().slice(0, 10);
+    if (until <= riyadhToday()) throw new AppError('VEHICLE_TOO_OLD', { maxYears });
     if (dto.year > new Date().getUTCFullYear() + 1) throw new AppError('VALIDATION_FAILED', {}, ['year is in the future']);
 
     const values = {
@@ -141,6 +145,7 @@ export class OnboardingService {
       year: dto.year,
       color: dto.color.trim(),
       seats: dto.seats,
+      escortName: dto.escortName?.trim() || null,
     };
     try {
       await this.db.insert(vehicles).values(values).onConflictDoUpdate({ target: vehicles.driverId, set: values });
@@ -155,11 +160,12 @@ export class OnboardingService {
     const profile = await this.editable(driverId);
     const vehicle = await this.db.query.vehicles.findFirst({ where: eq(vehicles.driverId, driverId) });
     const current = await this.docs.current(driverId);
-    const missing = this.missing(profile, Boolean(vehicle), current);
+    const missing = this.missing(profile, Boolean(vehicle), current, await this.required(profile));
     if (missing.length > 0) throw new AppError('DRIVER_INCOMPLETE', {}, missing);
     if (vehicle) {
-      const until = vehicleEligibleUntil(vehicle.year, this.env.VEHICLE_MAX_AGE_YEARS).toISOString().slice(0, 10);
-      if (until <= riyadhToday()) throw new AppError('VEHICLE_TOO_OLD', { maxYears: this.env.VEHICLE_MAX_AGE_YEARS });
+      const maxYears = await this.vehicleMaxAge(profile.partnerId);
+      const until = vehicleEligibleUntil(vehicle.year, maxYears).toISOString().slice(0, 10);
+      if (until <= riyadhToday()) throw new AppError('VEHICLE_TOO_OLD', { maxYears });
     }
 
     await this.db
@@ -188,14 +194,25 @@ export class OnboardingService {
   }
 
   /** What is still needed before the application can be sent, as stable codes for the app. */
-  private missing(profile: DriverProfile | undefined, hasVehicle: boolean, current: DocumentRow[]): string[] {
+  /** A car may join while it is young enough for at least one class the partner sells. */
+  private async vehicleMaxAge(partnerId: string | null | undefined): Promise<number> {
+    const classes = await licensedClasses(this.db, partnerId);
+    return Math.max(...classes.map((c) => rulesFor(c, this.env).vehicleMaxAgeYears));
+  }
+
+  /** Base documents plus those of every class the partner is licensed for. */
+  private async required(profile: DriverProfile | undefined): Promise<DocumentType[]> {
+    return requiredDocuments(await licensedClasses(this.db, profile?.partnerId), this.env);
+  }
+
+  private missing(profile: DriverProfile | undefined, hasVehicle: boolean, current: DocumentRow[], required: readonly DocumentType[]): string[] {
     if (!profile?.partnerId) return ['partner'];
     const out: string[] = [];
     if (!profile.fullName || !profile.nationalIdEncrypted || !profile.dateOfBirth || !profile.saudiConfirmed) {
       out.push('profile');
     }
     if (!hasVehicle) out.push('vehicle');
-    for (const type of DOCUMENT_TYPES) {
+    for (const type of required) {
       const doc = current.find((d) => d.type === type);
       if (!doc || doc.status === 'rejected') out.push(`document.${type}`);
     }

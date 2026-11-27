@@ -59,6 +59,8 @@ class OnboardingStrings {
   String get year => t('سنة الصنع', 'Model year');
   String get color => t('اللون', 'Colour');
   String get seats => t('عدد مقاعد الركاب', 'Passenger seats');
+  String get escortName => t('اسم المرافق (اختياري)', 'Escort name (optional)');
+  String get escortHint => t('مطلوب لباقات طلاب المرحلة الابتدائية: مرافق بالغ يركب مع الطلاب.', 'Needed for primary-school plans: an adult who rides with the students.');
   String ageRule(int maxYears) => t(
       'يشترط ألا يتجاوز عمر المركبة $maxYears سنوات من سنة الصنع.',
       'The vehicle must be at most $maxYears years old from its model year.');
@@ -72,6 +74,10 @@ class OnboardingStrings {
         'vehicle_registration' => t('استمارة المركبة', 'Vehicle registration'),
         'vehicle_insurance' => t('تأمين المركبة', 'Vehicle insurance'),
         'periodic_inspection' => t('الفحص الدوري', 'Periodic inspection'),
+        'criminal_record' => t('شهادة خلو السوابق', 'Criminal record certificate'),
+        'professional_driver_card' => t('بطاقة السائق المهني', 'Professional driver card'),
+        'operating_card' => t('بطاقة تشغيل المركبة', 'Vehicle operating card'),
+        'first_aid_certificate' => t('شهادة الإسعافات الأولية', 'First aid certificate'),
         _ => type,
       };
   String docStatus(String status) => switch (status) {

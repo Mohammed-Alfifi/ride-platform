@@ -4,12 +4,14 @@ import { AuditService } from '../audit/audit.service';
 import type { AuthUser } from '../auth/auth.types';
 import { TokensService } from '../auth/tokens.service';
 import { decryptField } from '../common/crypto';
+import { licensedClasses } from '../compliance/licenses.service';
+import { requiredDocuments } from '../compliance/rules';
 import { AppError } from '../common/errors';
 import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
-import { DOCUMENT_TYPES, documents, driverProfiles, users, vehicles } from '../database/schema';
+import { documents, driverProfiles, users, vehicles } from '../database/schema';
 import { NotificationsService } from '../notifications/notifications.service';
 import { ComplianceService } from './compliance.service';
 import { DocumentsService } from './documents.service';
@@ -138,7 +140,8 @@ export class ReviewService {
     if (profile.status !== 'submitted') throw new AppError('DRIVER_NOT_REVIEWABLE');
     const current = await this.docs.current(driverId);
     if (current.some((d) => d.status === 'rejected')) throw new AppError('DRIVER_DOCUMENTS_REJECTED');
-    const missingTypes = DOCUMENT_TYPES.filter((t) => !current.some((d) => d.type === t));
+    const required = requiredDocuments(await licensedClasses(this.db, profile.partnerId), this.env);
+    const missingTypes = required.filter((t) => !current.some((d) => d.type === t));
     if (missingTypes.length > 0) throw new AppError('DRIVER_INCOMPLETE', {}, missingTypes.map((t) => `document.${t}`));
 
     const now = new Date();

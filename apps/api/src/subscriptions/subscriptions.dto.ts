@@ -20,6 +20,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
+import { GENDERS, SERVICE_CLASSES, type Gender, type ServiceClass } from '../database/schema';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -122,6 +123,21 @@ export class CreateSubscriptionDto extends QuoteDto {
   @IsOptional()
   @IsBoolean()
   saveCard?: boolean;
+
+  @ApiProperty({ description: 'The rider agrees to share the car with other riders (required by the regulation)' })
+  @IsBoolean()
+  sharedRideConsent!: boolean;
+
+  @ApiPropertyOptional({ example: '2026-11', description: 'Education plans: the contract version the guardian accepted' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  guardianContractVersion?: string;
+
+  @ApiPropertyOptional({ enum: GENDERS, description: 'Saved on the rider or family member; required for women-only plans' })
+  @IsOptional()
+  @IsIn(GENDERS as unknown as string[])
+  passengerGender?: Gender;
 }
 
 export class PauseDto {
@@ -165,6 +181,10 @@ export class SubscriptionView {
   @ApiProperty({ nullable: true, type: Object, description: 'Who rides, when not the account holder' })
   member!: { id: string; name: string } | null;
   @ApiProperty({ nullable: true, type: Object }) driver!: { name: string | null; plate: string | null } | null;
+  @ApiProperty({ enum: SERVICE_CLASSES }) serviceClass!: ServiceClass;
+  @ApiProperty() womenOnly!: boolean;
+  @ApiProperty({ nullable: true, type: String, description: 'Guardian contract version accepted (education)' })
+  contractVersion!: string | null;
   @ApiProperty() createdAt!: string;
 }
 
@@ -236,6 +256,11 @@ export class CreateMemberDto {
   @IsString()
   @MaxLength(120)
   note?: string;
+
+  @ApiPropertyOptional({ enum: GENDERS })
+  @IsOptional()
+  @IsIn(GENDERS as unknown as string[])
+  gender?: Gender;
 }
 
 export class MemberView {
@@ -243,4 +268,14 @@ export class MemberView {
   @ApiProperty() name!: string;
   @ApiProperty() relation!: string;
   @ApiProperty({ nullable: true, type: String }) note!: string | null;
+  @ApiProperty({ nullable: true, enum: GENDERS }) gender!: Gender | null;
+}
+
+export class ContractClausesView {
+  @ApiProperty() version!: string;
+  @ApiProperty() planId!: string;
+  @ApiProperty() titleAr!: string;
+  @ApiProperty() titleEn!: string;
+  @ApiProperty({ type: [String] }) clausesAr!: string[];
+  @ApiProperty({ type: [String] }) clausesEn!: string[];
 }

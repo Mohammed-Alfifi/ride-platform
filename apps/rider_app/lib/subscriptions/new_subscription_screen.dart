@@ -32,6 +32,12 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
   TimeOfDay _return = const TimeOfDay(hour: 13, minute: 30);
   bool _saveCard = true;
   bool _paying = false;
+  /// The regulation asks for the rider's consent before a trip is shared.
+  bool _shareConsent = false;
+  /// Education plans: the contract version the guardian accepted.
+  String? _contractVersion;
+  /// Women-only plans: the rider confirmed she is a woman.
+  bool _womanConfirmed = false;
   /// null = the account holder rides.
   FamilyMember? _member;
   final _promo = TextEditingController();
@@ -119,6 +125,8 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
     setState(() {
       _plan = plan;
       _quote = null;
+      _contractVersion = null;
+      _womanConfirmed = false;
       if (_days.length > plan.daysPerWeek) _days.clear();
     });
     await _loadQuote();
@@ -222,6 +230,37 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
   bool get _ready =>
       _plan != null && _quote?.eligible == true && _days.length == _plan!.daysPerWeek && _scheduleProblem(RiderStrings.of(context)) == null;
 
+  /// What the rules ask before paying: consent, the contract for students, and women-only confirmation.
+  bool get _agreed =>
+      _shareConsent && (!_plan!.education || _contractVersion != null) && (!_plan!.womenOnly || _womanConfirmed);
+
+  Future<void> _openContract() async {
+    final t = RiderStrings.of(context);
+    final contract = await _repo.run(context, () => ref.read(riderRepositoryProvider).contract(_plan!.id));
+    if (!mounted || contract == null) return;
+    final accepted = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: Text(contract.title(t.ar)),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final (i, clause) in contract.clauses(t.ar).indexed)
+                Padding(padding: const EdgeInsets.only(bottom: 8), child: Text('${i + 1}. $clause')),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: Text(t.notNow)),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: Text(t.acceptContract)),
+        ],
+      ),
+    );
+    if (accepted == true && mounted) setState(() => _contractVersion = contract.version);
+  }
+
   Future<void> _pay() async {
     final plan = _plan!;
     setState(() => _paying = true);
@@ -238,6 +277,9 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
         saveCard: _saveCard && !(ref.read(serverConfigProvider).valueOrNull?.manualPayments ?? false),
         memberId: _member?.id,
         promoCode: _quote?.promoCode,
+        sharedRideConsent: _shareConsent,
+        guardianContractVersion: plan.education ? _contractVersion : null,
+        passengerGender: plan.womenOnly && _womanConfirmed ? 'female' : null,
       ),
     );
     if (!mounted) return;
@@ -395,11 +437,36 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
                 title: Text(t.saveCard),
                 subtitle: Text(t.saveCardHint),
               ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _shareConsent,
+              onChanged: (v) => setState(() => _shareConsent = v ?? false),
+              title: Text(t.shareConsent),
+              subtitle: Text(t.shareConsentHint),
+            ),
+            if (_plan!.womenOnly)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _womanConfirmed,
+                onChanged: (v) => setState(() => _womanConfirmed = v ?? false),
+                title: Text(t.womenOnlyConfirm),
+                subtitle: Text(t.womenOnlyHint),
+              ),
+            if (_plan!.education)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(_contractVersion == null ? Icons.description_outlined : Icons.check_circle, color: Brand.route),
+                title: Text(_contractVersion == null ? t.readContract : t.contractAccepted),
+                subtitle: Text(t.contractRequiredHint),
+                onTap: _openContract,
+              ),
             const SizedBox(height: 8),
             Text(t.startsTomorrow, style: theme.textTheme.bodySmall),
             const SizedBox(height: 16),
             FilledButton(
-              onPressed: _paying ? null : _pay,
+              onPressed: _paying || !_agreed ? null : _pay,
               child: _paying
                   ? const ButtonSpinner()
                   : Text(manual ? t.subscribeManual(t.sar(_quote!.firstPaymentHalalas)) : t.payAmount(t.sar(_quote!.firstPaymentHalalas))),

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DriversModule } from '../drivers/drivers.module';
 import { LiveStore } from './live.store';
 import { TripGenerator } from './trip.generator';
 import { TripWatch } from './trip.watch';
@@ -6,6 +7,7 @@ import { DispatchController, DriverTripsController, RiderTripsController } from 
 import { TripsService } from './trips.service';
 
 @Module({
+  imports: [DriversModule],
   controllers: [DriverTripsController, RiderTripsController, DispatchController],
   providers: [TripsService, TripGenerator, LiveStore, TripWatch],
   exports: [TripGenerator, TripsService, LiveStore, TripWatch],

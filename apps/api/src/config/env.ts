@@ -88,6 +88,25 @@ export const envSchema = z
 
     /** TGA rule: a private car may serve for this many years from January of its model year. */
     VEHICLE_MAX_AGE_YEARS: z.coerce.number().int().min(1).default(5),
+    /** Education transport: operating age of vehicles from the model year (buses: 10 years). */
+    EDUCATION_VEHICLE_MAX_AGE_YEARS: z.coerce.number().int().min(1).default(10),
+    /**
+     * Commute plans need a verified ride-hailing mediation licence before they are sold.
+     * Off during a closed pilot; education plans always need a verified education licence.
+     */
+    COMMUTE_LICENSE_REQUIRED: bool,
+    /**
+     * Until this day (YYYY-MM-DD), a document newly made mandatory is reported but does not
+     * hold drivers who were approved before it existed. Empty: no grace.
+     */
+    COMPLIANCE_GRACE_UNTIL: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .optional()
+      .or(z.literal(''))
+      .default(''),
+    /** Bump when the guardian transport contract for education plans changes. */
+    GUARDIAN_CONTRACT_VERSION: z.string().max(20).default('2026-11'),
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
     /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),

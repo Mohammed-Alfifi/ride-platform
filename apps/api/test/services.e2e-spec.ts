@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { driverProfiles, notifications, promoCodes, trips, users, vehicles } from '../src/database/schema';
-import { bearer, createPartner, createStaff, createTestApp, daysFromToday, newPhone, signIn, SignedIn, TestContext } from './helpers';
+import { bearer, createPartner, createStaff, createTestApp, daysFromToday, newPhone, signIn, SignedIn, TestContext, qualifyDriver } from './helpers';
 
 const RIMAL = {
   type: 'Polygon',
@@ -42,6 +42,7 @@ describe('Family, promo codes, shared tracking, ratings, support and reports (e2
     const [d] = await ctx.db.insert(users).values({ phone: newPhone(), role: 'driver', audience: 'driver', partnerId, status: 'active' }).returning();
     driverId = d.id;
     await ctx.db.insert(driverProfiles).values({ userId: d.id, partnerId, fullName: 'سعد محمد الغامدي', status: 'approved' });
+    await qualifyDriver(ctx, d.id, partnerId);
     await ctx.db.insert(vehicles).values({ driverId: d.id, partnerId, plateLetters: 'KHD', plateNumbers: '7341', make: 'Hyundai', model: 'Staria', year: new Date().getFullYear(), color: 'فضي', seats: 8 });
 
     const zone = await ctx.http().post('/v1/admin/zones').set(bearer(admin.accessToken)).send({ nameAr: 'الرمال', nameEn: 'Rimal', area: RIMAL }).expect(201);
@@ -80,7 +81,7 @@ describe('Family, promo codes, shared tracking, ratings, support and reports (e2
     expect(quote.body).toMatchObject({ promoCode: 'SCHOOL25', discountHalalas: 30000, firstPaymentHalalas: 90000 });
 
     const res = await ctx.http().post('/v1/subscriptions').set(bearer(parent.accessToken))
-      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime: '06:30', returnTime: '13:30', promoCode: 'SCHOOL25', memberId: member.body.id })
+      .send({ planId, pickupPlaceId: home, dropoffPlaceId: school, days: [0, 1, 2, 3, 4, 5, 6], outboundTime: '06:30', returnTime: '13:30', promoCode: 'SCHOOL25', memberId: member.body.id, sharedRideConsent: true })
       .expect(201);
     subId = res.body.subscription.id;
     expect(res.body.subscription.member).toMatchObject({ name: 'سارة' });

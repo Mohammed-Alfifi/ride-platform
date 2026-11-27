@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useApp } from '@/components/Providers';
+import { Licences } from '@/components/Licences';
 import { LoadState, useLoad } from '@/components/ui';
 import { api, ExpiringItem } from '@/lib/client';
 import { formatDay, formatSaudiPhone } from '@/lib/format';
@@ -79,6 +80,8 @@ export default function CompliancePage() {
           </div>
         )}
       </section>
+
+      <Licences />
     </>
   );
 }

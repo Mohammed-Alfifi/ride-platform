@@ -1,5 +1,5 @@
 import { vehicleEligibleUntil } from '../common/saudi';
-import { DOCUMENT_TYPES, DocumentRow, DocumentType, EXPIRING_DOCUMENTS, Vehicle } from '../database/schema';
+import { DocumentRow, DocumentType, EXPIRING_DOCUMENTS, Vehicle } from '../database/schema';
 import { DocumentView, RequirementView, VehicleView } from './drivers.dto';
 
 export function presentDocument(d: DocumentRow): DocumentView {
@@ -26,13 +26,15 @@ export function presentVehicle(v: Vehicle, maxAgeYears: number): VehicleView {
     year: v.year,
     color: v.color,
     seats: v.seats,
+    escortName: v.escortName,
     eligibleUntil: vehicleEligibleUntil(v.year, maxAgeYears).toISOString().slice(0, 10),
   };
 }
 
-export function requirementsFor(current: DocumentRow[]): RequirementView[] {
+/** The documents this driver must upload, given the service classes their partner is licensed for. */
+export function requirementsFor(current: DocumentRow[], required: readonly DocumentType[]): RequirementView[] {
   const byType = new Map<DocumentType, DocumentRow>(current.map((d) => [d.type, d]));
-  return DOCUMENT_TYPES.map((type) => ({
+  return required.map((type) => ({
     type,
     expiryRequired: EXPIRING_DOCUMENTS.includes(type),
     status: byType.get(type)?.status ?? null,
