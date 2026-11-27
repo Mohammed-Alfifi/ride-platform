@@ -79,7 +79,7 @@ export class OrgInvoicesService {
       if (due.length === 0) throw new AppError('ORG_NOTHING_TO_INVOICE');
       const gross = due.reduce((a, p) => a + p.org, 0);
       // Credits owed to the organization come off, oldest first, never past the invoice's own amount;
-      // what does not fit waits for the next month.
+      // a credit that does not fit whole waits for the next month.
       const open = await tx
         .select({ id: organizationCredits.id, amount: organizationCredits.amountHalalas })
         .from(organizationCredits)
@@ -89,7 +89,8 @@ export class OrgInvoicesService {
       const applied: string[] = [];
       let credit = 0;
       for (const c of open) {
-        if (credit + c.amount > gross) break;
+        // One that does not fit waits; smaller ones after it can still be used now.
+        if (credit + c.amount > gross) continue;
         credit += c.amount;
         applied.push(c.id);
       }
