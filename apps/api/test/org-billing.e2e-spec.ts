@@ -153,14 +153,29 @@ describe('Organization credits and online payment (e2e)', () => {
       expect(html.text).toContain('خصم مستحق للجهة');
       expect((await http().get('/v1/org').set(bearer(fullAdmin.accessToken)).expect(200)).body.openCreditHalalas).toBe(0);
 
-      // A credit bigger than the bill waits; the ones that fit are used.
-      await ctx.db.insert(organizationCredits).values({ organizationId: halfOrg, partnerId, kind: 'compensation', amountHalalas: PRICE, key: 'test:big', noteAr: 'كبير', noteEn: 'Big' });
+      // Oldest first; one that does not fit whole waits, and smaller later ones are still used.
+      // (The cancellation credit's size depends on the trips left this period, so on some days it
+      // fits beside the missed-trip credit and on others it waits: work the expectation out.)
+      const before = await ctx.db.select().from(organizationCredits).where(eq(organizationCredits.organizationId, halfOrg)).orderBy(organizationCredits.createdAt);
+      await ctx.db.insert(organizationCredits).values([
+        { organizationId: halfOrg, partnerId, kind: 'compensation', amountHalalas: PRICE, key: 'test:big', noteAr: 'كبير', noteEn: 'Big' },
+        { organizationId: halfOrg, partnerId, kind: 'compensation', amountHalalas: 100, key: 'test:small', noteAr: 'صغير', noteEn: 'Small' },
+      ]);
+      const gross = PRICE / 2;
+      const expected: string[] = [];
+      let fit = 0;
+      for (const c of [...before, { key: 'test:big', amountHalalas: PRICE }, { key: 'test:small', amountHalalas: 100 }]) {
+        if (fit + c.amountHalalas > gross) continue;
+        fit += c.amountHalalas;
+        expected.push(c.key);
+      }
       const half = await http().post(`/v1/admin/organizations/${halfOrg}/invoices`).set(bearer(admin.accessToken)).send({ month: thisMonth() }).expect(201);
-      const used = half.body.credits.reduce((a: number, c: { amountHalalas: number }) => a + c.amountHalalas, 0);
-      expect(half.body).toMatchObject({ grossHalalas: PRICE / 2, creditHalalas: used, totalHalalas: PRICE / 2 - used });
-      expect(half.body.credits.map((c: { kind: string }) => c.kind).sort()).toEqual(['cancellation', 'compensation']);
+      expect(half.body).toMatchObject({ grossHalalas: gross, creditHalalas: fit, totalHalalas: gross - fit });
+      expect(expected).not.toContain('test:big');
+      const applied = await ctx.db.select().from(organizationCredits).where(eq(organizationCredits.orgInvoiceId, half.body.id));
+      expect(applied.map((c) => c.key).sort()).toEqual([...expected].sort());
       const waiting = await ctx.db.select().from(organizationCredits).where(and(eq(organizationCredits.organizationId, halfOrg), isNull(organizationCredits.orgInvoiceId)));
-      expect(waiting).toEqual([expect.objectContaining({ key: 'test:big' })]);
+      expect(waiting.map((c) => c.key)).toContain('test:big');
     });
   });
 
