@@ -952,3 +952,69 @@ export const partnerLicenses = pgTable(
 );
 
 export type PartnerLicense = typeof partnerLicenses.$inferSelect;
+
+// ---------------------------------------------------------------- phase 7: runs (one car, many riders)
+
+export const RUN_STATUSES = ['planned', 'in_progress', 'completed', 'cancelled'] as const;
+export type RunStatus = (typeof RUN_STATUSES)[number];
+export const runStatusEnum = pgEnum('run_status', RUN_STATUSES);
+export const stopKindEnum = pgEnum('run_stop_kind', ['pickup', 'dropoff']);
+
+/**
+ * One driver's journey for one leg of one day: every rider they carry, in the order they are
+ * picked up and dropped off. Planned the night before (and again when a rider joins or leaves the
+ * car) by the route optimizer; never re-planned once the first trip of the run has started.
+ */
+export const runs = pgTable(
+  'runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'cascade' }),
+    driverId: uuid('driver_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    serviceDate: date('service_date').notNull(),
+    leg: tripLegEnum('leg').notNull(),
+    status: runStatusEnum('status').notNull().default('planned'),
+    plannedStartAt: timestamp('planned_start_at', { withTimezone: true }).notNull(),
+    plannedEndAt: timestamp('planned_end_at', { withTimezone: true }).notNull(),
+    /** Driving time between the stops, seconds (waiting excluded). */
+    driveSeconds: integer('drive_seconds').notNull(),
+    /** Minutes past the latest acceptable pick-up time, summed over riders; 0 when on time. */
+    lateMinutes: integer('late_minutes').notNull().default(0),
+    /** builtin | vroom, and the travel times it used: haversine | osrm. */
+    optimizer: varchar('optimizer', { length: 20 }).notNull(),
+    routing: varchar('routing', { length: 20 }).notNull(),
+    ...timestamps,
+  },
+  (t) => [
+    uniqueIndex('runs_driver_day_leg_uq').on(t.driverId, t.serviceDate, t.leg),
+    index('runs_partner_day_idx').on(t.partnerId, t.serviceDate),
+  ],
+);
+
+export const runStops = pgTable(
+  'run_stops',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    runId: uuid('run_id')
+      .notNull()
+      .references(() => runs.id, { onDelete: 'cascade' }),
+    /** 1-based order in the run. */
+    seq: integer('seq').notNull(),
+    tripId: uuid('trip_id')
+      .notNull()
+      .references(() => trips.id, { onDelete: 'cascade' }),
+    kind: stopKindEnum('kind').notNull(),
+    plannedAt: timestamp('planned_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    uniqueIndex('run_stops_run_seq_uq').on(t.runId, t.seq),
+    uniqueIndex('run_stops_trip_kind_uq').on(t.tripId, t.kind),
+  ],
+);
+
+export type Run = typeof runs.$inferSelect;
+export type RunStop = typeof runStops.$inferSelect;

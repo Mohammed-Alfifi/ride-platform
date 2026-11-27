@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ApiError, DriverPage } from '@/lib/client';
 import { useApp } from '@/components/Providers';
 import { FormDialog, LoadState, useLoad } from '@/components/ui';
+import { DriverSuggestions } from '@/components/Suggestions';
 import { AdminSubscription, api, Page, SubscriptionStatus } from '@/lib/client';
 import { formatDay, formatSar, formatSaudiPhone } from '@/lib/format';
 import { fill } from '@/lib/i18n';
@@ -142,6 +143,9 @@ export default function SubscriptionsPage() {
                           </select>
                         ) : (
                           '—'
+                        )}
+                        {(s.status === 'active' || s.status === 'past_due') && !s.driverId && (
+                          <DriverSuggestions subscriptionId={s.id} onChoose={(id) => setDriver(s.id, id)} />
                         )}
                       </td>
                       <td>

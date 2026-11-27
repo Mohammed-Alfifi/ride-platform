@@ -2213,3 +2213,89 @@ code.route {
   gap: 0.75rem;
   align-items: end;
 }
+
+/* Phase 7: runs and driver suggestions. */
+.runs {
+  display: grid;
+  gap: 1rem;
+}
+.run {
+  padding: 1rem 1.25rem;
+}
+.run-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.run-badges {
+  display: flex;
+  gap: 0.4rem;
+}
+.run-stops {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  border-inline-start: 2px solid var(--route-tint);
+}
+.run-stop {
+  display: grid;
+  grid-template-columns: 3.5rem 5.5rem 1fr auto;
+  gap: 0.75rem;
+  align-items: baseline;
+  padding: 0.45rem 0.75rem;
+}
+.run-stop-dropoff .run-kind {
+  opacity: 0.7;
+}
+.run-time {
+  font-weight: 600;
+}
+.run-offset {
+  font-size: var(--fs-sm);
+  color: var(--ink-soft);
+}
+.run-offset.is-late {
+  color: var(--red);
+  opacity: 1;
+}
+.suggestions {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+}
+.suggestions li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.substitutes {
+  margin-top: 1rem;
+}
+@media (max-width: 640px) {
+  .run-stop {
+    grid-template-columns: 3.2rem 1fr;
+  }
+  .run-kind,
+  .run-place,
+  .run-offset {
+    grid-column: 2;
+  }
+  .run-stop {
+    row-gap: 0.1rem;
+  }
+}
+
+.btn-sm {
+  padding: 0.25rem 0.6rem;
+  font-size: var(--fs-sm);
+}
+.panel-subtitle {
+  font-size: var(--fs-base);
+  font-weight: 600;
+  margin: 0 0 0.5rem;
+}

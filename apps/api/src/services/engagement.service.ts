@@ -19,7 +19,7 @@ import {
   vehicles,
 } from '../database/schema';
 import { NotificationsService } from '../notifications/notifications.service';
-import { distanceMeters, etaMinutes } from '../trips/geo';
+import { RoutingService } from '../routing/routing';
 import { LiveStore } from '../trips/live.store';
 
 /** A shared link works until this long after the trip's time (or its end). */
@@ -37,6 +37,7 @@ export class EngagementService {
     @Inject(ENV) private readonly env: Env,
     private readonly live: LiveStore,
     private readonly notifications: NotificationsService,
+    private readonly routing: RoutingService,
   ) {}
 
   // ------------------------------------------------------------------ sharing
@@ -91,7 +92,6 @@ export class EngagementService {
     const active = ACTIVE.includes(t.status);
     const loc = active && t.driverId ? await this.live.get(t.driverId) : null;
     const target = t.status === 'on_board' ? dropoff : pickup;
-    const meters = loc ? distanceMeters(loc, target) : null;
     return {
       passenger: first(t.passengerName ?? row.riderName),
       status: t.status,
@@ -107,7 +107,7 @@ export class EngagementService {
           }
         : null,
       driverLocation: loc ? { lat: loc.lat, lng: loc.lng, heading: loc.heading } : null,
-      etaMinutes: meters === null ? null : t.status === 'arrived' ? 0 : etaMinutes(meters),
+      etaMinutes: !loc ? null : t.status === 'arrived' ? 0 : await this.routing.etaMinutes(loc, target),
       times: {
         startedAt: t.startedAt?.toISOString() ?? null,
         arrivedAt: t.arrivedAt?.toISOString() ?? null,

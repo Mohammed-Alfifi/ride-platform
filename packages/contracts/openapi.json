@@ -2976,9 +2976,205 @@
             "bearer": []
           }
         ],
-        "summary": "Create today and tomorrow trips now (normally nightly at 00:10)",
+        "summary": "Create today and tomorrow trips and plan their runs now (normally nightly at 00:10)",
         "tags": [
           "admin: dispatch"
+        ]
+      }
+    },
+    "/v1/admin/runs": {
+      "get": {
+        "operationId": "RunsAdminController_list",
+        "parameters": [
+          {
+            "name": "date",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "2026-11-26",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "driverId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "A day's runs: each car's riders in planned order with times",
+        "tags": [
+          "dispatch: runs"
+        ]
+      }
+    },
+    "/v1/admin/runs/plan": {
+      "post": {
+        "operationId": "RunsAdminController_plan",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlanRunsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Re-plan the runs of a day now (runs already started are kept)",
+        "tags": [
+          "dispatch: runs"
+        ]
+      }
+    },
+    "/v1/admin/subscriptions/{id}/driver-suggestions": {
+      "get": {
+        "operationId": "RunsAdminController_suggest",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/DriverSuggestionView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Best drivers for a rider: qualified, a free seat, the smallest detour",
+        "tags": [
+          "dispatch: runs"
+        ]
+      }
+    },
+    "/v1/admin/trips/{id}/substitutes": {
+      "get": {
+        "operationId": "RunsAdminController_substitutes",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SubstituteView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Drivers who can take this trip now, nearest first",
+        "tags": [
+          "dispatch: runs"
+        ]
+      }
+    },
+    "/v1/driver/runs/today": {
+      "get": {
+        "operationId": "DriverRunsController_today",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/RunView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Today's runs, stops in the order to drive them",
+        "tags": [
+          "driver: runs"
         ]
       }
     },
@@ -6520,6 +6716,224 @@
         },
         "required": [
           "driverId"
+        ]
+      },
+      "RunStopView": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "pickup",
+              "dropoff"
+            ]
+          },
+          "tripId": {
+            "type": "string"
+          },
+          "tripStatus": {
+            "type": "string"
+          },
+          "place": {
+            "type": "string"
+          },
+          "rider": {
+            "type": "string",
+            "nullable": true
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "plannedAt": {
+            "type": "string"
+          },
+          "offsetMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "Pick-ups: minutes from the time the rider chose"
+          }
+        },
+        "required": [
+          "seq",
+          "kind",
+          "tripId",
+          "tripStatus",
+          "place",
+          "rider",
+          "lat",
+          "lng",
+          "plannedAt",
+          "offsetMinutes"
+        ]
+      },
+      "RunView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "driverId": {
+            "type": "string"
+          },
+          "driverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "serviceDate": {
+            "type": "string"
+          },
+          "leg": {
+            "type": "string",
+            "enum": [
+              "outbound",
+              "return"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "in_progress",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "plannedStartAt": {
+            "type": "string"
+          },
+          "plannedEndAt": {
+            "type": "string"
+          },
+          "driveMinutes": {
+            "type": "number",
+            "description": "Driving time between stops"
+          },
+          "lateMinutes": {
+            "type": "number",
+            "description": "Minutes past the latest pick-up time, all riders"
+          },
+          "optimizer": {
+            "type": "string",
+            "example": "builtin"
+          },
+          "routing": {
+            "type": "string",
+            "example": "osrm"
+          },
+          "riders": {
+            "type": "number"
+          },
+          "stops": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RunStopView"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "driverId",
+          "driverName",
+          "serviceDate",
+          "leg",
+          "status",
+          "plannedStartAt",
+          "plannedEndAt",
+          "driveMinutes",
+          "lateMinutes",
+          "optimizer",
+          "routing",
+          "riders",
+          "stops"
+        ]
+      },
+      "PlanRunsDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "example": "2026-11-26"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Super admins only"
+          }
+        },
+        "required": [
+          "date"
+        ]
+      },
+      "DriverSuggestionView": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "seats": {
+            "type": "number"
+          },
+          "riders": {
+            "type": "number",
+            "description": "Riders already in the busier leg"
+          },
+          "addedMinutes": {
+            "type": "number",
+            "description": "Minutes this rider adds to the driver’s day"
+          },
+          "fitsWindows": {
+            "type": "boolean",
+            "description": "Every rider still picked up on time and within ride limits"
+          }
+        },
+        "required": [
+          "driverId",
+          "name",
+          "seats",
+          "riders",
+          "addedMinutes",
+          "fitsWindows"
+        ]
+      },
+      "SubstituteView": {
+        "type": "object",
+        "properties": {
+          "driverId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "phone": {
+            "type": "string"
+          },
+          "etaMinutes": {
+            "type": "number",
+            "nullable": true,
+            "description": "By road from the last known position"
+          },
+          "locationAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "driverId",
+          "name",
+          "phone",
+          "etaMinutes",
+          "locationAt"
         ]
       },
       "RatingDto": {

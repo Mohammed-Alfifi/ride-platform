@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useState } from 'react';
+import { Substitutes } from '@/components/Suggestions';
 import { useApp } from '@/components/Providers';
 import { LoadState, useLoad } from '@/components/ui';
 import { api, ApiError, DispatchBoard, DispatchDriver, TripLive, TripStatus, TripView } from '@/lib/client';
@@ -206,7 +207,12 @@ export default function DispatchPage() {
                 }}
               />
               {selected ? (
-                <TripCard trip={selected} live={live} time={time} />
+                <>
+                  <TripCard trip={selected} live={live} time={time} />
+                  {selected.status === 'scheduled' && canAssign && (
+                    <Substitutes key={selected.id} tripId={selected.id} onAssign={(id) => assign(selected, id)} />
+                  )}
+                </>
               ) : (
                 <p className="map-hint">{t.dispatch.selectHint}</p>
               )}

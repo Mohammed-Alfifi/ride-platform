@@ -12,7 +12,7 @@ String _when(RiderStrings t, Trip trip) {
   final today = riyadhToday();
   final tomorrow = isoDay(DateTime.parse('${today}T00:00:00').add(const Duration(days: 1)));
   final day = trip.serviceDate == today ? t.today : (trip.serviceDate == tomorrow ? t.tomorrow : t.day(trip.serviceDate));
-  return '$day · ${DateFormat.Hm('en').format(trip.scheduledAt.toLocal())}';
+  return '$day · ${DateFormat.Hm('en').format(trip.pickupTime.toLocal())}';
 }
 
 void openLive(BuildContext context, Trip trip) =>

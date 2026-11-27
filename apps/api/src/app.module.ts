@@ -27,6 +27,7 @@ import { MonitoringModule } from './monitoring/monitoring.module';
 import { PilotModule } from './pilot/pilot.module';
 import { ServicesModule } from './services/services.module';
 import { ComplianceModule } from './compliance/compliance.module';
+import { RoutingModule } from './routing/routing.module';
 
 const env = loadEnv();
 
@@ -84,6 +85,7 @@ function hasPrettyLogs(): boolean {
     TripsModule,
     ServicesModule,
     ComplianceModule,
+    RoutingModule,
     PilotModule,
     MonitoringModule,
     JobsModule,

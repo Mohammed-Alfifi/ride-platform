@@ -192,7 +192,7 @@ class _Panel extends StatelessWidget {
     final trip = live.trip;
     final theme = Theme.of(context);
     final (headline, detail) = switch (trip.status) {
-      'scheduled' => (t.tripScheduled(DateFormat.Hm('en').format(trip.scheduledAt.toLocal())), t.tripScheduledBody),
+      'scheduled' => (t.tripScheduled(DateFormat.Hm('en').format(trip.pickupTime.toLocal())), t.tripScheduledBody),
       'en_route' => (live.etaMinutes == null ? t.driverOnWay : t.arrivesIn(live.etaMinutes!), t.getReady),
       'arrived' => (t.driverArrived, t.driverWaiting(trip.pickup.name)),
       'on_board' => (live.etaMinutes == null ? t.onTheWayTo(trip.dropoff.name) : t.reachIn(live.etaMinutes!), t.onTheWayTo(trip.dropoff.name)),

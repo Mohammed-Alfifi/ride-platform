@@ -7,8 +7,10 @@ import { assertPartnerAccess, partnerScope } from '../common/tenant';
 import { DB, Database } from '../database/database.module';
 import { driverProfiles, Plan, plans, ServiceClass, subscriptions, Trip, tripPoints, trips, TripStatus, users, vehicles } from '../database/schema';
 import { ComplianceService } from '../drivers/compliance.service';
+import { syncRunStatus } from '../runs/run-status';
 import { NotificationsService } from '../notifications/notifications.service';
-import { distanceMeters, etaMinutes } from './geo';
+import { distanceMeters } from './geo';
+import { RoutingService } from '../routing/routing';
 import { LivePosition, LiveStore } from './live.store';
 import { TripGenerator } from './trip.generator';
 
@@ -60,6 +62,9 @@ export interface TripView {
   /** education trips end with the vehicle-empty check (send cabinChecked on complete). */
   serviceClass: ServiceClass;
   cabinCheckedAt: string | null;
+  /** From the planned run: when the car is expected at the pick-up, and its order among the stops. */
+  plannedPickupAt: string | null;
+  stopSeq: number | null;
 }
 
 export interface LiveView {
@@ -86,6 +91,8 @@ interface TripRow {
   model: string | null;
   color: string | null;
   serviceClass: ServiceClass;
+  plannedPickupAt: Date | string | null;
+  stopSeq: number | null;
 }
 
 const riderUser = aliasedTable(users, 'rider_user');
@@ -99,6 +106,7 @@ export class TripsService {
     private readonly generator: TripGenerator,
     private readonly notifications: NotificationsService,
     private readonly compliance: ComplianceService,
+    private readonly routing: RoutingService,
   ) {}
 
   // ------------------------------------------------------------------ reading
@@ -121,6 +129,8 @@ export class TripsService {
         model: vehicles.model,
         color: vehicles.color,
         serviceClass: sql<ServiceClass>`(SELECT p.service_class FROM subscriptions s JOIN plans p ON p.id = s.plan_id WHERE s.id = ${trips.subscriptionId})`,
+        plannedPickupAt: sql<string | null>`(SELECT rs.planned_at FROM run_stops rs WHERE rs.trip_id = ${trips.id} AND rs.kind = 'pickup')`,
+        stopSeq: sql<number | null>`(SELECT rs.seq FROM run_stops rs WHERE rs.trip_id = ${trips.id} AND rs.kind = 'pickup')`,
       })
       .from(trips)
       .innerJoin(riderUser, eq(riderUser.id, trips.riderId))
@@ -164,6 +174,8 @@ export class TripsService {
       endedReason: t.endedReason,
       serviceClass: r.serviceClass,
       cabinCheckedAt: t.cabinCheckedAt?.toISOString() ?? null,
+      plannedPickupAt: r.plannedPickupAt ? new Date(r.plannedPickupAt).toISOString() : null,
+      stopSeq: r.stopSeq == null ? null : Number(r.stopSeq),
     };
   }
 
@@ -298,6 +310,8 @@ export class TripsService {
       throw new AppError('TRIP_SKIP_TOO_LATE', { minutes: SKIP_DEADLINE_MINUTES });
     }
     await this.move(trip, 'scheduled', { status: 'skipped', endedReason: 'rider does not need this trip' });
+    // The car no longer stops for this rider: the rest of the run is re-ordered.
+    await this.generator.driversChanged([trip.driverId]);
     if (trip.driverId) {
       const time = this.timeOf(trip);
       await this.notifications.notify([trip.driverId], {
@@ -416,6 +430,7 @@ export class TripsService {
       await this.assertTripSeat(driverId, trip);
     }
     await this.db.update(trips).set({ driverId }).where(eq(trips.id, trip.id));
+    await this.generator.driversChanged([trip.driverId, driverId]);
     if (driverId && driverId !== trip.driverId) {
       await this.notifications.notify([driverId], {
         kind: 'trip_assigned',
@@ -477,7 +492,8 @@ export class TripsService {
       trip: view,
       driverLocation: loc,
       distanceMeters: meters,
-      etaMinutes: view.status === 'arrived' ? 0 : etaMinutes(meters),
+      // Road time from OSRM when configured; the straight-line estimate otherwise.
+      etaMinutes: view.status === 'arrived' ? 0 : await this.routing.etaMinutes(loc, target),
     };
   }
 
@@ -509,6 +525,23 @@ export class TripsService {
       .where(and(eq(trips.id, trip.id), eq(trips.status, from)))
       .returning({ id: trips.id });
     if (rows.length === 0) throw new AppError('TRIP_INVALID_STATE');
+    await syncRunStatus(this.db, trip.id);
+  }
+
+  /** Whether the driver has a free seat for this rider's usual times (and the seating rules allow it). */
+  async canSeat(driverId: string, sub: typeof subscriptions.$inferSelect): Promise<boolean> {
+    return this.assertSubscriptionSeat(driverId, sub).then(
+      () => true,
+      () => false,
+    );
+  }
+
+  /** Whether the driver can take this one trip: a free seat around its time. */
+  async canTakeTrip(driverId: string, trip: Trip): Promise<boolean> {
+    return this.assertTripSeat(driverId, trip).then(
+      () => true,
+      () => false,
+    );
   }
 
   private async assertNear(driverId: string, target: Spot, radius: number): Promise<void> {
