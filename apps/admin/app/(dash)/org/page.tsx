@@ -28,6 +28,11 @@ export default function OrgHomePage() {
             <br />
             {fill(t.org.coverage, { pct: data.org.coverageBps / 100 })}
           </p>
+          {data.org.openCreditHalalas > 0 && (
+            <p className="lead" role="status">
+              {fill(t.org.credit, { amount: formatSar(data.org.openCreditHalalas, lang) })}
+            </p>
+          )}
           {data.org.status === 'suspended' && (
             <p className="form-error" role="alert">
               {t.org.suspended}

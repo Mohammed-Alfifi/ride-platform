@@ -1,3 +1,7 @@
+import { ENV } from '../config/config.module';
+import { Env } from '../config/env';
+import { OrgPaymentsService } from '../payments/org-payments.service';
+import { OrgCheckoutView } from '../organizations/organizations.dto';
 import {
   Body,
   Controller,
@@ -12,7 +16,7 @@ import {
   Query,
   Res,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiExcludeEndpoint, ApiOkResponse, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
+import { ApiCreatedResponse, ApiBearerAuth, ApiExcludeEndpoint, ApiOkResponse, ApiOperation, ApiProperty, ApiPropertyOptional, ApiTags } from '@nestjs/swagger';
 import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { SkipThrottle } from '@nestjs/throttler';
 import { and, count, desc, eq, gte, lte, sql, SQL, sum } from 'drizzle-orm';
@@ -226,7 +230,34 @@ export class PaymentCallbacksController {
   constructor(
     private readonly billing: BillingService,
     @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGateway,
+    private readonly orgPayments: OrgPaymentsService,
+    @Inject(ENV) private readonly env: Env,
   ) {}
+
+  @Get('org-payments/:id/return')
+  @ApiOperation({ summary: 'An organization’s invoice payment page returns here, then back to its dashboard' })
+  async orgReturned(@Param('id', ParseUUIDPipe) id: string, @Res() res: Response): Promise<void> {
+    let status: string;
+    try {
+      status = (await this.orgPayments.sync(id)).status;
+    } catch {
+      status = 'initiated';
+    }
+    const [ar, en] =
+      status === 'paid'
+        ? ['تم سداد الفاتورة', 'Invoice paid']
+        : status === 'failed'
+          ? ['لم يتم الدفع', 'Payment not completed']
+          : ['جار تأكيد الدفع', 'Confirming your payment'];
+    const back = `${this.env.PUBLIC_WEB_URL}/org/invoices`;
+    res
+      .type('html')
+      .send(
+        `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${en}</title></head>` +
+          `<body style="font-family:Tahoma,sans-serif;text-align:center;padding:48px 16px;color:#18263a" data-status="${status}">` +
+          `<h1 style="font-size:20px">${ar}</h1><p>${en}</p><p><a href="${back}" style="color:#0b6e4f">العودة إلى الفواتير · Back to invoices</a></p></body></html>`,
+      );
+  }
 
   @Get('payments/:id/return')
   @ApiOperation({ summary: 'The payment page returns here; the app closes its browser view on this URL' })
@@ -258,7 +289,8 @@ export class PaymentCallbacksController {
   async webhook(@Param('provider') provider: string, @Body() body: unknown): Promise<{ received: true }> {
     if (provider === this.gateway.name) {
       const id = this.billing.webhookPaymentId(body);
-      if (id) await this.billing.syncByProviderId(id);
+      // A rider's payment, or else an organization paying its invoice.
+      if (id && !(await this.billing.syncByProviderId(id))) await this.orgPayments.syncByProviderId(id);
     }
     return { received: true };
   }
@@ -443,5 +475,21 @@ export class AdminBillingController {
     if (!inv) throw new AppError('INVOICE_NOT_FOUND');
     assertPartnerAccess(u, inv.partnerId);
     return { ok: true };
+  }
+}
+
+/** An organization admin paying its monthly invoice online. */
+@ApiTags('organization')
+@ApiBearerAuth()
+@Roles('org_admin')
+@Controller('v1/org')
+export class OrgPaymentsController {
+  constructor(private readonly orgPayments: OrgPaymentsService) {}
+
+  @Post('invoices/:id/checkout')
+  @ApiOperation({ summary: 'Open the gateway’s payment page for an unpaid invoice' })
+  @ApiCreatedResponse({ type: OrgCheckoutView })
+  checkout(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<OrgCheckoutView> {
+    return this.orgPayments.checkout(u, id);
   }
 }

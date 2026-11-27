@@ -183,12 +183,13 @@ export class OrganizationsService {
       ids.map((id) => sql`${id}::uuid`),
       sql`, `,
     );
-    const stats = await this.db.execute<{ id: string; members: number; seats: number; unpaid: number; overdue: number }>(sql`
+    const stats = await this.db.execute<{ id: string; members: number; seats: number; unpaid: number; overdue: number; credits: number }>(sql`
       SELECT o.id,
         (SELECT count(*) FROM organization_members m WHERE m.organization_id = o.id AND m.removed_at IS NULL)::int AS members,
         (SELECT count(*) FROM subscriptions s WHERE s.organization_id = o.id AND s.status IN ('active','past_due','paused'))::int AS seats,
         (SELECT coalesce(sum(i.total_halalas), 0) FROM organization_invoices i WHERE i.organization_id = o.id AND i.status = 'issued')::int AS unpaid,
-        (SELECT count(*) FROM organization_invoices i WHERE i.organization_id = o.id AND i.status = 'issued' AND i.due_date < ${riyadhToday()})::int AS overdue
+        (SELECT count(*) FROM organization_invoices i WHERE i.organization_id = o.id AND i.status = 'issued' AND i.due_date < ${riyadhToday()})::int AS overdue,
+        (SELECT coalesce(sum(c.amount_halalas), 0) FROM organization_credits c WHERE c.organization_id = o.id AND c.org_invoice_id IS NULL)::int AS credits
       FROM organizations o WHERE o.id IN (${idList})`);
     const partnerRows = await this.db
       .select({ id: partners.id, nameAr: partners.nameAr, nameEn: partners.nameEn })
@@ -217,6 +218,7 @@ export class OrganizationsService {
         seats: Number(s?.seats ?? 0),
         unpaidHalalas: Number(s?.unpaid ?? 0),
         overdue: Number(s?.overdue ?? 0),
+        openCreditHalalas: Number(s?.credits ?? 0),
       };
     });
   }
@@ -256,6 +258,8 @@ export class OrganizationsService {
       members: view.members,
       seats: view.seats,
       unpaidHalalas: view.unpaidHalalas,
+      openCreditHalalas: view.openCreditHalalas,
+      payOnline: this.env.PAYMENT_PROVIDER !== 'manual',
     };
   }
 

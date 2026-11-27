@@ -6,6 +6,7 @@ import { useApp } from '@/components/Providers';
 import { FormDialog, LoadState, StatusBadge, useLoad } from '@/components/ui';
 import { api, ApiError, OrgAdminView, OrganizationView, OrgInvoiceView, PlanView } from '@/lib/client';
 import { formatDate, formatSar, formatSaudiPhone } from '@/lib/format';
+import { fill } from '@/lib/i18n';
 
 const thisMonth = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date()).slice(0, 7);
 
@@ -136,6 +137,7 @@ export default function OrganizationsPage() {
                     <td className={`tabnum${o.overdue > 0 ? ' cell-alert' : ''}`}>
                       {formatSar(o.unpaidHalalas, lang)}
                       {o.overdue > 0 && <span className="sub">{t.orgs.overdue}</span>}
+                      {o.openCreditHalalas > 0 && <span className="sub">{fill(t.orgs.openCredit, { amount: formatSar(o.openCreditHalalas, lang) })}</span>}
                     </td>
                     <td>
                       <StatusBadge status={o.status} />

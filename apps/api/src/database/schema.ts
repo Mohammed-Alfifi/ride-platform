@@ -1206,6 +1206,10 @@ export const organizationInvoices = pgTable(
     buyerVatNumber: varchar('buyer_vat_number', { length: 15 }),
     buyerCrNumber: varchar('buyer_cr_number', { length: 20 }),
     lines: integer('lines').notNull(),
+    /** The organization's share of the periods billed, before credits. */
+    grossHalalas: integer('gross_halalas').notNull().default(0),
+    /** Credits taken off: its share of trips the partner missed or ran late, and of cancelled periods. */
+    creditHalalas: integer('credit_halalas').notNull().default(0),
     totalHalalas: integer('total_halalas').notNull(),
     vatHalalas: integer('vat_halalas').notNull(),
     platformFeeHalalas: integer('platform_fee_halalas').notNull(),
@@ -1235,3 +1239,71 @@ export const orgInvoiceSequences = pgTable('organization_invoice_sequences', {
 export type Organization = typeof organizations.$inferSelect;
 export type OrganizationMember = typeof organizationMembers.$inferSelect;
 export type OrganizationInvoice = typeof organizationInvoices.$inferSelect;
+
+export const ORG_CREDIT_KINDS = ['compensation', 'cancellation'] as const;
+export const orgCreditKindEnum = pgEnum('organization_credit_kind', ORG_CREDIT_KINDS);
+
+/**
+ * What the partner owes the organization back: its share of a trip the partner missed or ran late,
+ * or of the trips left when a member cancelled at once. Taken off the next monthly invoice.
+ */
+export const organizationCredits = pgTable(
+  'organization_credits',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    kind: orgCreditKindEnum('kind').notNull(),
+    amountHalalas: integer('amount_halalas').notNull(),
+    /** One credit per cause: comp:<trip id>, cancel:<subscription id>:<day>. */
+    key: varchar('key', { length: 120 }).notNull(),
+    subscriptionId: uuid('subscription_id').references(() => subscriptions.id, { onDelete: 'set null' }),
+    tripId: uuid('trip_id').references(() => trips.id, { onDelete: 'set null' }),
+    noteAr: varchar('note_ar', { length: 200 }).notNull(),
+    noteEn: varchar('note_en', { length: 200 }).notNull(),
+    orgInvoiceId: uuid('org_invoice_id').references(() => organizationInvoices.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('organization_credits_key_uq').on(t.key),
+    index('organization_credits_open_idx').on(t.organizationId, t.orgInvoiceId),
+    check('organization_credits_amount_ck', sql`${t.amountHalalas} > 0`),
+  ],
+);
+
+/** An organization paying its invoice online through the payment gateway. */
+export const organizationPayments = pgTable(
+  'organization_payments',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    orgInvoiceId: uuid('org_invoice_id')
+      .notNull()
+      .references(() => organizationInvoices.id, { onDelete: 'restrict' }),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    amountHalalas: integer('amount_halalas').notNull(),
+    provider: varchar('provider', { length: 20 }).notNull(),
+    providerPaymentId: varchar('provider_payment_id', { length: 120 }),
+    checkoutUrl: varchar('checkout_url', { length: 2048 }),
+    status: paymentStatusEnum('status').notNull().default('initiated'),
+    failureReason: varchar('failure_reason', { length: 200 }),
+    createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('organization_payments_provider_uq').on(t.provider, t.providerPaymentId),
+    index('organization_payments_invoice_idx').on(t.orgInvoiceId),
+  ],
+);
+
+export type OrganizationCredit = typeof organizationCredits.$inferSelect;
+export type OrganizationPayment = typeof organizationPayments.$inferSelect;

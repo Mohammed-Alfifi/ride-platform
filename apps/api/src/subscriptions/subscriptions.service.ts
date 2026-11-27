@@ -399,6 +399,15 @@ export class SubscriptionsService {
         .where(eq(subscriptions.id, sub.id));
       await this.tripGenerator.cancelFuture(sub.id, { from: addDays(today, 1), reason: 'subscription cancelled' });
       await this.wallet.creditRefund(sub, refund.creditHalalas);
+      // The organization paid its share of those trips: it gets that back on its next invoice.
+      const orgPart = Math.round((sub.priceHalalas * sub.orgShareBps) / 10_000);
+      await this.wallet.creditOrganization(
+        sub,
+        'cancellation',
+        Math.min(orgPart, refund.remainingTrips * this.wallet.orgTripValue(sub)),
+        `cancel:${sub.id}:${today}`,
+        { ar: `إلغاء فوري: ${refund.remainingTrips} رحلة متبقية`, en: `Cancelled at once: ${refund.remainingTrips} trips left` },
+      );
       return this.view(riderId, id);
     }
     if (sub.status === 'pending_payment') {

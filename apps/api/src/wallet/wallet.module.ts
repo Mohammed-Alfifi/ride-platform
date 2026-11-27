@@ -12,7 +12,7 @@ import { assertPartnerAccess } from '../common/tenant';
 import { ENV } from '../config/config.module';
 import { Env } from '../config/env';
 import { DB, Database } from '../database/database.module';
-import { partners, payments, Subscription, subscriptions, users, walletEntries, WalletKind } from '../database/schema';
+import { organizationCredits, partners, payments, Subscription, subscriptions, users, walletEntries, WalletKind } from '../database/schema';
 
 type Payment = typeof payments.$inferSelect;
 import { NotificationsService } from '../notifications/notifications.service';
@@ -225,6 +225,32 @@ export class WalletService {
     return Math.round(riderPart / trips);
   }
 
+  /** The organization's part of one trip, when an organization pays a share of the period. */
+  orgTripValue(sub: Pick<Subscription, 'priceHalalas' | 'days' | 'periodDays' | 'returnTime' | 'orgShareBps'>): number {
+    if (!sub.orgShareBps) return 0;
+    const days = sub.periodDays ?? 30;
+    const trips = Math.max(1, Math.round((sub.days.length * days) / 7) * (sub.returnTime ? 2 : 1));
+    return Math.round(Math.round((sub.priceHalalas * sub.orgShareBps) / 10_000) / trips);
+  }
+
+  /** Credit owed to the paying organization; once per key, taken off its next invoice. */
+  async creditOrganization(
+    sub: Subscription,
+    kind: 'compensation' | 'cancellation',
+    amount: number,
+    key: string,
+    note: { ar: string; en: string },
+    tripId: string | null = null,
+  ): Promise<boolean> {
+    if (!sub.organizationId || amount <= 0) return false;
+    const inserted = await this.db
+      .insert(organizationCredits)
+      .values({ organizationId: sub.organizationId, partnerId: sub.partnerId, kind, amountHalalas: amount, key, subscriptionId: sub.id, tripId, noteAr: note.ar, noteEn: note.en })
+      .onConflictDoNothing()
+      .returning({ id: organizationCredits.id });
+    return inserted.length > 0;
+  }
+
   /**
    * The nightly pass over a finished day: every trip the partner missed (the car never came) or ran
    * late (arrived more than COMPENSATION_LATE_MINUTES after the rider's time) earns its value back.
@@ -242,8 +268,7 @@ export class WalletService {
         AND (
           t.status IN ('scheduled', 'en_route')
           OR (t.status = 'completed' AND coalesce(t.arrived_at, t.picked_up_at) > t.scheduled_at + ${lateBy}::interval)
-        )
-        AND NOT EXISTS (SELECT 1 FROM wallet_entries w WHERE w.trip_id = t.id AND w.kind = 'compensation')`);
+        )`);
     let credited = 0;
     let missed = 0;
     let late = 0;
@@ -253,11 +278,17 @@ export class WalletService {
       const sub = subs.find((s) => s.id === r.subscription_id);
       if (!sub) continue;
       const amount = this.tripValue(sub);
-      if (amount <= 0) continue;
       const note =
         r.fault === 'missed'
           ? { ar: `تعويض عن رحلة لم يحضر لها السائق (${day})`, en: `Compensation: the car did not come (${day})` }
           : { ar: `تعويض عن تأخر السائق ${r.minutes} دقيقة (${day})`, en: `Compensation: the car was ${r.minutes} min late (${day})` };
+      // The paying organization gets its share back too, on its next invoice.
+      const orgCredited = await this.creditOrganization(sub, 'compensation', this.orgTripValue(sub), `comp:${r.trip_id}`, note, r.trip_id);
+      if (amount <= 0) {
+        if (orgCredited && r.fault === 'missed') missed++;
+        else if (orgCredited) late++;
+        continue;
+      }
       const inserted = await this.db
         .insert(walletEntries)
         .values({
