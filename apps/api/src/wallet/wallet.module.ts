@@ -214,11 +214,15 @@ export class WalletService {
 
   // ------------------------------------------------------------------ compensation
 
-  /** What one trip of a subscription is worth: its price spread over the trips of a period. */
-  tripValue(sub: Pick<Subscription, 'priceHalalas' | 'days' | 'periodDays' | 'returnTime'>): number {
+  /**
+   * What one trip of a subscription is worth to the rider: their part of the price (the organization's
+   * share, when one pays, is not the rider's to get back) spread over the trips of a period.
+   */
+  tripValue(sub: Pick<Subscription, 'priceHalalas' | 'days' | 'periodDays' | 'returnTime'> & { orgShareBps?: number }): number {
     const days = sub.periodDays ?? 30;
     const trips = Math.max(1, Math.round((sub.days.length * days) / 7) * (sub.returnTime ? 2 : 1));
-    return Math.round(sub.priceHalalas / trips);
+    const riderPart = Math.round((sub.priceHalalas * (10_000 - (sub.orgShareBps ?? 0))) / 10_000);
+    return Math.round(riderPart / trips);
   }
 
   /**
@@ -302,7 +306,7 @@ export class WalletService {
   /** Never more than was paid for the period. */
   refundFor(sub: Subscription, today = riyadhToday()): { remainingTrips: number; creditHalalas: number } {
     const remainingTrips = this.remainingTrips(sub, today);
-    return { remainingTrips, creditHalalas: Math.min(sub.priceHalalas, remainingTrips * this.tripValue(sub)) };
+    return { remainingTrips, creditHalalas: Math.min(Math.round((sub.priceHalalas * (10_000 - sub.orgShareBps)) / 10_000), remainingTrips * this.tripValue(sub)) };
   }
 
   async creditRefund(sub: Subscription, amount: number): Promise<void> {

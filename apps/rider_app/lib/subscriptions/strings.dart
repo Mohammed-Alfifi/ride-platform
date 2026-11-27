@@ -284,4 +284,11 @@ class RiderStrings {
       _s('الآن: نلغي $trips رحلة متبقية ونضيف $amount ر.س إلى محفظتك.', 'Now: we cancel the $trips trips left and add $amount SAR to your wallet.');
   String get cancelAtEndButton => _s('عند نهاية الفترة', 'At period end');
   String get cancelNowButton => _s('الآن مع رصيد', 'Now, for credit');
+
+  // Companies and schools.
+  String sponsorFull(String org) => _s('تتحمل $org قيمة اشتراكك كاملة.', '$org pays for your whole subscription.');
+  String sponsorShare(String org, int pct, String amount) =>
+      _s('تتحمل $org $pct% من السعر ($amount ريال).', '$org pays $pct% of the price (SAR $amount).');
+  String get activateFree => _s('تفعيل الاشتراك', 'Activate subscription');
+  String get paidBy => _s('تتحمله', 'Paid by');
 }

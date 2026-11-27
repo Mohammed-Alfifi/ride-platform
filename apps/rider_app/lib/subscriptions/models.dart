@@ -107,6 +107,7 @@ class Quote {
     this.promoCode,
     this.discountHalalas = 0,
     this.walletHalalas = 0,
+    this.sponsor,
     this.meetingPoint,
     this.periodDays,
     this.renewable = true,
@@ -114,6 +115,7 @@ class Quote {
 
   factory Quote.fromJson(Map<String, dynamic> j) => Quote(
         walletHalalas: _int(j['walletHalalas']),
+        sponsor: j['sponsor'] is Map ? Sponsor.fromJson(Map<String, dynamic>.from(j['sponsor'] as Map)) : null,
         meetingPoint: j['meetingPoint'] is Map ? MeetingPoint.fromJson(Map<String, dynamic>.from(j['meetingPoint'] as Map)) : null,
         periodDays: j['periodDays'] == null ? null : _int(j['periodDays']),
         renewable: j['renewable'] as bool? ?? true,
@@ -136,11 +138,29 @@ class Quote {
   final String? promoCode;
   final int discountHalalas;
   final int walletHalalas;
+  final Sponsor? sponsor;
   final MeetingPoint? meetingPoint;
   final int? periodDays;
   final bool renewable;
 
-  int get firstPaymentHalalas => priceHalalas - discountHalalas - walletHalalas;
+  int get firstPaymentHalalas => priceHalalas - (sponsor?.orgHalalas ?? 0) - discountHalalas - walletHalalas;
+}
+
+/// The rider's company or school, paying its share of every period.
+class Sponsor {
+  const Sponsor({required this.nameAr, required this.nameEn, required this.coverageBps, required this.orgHalalas});
+  factory Sponsor.fromJson(Map<String, dynamic> j) => Sponsor(
+        nameAr: j['nameAr'] as String,
+        nameEn: j['nameEn'] as String,
+        coverageBps: _int(j['coverageBps']),
+        orgHalalas: _int(j['orgHalalas']),
+      );
+  final String nameAr;
+  final String nameEn;
+  final int coverageBps;
+  final int orgHalalas;
+  String name(bool ar) => ar ? nameAr : nameEn;
+  bool get full => coverageBps >= 10000;
 }
 
 /// Where a meeting-point plan picks the rider up, and how far it is to walk there.
@@ -253,6 +273,8 @@ class Subscription {
     required this.payUrl,
     required this.pendingPaymentId,
     this.amountDueHalalas,
+    this.sponsorAr,
+    this.sponsorEn,
     this.memberName,
     this.driverName,
     this.driverPlate,
@@ -283,6 +305,8 @@ class Subscription {
         payUrl: _str(j['payUrl']),
         pendingPaymentId: _str(j['pendingPaymentId']),
         amountDueHalalas: j['amountDueHalalas'] == null ? null : _int(j['amountDueHalalas']),
+        sponsorAr: j['sponsor'] is Map ? _str((j['sponsor'] as Map)['nameAr']) : null,
+        sponsorEn: j['sponsor'] is Map ? _str((j['sponsor'] as Map)['nameEn']) : null,
         memberName: j['member'] is Map ? _str((j['member'] as Map)['name']) : null,
         driverName: j['driver'] is Map ? _str((j['driver'] as Map)['name']) : null,
         driverPlate: j['driver'] is Map ? _str((j['driver'] as Map)['plate']) : null,
@@ -312,6 +336,11 @@ class Subscription {
 
   /// What the waiting payment asks for (after any first-month discount).
   final int? amountDueHalalas;
+
+  /// The company or school paying (part of) this subscription.
+  final String? sponsorAr;
+  final String? sponsorEn;
+  String? sponsor(bool ar) => ar ? sponsorAr : sponsorEn;
   final String? memberName;
   final String? driverName;
   final String? driverPlate;

@@ -348,6 +348,10 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
                 'NO_MEETING_POINT_NEARBY' => t.noMeetingPointNearby,
                 _ => t.outsideZone,
               }),
+            if (_quote?.eligible == true && _quote!.sponsor != null)
+              _Notice(_quote!.sponsor!.full
+                  ? t.sponsorFull(_quote!.sponsor!.name(t.ar))
+                  : t.sponsorShare(_quote!.sponsor!.name(t.ar), _quote!.sponsor!.coverageBps ~/ 100, t.sar(_quote!.sponsor!.orgHalalas))),
             if (_quote?.eligible == true && _quote!.meetingPoint != null)
               _Notice(t.meetAt(_quote!.meetingPoint!.name(t.ar), _quote!.meetingPoint!.walkMeters)),
             if (_quote?.eligible == true && _quote!.periodDays != null)
@@ -483,7 +487,11 @@ class _NewSubscriptionScreenState extends ConsumerState<NewSubscriptionScreen> {
               onPressed: _paying || !_agreed ? null : _pay,
               child: _paying
                   ? const ButtonSpinner()
-                  : Text(manual ? t.subscribeManual(t.sar(_quote!.firstPaymentHalalas)) : t.payAmount(t.sar(_quote!.firstPaymentHalalas))),
+                  : Text(_quote!.firstPaymentHalalas == 0
+                      ? t.activateFree
+                      : manual
+                          ? t.subscribeManual(t.sar(_quote!.firstPaymentHalalas))
+                          : t.payAmount(t.sar(_quote!.firstPaymentHalalas))),
             ),
             const SizedBox(height: 8),
             Text(manual ? t.payManualHint : t.payWith, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),

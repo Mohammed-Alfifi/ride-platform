@@ -1,3 +1,4 @@
+import { SponsorView } from '../organizations/organizations.dto';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
@@ -78,6 +79,11 @@ export class QuoteDto {
   promoCode?: string;
 }
 
+export class OrgNameView {
+  @ApiProperty() nameAr!: string;
+  @ApiProperty() nameEn!: string;
+}
+
 export class QuoteView {
   @ApiProperty() planId!: string;
   @ApiProperty() eligible!: boolean;
@@ -97,6 +103,8 @@ export class QuoteView {
   meetingPoint!: { id: string; nameAr: string; nameEn: string; lat: number; lng: number; walkMeters: number } | null;
   @ApiProperty({ nullable: true, type: Number, description: 'Days per period; null = a calendar month' }) periodDays!: number | null;
   @ApiProperty({ description: 'false: one period only (a trial)' }) renewable!: boolean;
+  @ApiProperty({ type: SponsorView, nullable: true, description: 'The rider’s company or school, when it pays (part of) this plan' })
+  sponsor!: SponsorView | null;
 }
 
 export class CancelDto {
@@ -190,6 +198,9 @@ export class SubscriptionView {
   @ApiProperty({ nullable: true, type: String }) pendingPaymentId!: string | null;
   @ApiProperty({ nullable: true, type: Number, description: 'Amount of the waiting payment (after any discount)' })
   amountDueHalalas!: number | null;
+
+  @ApiProperty({ type: OrgNameView, nullable: true, description: 'The organization paying (part of) this subscription' })
+  sponsor!: OrgNameView | null;
   @ApiProperty({ nullable: true, type: Object, description: 'Who rides, when not the account holder' })
   member!: { id: string; name: string } | null;
   @ApiProperty({ nullable: true, type: Object }) driver!: { name: string | null; plate: string | null } | null;

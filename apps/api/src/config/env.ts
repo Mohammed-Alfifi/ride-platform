@@ -129,6 +129,8 @@ export const envSchema = z
     MEETING_POINT_MAX_WALK_M: z.coerce.number().int().min(100).max(3000).default(800),
     /** A trip whose car came more than this many minutes after the rider's time earns compensation. */
     COMPENSATION_LATE_MINUTES: z.coerce.number().int().min(5).max(120).default(15),
+    /** Days an organization has to pay its monthly invoice. */
+    ORG_INVOICE_DUE_DAYS: z.coerce.number().int().min(1).max(90).default(15),
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
     /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),

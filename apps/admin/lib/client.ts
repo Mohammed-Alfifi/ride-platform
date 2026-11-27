@@ -54,7 +54,7 @@ export async function postJson<T>(url: string, body: unknown): Promise<T> {
 export interface Profile {
   id: string;
   name: string | null;
-  role: 'super_admin' | 'partner_admin' | 'dispatcher';
+  role: 'super_admin' | 'partner_admin' | 'dispatcher' | 'org_admin';
   partnerId: string | null;
 }
 
@@ -426,4 +426,107 @@ export interface Substitute {
   phone: string;
   etaMinutes: number | null;
   locationAt: string | null;
+}
+
+export interface OrganizationView {
+  id: string;
+  partnerId: string;
+  partnerNameAr: string;
+  partnerNameEn: string;
+  kind: 'company' | 'school';
+  nameAr: string;
+  nameEn: string;
+  legalName: string;
+  crNumber: string | null;
+  vatNumber: string | null;
+  address: string | null;
+  contactPhone: string | null;
+  coverageBps: number;
+  planIds: string[];
+  status: 'active' | 'suspended';
+  members: number;
+  seats: number;
+  unpaidHalalas: number;
+  overdue: number;
+}
+
+export interface OrgAdminView {
+  id: string;
+  phone: string;
+  name: string | null;
+  status: 'active' | 'pending' | 'suspended';
+  lastLoginAt: string | null;
+}
+
+export interface OrgInvoiceView {
+  id: string;
+  organizationId: string;
+  organizationNameAr: string;
+  organizationNameEn: string;
+  month: string;
+  number: string;
+  lines: number;
+  totalHalalas: number;
+  vatHalalas: number;
+  status: 'issued' | 'paid' | 'void';
+  issuedAt: string;
+  dueDate: string;
+  overdue: boolean;
+  paidAt: string | null;
+  reference: string | null;
+}
+
+export interface OrgProfileView {
+  id: string;
+  kind: 'company' | 'school';
+  nameAr: string;
+  nameEn: string;
+  partnerNameAr: string;
+  partnerNameEn: string;
+  coverageBps: number;
+  status: 'active' | 'suspended';
+  plans: { id: string; nameAr: string; nameEn: string; priceHalalas: number; orgHalalas: number; memberHalalas: number }[];
+  members: number;
+  seats: number;
+  unpaidHalalas: number;
+}
+
+export type MemberSubscriptionStatus = 'pending_payment' | 'active' | 'past_due' | 'paused' | 'cancelled' | 'expired';
+
+export interface OrgMemberView {
+  id: string;
+  phone: string;
+  name: string;
+  reference: string | null;
+  joined: boolean;
+  subscriptionStatus: MemberSubscriptionStatus | null;
+  planNameAr: string | null;
+  planNameEn: string | null;
+  currentPeriodEnd: string | null;
+  createdAt: string;
+}
+
+export interface AttendanceRow {
+  memberId: string;
+  name: string;
+  reference: string | null;
+  planned: number;
+  rode: number;
+  excused: number;
+  noShow: number;
+  missed: number;
+  late: number;
+}
+
+export interface AttendanceView {
+  from: string;
+  to: string;
+  rows: AttendanceRow[];
+  totals: AttendanceRow;
+}
+
+export interface BulkResult {
+  added: number;
+  existing: number;
+  errors: { row: number; phone: string; code: 'AUTH_PHONE_INVALID' | 'ORG_MEMBER_ELSEWHERE' | 'DUPLICATE' }[];
 }

@@ -23,7 +23,7 @@ import {
  * Every operational table carries partner_id so data stays isolated per partner.
  */
 
-export const ROLES = ['rider', 'driver', 'partner_admin', 'dispatcher', 'super_admin'] as const;
+export const ROLES = ['rider', 'driver', 'partner_admin', 'dispatcher', 'super_admin', 'org_admin'] as const;
 export type Role = (typeof ROLES)[number];
 
 /** Which app a user signs in to. A phone has at most one account per audience. */
@@ -32,6 +32,8 @@ export type Audience = (typeof AUDIENCES)[number];
 
 export const PARTNER_ROLES: readonly Role[] = ['partner_admin', 'dispatcher'];
 export const ADMIN_ROLES: readonly Role[] = ['partner_admin', 'dispatcher', 'super_admin'];
+/** Signs in to the dashboard for one organization (a company or a school) only; never a partner's data. */
+export const ORG_ROLES: readonly Role[] = ['org_admin'];
 
 export function audienceForRole(role: Role): Audience {
   if (role === 'rider') return 'rider';
@@ -115,6 +117,8 @@ export const users = pgTable(
     /** Which version of the terms and privacy policy the user accepted, and when. */
     termsVersion: varchar('terms_version', { length: 20 }),
     termsAcceptedAt: timestamp('terms_accepted_at', { withTimezone: true }),
+    /** org_admin only: the company or school this account manages. */
+    organizationId: uuid('organization_id').references((): AnyPgColumn => organizations.id, { onDelete: 'restrict' }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     ...timestamps,
   },
@@ -125,15 +129,16 @@ export const users = pgTable(
     index('users_partner_idx').on(t.partnerId),
     check(
       'users_partner_role_ck',
-      sql`(${t.role} IN ('partner_admin','dispatcher') AND ${t.partnerId} IS NOT NULL)
-        OR (${t.role} = 'super_admin' AND ${t.partnerId} IS NULL)
-        OR ${t.role} IN ('rider','driver')`,
+      sql`(${t.role}::text IN ('partner_admin','dispatcher') AND ${t.partnerId} IS NOT NULL)
+        OR (${t.role}::text = 'super_admin' AND ${t.partnerId} IS NULL)
+        OR (${t.role}::text = 'org_admin' AND ${t.partnerId} IS NULL AND ${t.organizationId} IS NOT NULL)
+        OR ${t.role}::text IN ('rider','driver')`,
     ),
     check(
       'users_role_audience_ck',
-      sql`(${t.role} = 'rider' AND ${t.audience} = 'rider')
-        OR (${t.role} = 'driver' AND ${t.audience} = 'driver')
-        OR (${t.role} IN ('partner_admin','dispatcher','super_admin') AND ${t.audience} = 'admin')`,
+      sql`(${t.role}::text = 'rider' AND ${t.audience} = 'rider')
+        OR (${t.role}::text = 'driver' AND ${t.audience} = 'driver')
+        OR (${t.role}::text IN ('partner_admin','dispatcher','super_admin','org_admin') AND ${t.audience} = 'admin')`,
     ),
   ],
 );
@@ -526,6 +531,10 @@ export const subscriptions = pgTable(
     meetingPointId: uuid('meeting_point_id').references((): AnyPgColumn => meetingPoints.id, { onDelete: 'set null' }),
     /** Copied from the plan: days per paid period (null = calendar month). */
     periodDays: integer('period_days'),
+    /** The company or school that pays (part of) this subscription, when the rider is one of its members. */
+    organizationId: uuid('organization_id').references((): AnyPgColumn => organizations.id, { onDelete: 'set null' }),
+    /** The organization's share of the current paid period (basis points): the rider is owed credit on the rest only. */
+    orgShareBps: integer('org_share_bps').notNull().default(0),
     ...timestamps,
   },
   (t) => [
@@ -558,6 +567,10 @@ export const payments = pgTable(
     discountHalalas: integer('discount_halalas').notNull().default(0),
     /** Part of discountHalalas paid from the rider's wallet credit with this partner. */
     walletHalalas: integer('wallet_halalas').notNull().default(0),
+    /** The organization's share of this period, billed to it on its monthly invoice (not part of amountHalalas). */
+    organizationId: uuid('organization_id').references((): AnyPgColumn => organizations.id, { onDelete: 'restrict' }),
+    orgHalalas: integer('org_halalas').notNull().default(0),
+    orgInvoiceId: uuid('org_invoice_id').references((): AnyPgColumn => organizationInvoices.id, { onDelete: 'set null' }),
     platformFeeHalalas: integer('platform_fee_halalas').notNull(),
     partnerShareHalalas: integer('partner_share_halalas').notNull(),
     status: paymentStatusEnum('status').notNull().default('initiated'),
@@ -579,6 +592,7 @@ export const payments = pgTable(
     uniqueIndex('payments_idempotency_uq').on(t.idempotencyKey),
     index('payments_partner_idx').on(t.partnerId, t.createdAt),
     index('payments_subscription_idx').on(t.subscriptionId),
+    index('payments_org_idx').on(t.organizationId, t.orgInvoiceId),
   ],
 );
 
@@ -1102,3 +1116,122 @@ export const walletEntries = pgTable(
 
 export type MeetingPoint = typeof meetingPoints.$inferSelect;
 export type WalletEntry = typeof walletEntries.$inferSelect;
+
+// ---------------------------------------------------------------- organizations (phase 9)
+
+export const ORG_KINDS = ['company', 'school'] as const;
+export type OrgKind = (typeof ORG_KINDS)[number];
+export const orgKindEnum = pgEnum('organization_kind', ORG_KINDS);
+export const orgInvoiceStatusEnum = pgEnum('organization_invoice_status', ['issued', 'paid', 'void']);
+
+/**
+ * A company or school that contracts with a partner and pays for its people's rides: all of the
+ * price (coverage 100%) or a share, on one monthly tax invoice. Its members subscribe in the rider
+ * app as usual; the organization's share is taken off each of their payments.
+ */
+export const organizations = pgTable(
+  'organizations',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    kind: orgKindEnum('kind').notNull(),
+    nameAr: varchar('name_ar', { length: 160 }).notNull(),
+    nameEn: varchar('name_en', { length: 160 }).notNull(),
+    /** The buyer on the tax invoice. */
+    legalName: varchar('legal_name', { length: 200 }).notNull(),
+    crNumber: varchar('cr_number', { length: 20 }),
+    vatNumber: varchar('vat_number', { length: 15 }),
+    address: varchar('address', { length: 200 }),
+    contactPhone: varchar('contact_phone', { length: 16 }),
+    /** Share of each subscription price the organization pays, in basis points (10000 = all of it). */
+    coverageBps: integer('coverage_bps').notNull(),
+    /** The partner's plans its members may take under this agreement. */
+    planIds: uuid('plan_ids').array().notNull(),
+    status: partnerStatusEnum('status').notNull().default('active'),
+    ...timestamps,
+  },
+  (t) => [
+    index('organizations_partner_idx').on(t.partnerId),
+    check('organizations_coverage_ck', sql`${t.coverageBps} BETWEEN 100 AND 10000`),
+  ],
+);
+
+/** People the organization pays for, by the phone they sign in to the rider app with (a guardian's, for a student). */
+export const organizationMembers = pgTable(
+  'organization_members',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'cascade' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    phone: varchar('phone', { length: 16 }).notNull(),
+    name: varchar('name', { length: 120 }).notNull(),
+    /** Employee number, or a student's grade and class. */
+    reference: varchar('reference', { length: 60 }),
+    addedBy: uuid('added_by').references(() => users.id, { onDelete: 'set null' }),
+    removedAt: timestamp('removed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // A phone is paid for by at most one organization of a partner at a time.
+    uniqueIndex('organization_members_phone_uq')
+      .on(t.partnerId, t.phone)
+      .where(sql`${t.removedAt} IS NULL`),
+    index('organization_members_org_idx').on(t.organizationId),
+  ],
+);
+
+/** One tax invoice a month to the organization for its share of every period that started. */
+export const organizationInvoices = pgTable(
+  'organization_invoices',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: uuid('organization_id')
+      .notNull()
+      .references(() => organizations.id, { onDelete: 'restrict' }),
+    partnerId: uuid('partner_id')
+      .notNull()
+      .references(() => partners.id, { onDelete: 'restrict' }),
+    /** YYYY-MM, Riyadh time. */
+    month: varchar('month', { length: 7 }).notNull(),
+    number: varchar('number', { length: 30 }).notNull(),
+    sellerName: varchar('seller_name', { length: 200 }).notNull(),
+    sellerVatNumber: varchar('seller_vat_number', { length: 15 }),
+    buyerName: varchar('buyer_name', { length: 200 }).notNull(),
+    buyerVatNumber: varchar('buyer_vat_number', { length: 15 }),
+    buyerCrNumber: varchar('buyer_cr_number', { length: 20 }),
+    lines: integer('lines').notNull(),
+    totalHalalas: integer('total_halalas').notNull(),
+    vatHalalas: integer('vat_halalas').notNull(),
+    platformFeeHalalas: integer('platform_fee_halalas').notNull(),
+    partnerShareHalalas: integer('partner_share_halalas').notNull(),
+    qrTlv: varchar('qr_tlv', { length: 600 }),
+    status: orgInvoiceStatusEnum('status').notNull().default('issued'),
+    issuedAt: timestamp('issued_at', { withTimezone: true }).notNull().defaultNow(),
+    dueDate: date('due_date').notNull(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    method: varchar('method', { length: 20 }),
+    reference: varchar('reference', { length: 80 }),
+    recordedBy: uuid('recorded_by').references(() => users.id, { onDelete: 'set null' }),
+  },
+  (t) => [
+    uniqueIndex('organization_invoices_month_uq').on(t.organizationId, t.month),
+    uniqueIndex('organization_invoices_number_uq').on(t.number),
+    index('organization_invoices_partner_idx').on(t.partnerId, t.status),
+  ],
+);
+
+/** Gap-free numbering of organization invoices per year (their own series, B2B). */
+export const orgInvoiceSequences = pgTable('organization_invoice_sequences', {
+  year: integer('year').primaryKey(),
+  last: integer('last').notNull(),
+});
+
+export type Organization = typeof organizations.$inferSelect;
+export type OrganizationMember = typeof organizationMembers.$inferSelect;
+export type OrganizationInvoice = typeof organizationInvoices.$inferSelect;

@@ -8,6 +8,7 @@ import { RenewalsService } from '../subscriptions/renewals.service';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { TripGenerator } from '../trips/trip.generator';
 import { WalletService } from '../wallet/wallet.module';
+import { OrgInvoicesService } from '../organizations/org-invoices.service';
 import { RunsService } from '../runs/runs.service';
 import { TripWatch } from '../trips/trip.watch';
 import { MetricsService } from '../monitoring/metrics.service';
@@ -49,6 +50,7 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
     private readonly tripWatch: TripWatch,
     private readonly metrics: MetricsService,
     private readonly wallet: WalletService,
+    private readonly orgInvoices: OrgInvoicesService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -82,6 +84,11 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
       { name: 'compensation', opts: { removeOnComplete: 30, removeOnFail: 100 } },
     );
     await this.queue.upsertJobScheduler(
+      'monthly-org-invoices',
+      { pattern: '20 1 1 * *', tz: 'Asia/Riyadh' },
+      { name: 'org-invoices', opts: { removeOnComplete: 12, removeOnFail: 24 } },
+    );
+    await this.queue.upsertJobScheduler(
       'daily-purge',
       { pattern: '30 3 * * *', tz: 'Asia/Riyadh' },
       { name: 'purge', opts: { removeOnComplete: 30, removeOnFail: 100 } },
@@ -96,12 +103,13 @@ export class JobsRunner implements OnApplicationBootstrap, OnApplicationShutdown
           if (job.name === 'watch') return this.tripWatch.run();
           if (job.name === 'purge') return this.tripWatch.purge();
           if (job.name === 'compensation') return this.wallet.compensate();
+          if (job.name === 'org-invoices') return this.orgInvoices.issueAll();
           return this.compliance.scan();
         }),
       { connection, concurrency: 1 },
     );
     this.worker.on('failed', (job, err) => this.logger.error(`Job ${job?.id} failed: ${err.message}`));
-    this.logger.log('Daily jobs scheduled (Asia/Riyadh): trips 00:10, compensation 00:40, purge 03:30, renewals 05:00, compliance scan 06:00, trip watch every 2 min');
+    this.logger.log('Daily jobs scheduled (Asia/Riyadh): trips 00:10, compensation 00:40, organization invoices 01:20 on the 1st, purge 03:30, renewals 05:00, compliance scan 06:00, trip watch every 2 min');
     // Catch up after downtime: make sure today's and tomorrow's trips exist.
     await this.metrics.track('trips', () => this.tripsAndRuns()).catch((err: Error) => this.logger.error(`Trip generation failed: ${err.message}`));
   }

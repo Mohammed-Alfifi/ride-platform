@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 import { useApp } from '@/components/Providers';
 import { LoadState, useLoad } from '@/components/ui';
 import { AdminSubscription, api, DriverPage, ExpiringItem, Page, PaymentPage, UserView } from '@/lib/client';
@@ -21,6 +23,16 @@ function monthStart(): string {
 }
 
 export default function OverviewPage() {
+  const { profile } = useApp();
+  const router = useRouter();
+  const org = profile?.role === 'org_admin';
+  useEffect(() => {
+    if (org) router.replace('/org');
+  }, [org, router]);
+  return org ? null : <StaffOverview />;
+}
+
+function StaffOverview() {
   const { t, lang } = useApp();
   const { data, error, loading, reload } = useLoad<Overview>(async () => {
     const me = await api<UserView>('me');

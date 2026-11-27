@@ -77,6 +77,14 @@ export class RenewalsService {
         result.expired++;
         continue;
       }
+      // The rider's organization pays the whole period: renew without a card or a link.
+      if (await this.billing.fullyCovered(sub)) {
+        const payment = await this.billing.checkout(sub, 'renewal', { periodStart: nextStart, idempotencyKey: `renew-org:${sub.id}:${nextStart}` });
+        if (payment.status === 'paid') {
+          result.renewed++;
+          continue;
+        }
+      }
       if (!sub.autoRenew && sub.status === 'active' && today <= periodEnd) {
         // No automatic renewal: offer a link on the last day instead of charging.
         if (await this.sendPayLink(sub, nextStart, today)) result.linksSent++;

@@ -8,6 +8,8 @@ export class UserView {
   @ApiProperty({ enum: ROLES }) role!: User['role'];
   @ApiProperty({ enum: AUDIENCES }) audience!: User['audience'];
   @ApiProperty({ nullable: true, type: String, format: 'uuid' }) partnerId!: string | null;
+  @ApiProperty({ nullable: true, type: String, format: 'uuid', description: 'org_admin: the organization managed' })
+  organizationId!: string | null;
   @ApiProperty({ enum: ['ar', 'en'] }) locale!: User['locale'];
   @ApiProperty({ nullable: true, enum: ['male', 'female'] }) gender!: User['gender'];
   @ApiProperty({ enum: ['active', 'pending', 'suspended'] }) status!: User['status'];
@@ -25,6 +27,7 @@ export function presentUser(u: User): UserView {
     role: u.role,
     audience: u.audience,
     partnerId: u.partnerId,
+    organizationId: u.organizationId,
     locale: u.locale,
     gender: u.gender,
     status: u.status,

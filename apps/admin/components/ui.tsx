@@ -60,7 +60,9 @@ export function FormDialog({
   onClose,
   onSubmit,
   children,
+  wide = false,
 }: {
+  wide?: boolean;
   open: boolean;
   title: string;
   submitLabel: string;
@@ -99,7 +101,7 @@ export function FormDialog({
   }
 
   return (
-    <dialog ref={ref} className="sheet" onClose={onClose} aria-labelledby="dialog-title">
+    <dialog ref={ref} className={`sheet${wide ? ' sheet-wide' : ''}`} onClose={onClose} aria-labelledby="dialog-title">
       <form onSubmit={submit}>
         <h2 id="dialog-title">{title}</h2>
         {children}

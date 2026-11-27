@@ -9,7 +9,13 @@ export function Shell({ children }: { children: ReactNode }) {
   const { t, profile, switchLang } = useApp();
   const pathname = usePathname();
 
-  const items = [
+  const orgItems = [
+    { href: '/org', label: t.nav.orgHome },
+    { href: '/org/members', label: t.nav.orgMembers },
+    { href: '/org/attendance', label: t.nav.orgAttendance },
+    { href: '/org/invoices', label: t.nav.orgInvoices },
+  ];
+  const staffItems = [
     { href: '/', label: t.nav.overview },
     { href: '/dispatch', label: t.nav.dispatch },
     { href: '/runs', label: t.nav.runs },
@@ -17,6 +23,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/zones', label: t.nav.zones },
     { href: '/plans', label: t.nav.plans },
     { href: '/meeting-points', label: t.nav.meetingPoints },
+    { href: '/organizations', label: t.nav.organizations },
     { href: '/join-requests', label: t.nav.joinRequests },
     { href: '/access', label: t.nav.access },
     { href: '/subscriptions', label: t.nav.subscriptions },
@@ -31,6 +38,7 @@ export function Shell({ children }: { children: ReactNode }) {
   ]
     .filter((i) => !(['/payments', '/reports', '/promos', '/join-requests', '/access'].includes(i.href) && profile?.role === 'dispatcher'))
     .filter((i) => i.href !== '/system' || profile?.role === 'super_admin');
+  const items = profile?.role === 'org_admin' ? orgItems : staffItems;
 
   // On phones the menu is one scrolling row; bring the current page into view.
   useEffect(() => {
@@ -48,7 +56,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="brand">{t.appName}</div>
         <ul className="nav">
           {items.map((item) => {
-            const active = item.href === '/' ? pathname === '/' : pathname.startsWith(item.href);
+            const active = item.href === '/' || item.href === '/org' ? pathname === item.href : pathname.startsWith(item.href);
             return (
               <li key={item.href}>
                 <Link href={item.href} aria-current={active ? 'page' : undefined}>
