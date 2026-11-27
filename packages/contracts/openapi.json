@@ -1902,6 +1902,42 @@
         ]
       }
     },
+    "/v1/subscriptions/{id}/cancel-preview": {
+      "get": {
+        "operationId": "RiderController_cancelPreview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelPreviewView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "What cancelling at period end or now gives, before the rider chooses",
+        "tags": [
+          "rider: subscriptions"
+        ]
+      }
+    },
     "/v1/subscriptions/{id}/cancel": {
       "post": {
         "operationId": "RiderController_cancel",
@@ -1915,6 +1951,16 @@
             }
           }
         ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelDto"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "",
@@ -1932,7 +1978,7 @@
             "bearer": []
           }
         ],
-        "summary": "Stop renewing; service continues to the end of the paid period",
+        "summary": "Stop renewing (service to period end), or stop now with the trips left credited to the wallet",
         "tags": [
           "rider: subscriptions"
         ]
@@ -4159,6 +4205,264 @@
         ]
       }
     },
+    "/v1/admin/meeting-points": {
+      "get": {
+        "operationId": "MeetingPointsController_list",
+        "parameters": [
+          {
+            "name": "zoneId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "partnerId",
+            "required": false,
+            "in": "query",
+            "description": "Super admins only",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MeetingPointView"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: meeting points"
+        ]
+      },
+      "post": {
+        "operationId": "MeetingPointsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMeetingPointDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingPointView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add a meeting point inside a zone",
+        "tags": [
+          "admin: meeting points"
+        ]
+      }
+    },
+    "/v1/admin/meeting-points/{id}": {
+      "patch": {
+        "operationId": "MeetingPointsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMeetingPointDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingPointView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: meeting points"
+        ]
+      }
+    },
+    "/v1/wallet": {
+      "get": {
+        "operationId": "RiderWalletController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Credit with each partner and its history",
+        "tags": [
+          "rider: wallet"
+        ]
+      }
+    },
+    "/v1/admin/wallet": {
+      "get": {
+        "operationId": "AdminWalletController_rider",
+        "parameters": [
+          {
+            "name": "riderId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": [
+          "admin: wallet"
+        ]
+      }
+    },
+    "/v1/admin/wallet/adjust": {
+      "post": {
+        "operationId": "AdminWalletController_adjust",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdjustWalletDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WalletEntryView"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Add credit to a rider's wallet (or take it back)",
+        "tags": [
+          "admin: wallet"
+        ]
+      }
+    },
+    "/v1/admin/wallet/compensate/{day}": {
+      "post": {
+        "operationId": "AdminWalletController_compensate",
+        "parameters": [
+          {
+            "name": "day",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Run the compensation pass for a day now (normally nightly)",
+        "tags": [
+          "admin: wallet"
+        ]
+      }
+    },
     "/v1/app-config": {
       "get": {
         "operationId": "PublicPilotController_config",
@@ -5887,6 +6191,23 @@
           "requiresEscort": {
             "type": "boolean"
           },
+          "pickupMode": {
+            "type": "string",
+            "enum": [
+              "door",
+              "meeting_point"
+            ]
+          },
+          "periodDays": {
+            "type": "number",
+            "nullable": true
+          },
+          "renewable": {
+            "type": "boolean"
+          },
+          "oncePerRider": {
+            "type": "boolean"
+          },
           "active": {
             "type": "boolean"
           }
@@ -5904,6 +6225,10 @@
           "serviceClass",
           "womenOnly",
           "requiresEscort",
+          "pickupMode",
+          "periodDays",
+          "renewable",
+          "oncePerRider",
           "active"
         ]
       },
@@ -5960,6 +6285,30 @@
             "type": "boolean",
             "default": false,
             "description": "Education only: an adult escort must be on board"
+          },
+          "pickupMode": {
+            "type": "string",
+            "enum": [
+              "door",
+              "meeting_point"
+            ],
+            "default": "door",
+            "description": "meeting_point: riders gather at the nearest meeting point"
+          },
+          "periodDays": {
+            "type": "number",
+            "nullable": true,
+            "description": "Days per paid period (7 = weekly pass); empty = a calendar month"
+          },
+          "renewable": {
+            "type": "boolean",
+            "default": true,
+            "description": "false: one period only (a trial)"
+          },
+          "oncePerRider": {
+            "type": "boolean",
+            "default": false,
+            "description": "Each rider may buy it once (trials)"
           }
         },
         "required": [
@@ -6021,6 +6370,30 @@
             "type": "boolean",
             "default": false,
             "description": "Education only: an adult escort must be on board"
+          },
+          "pickupMode": {
+            "type": "string",
+            "enum": [
+              "door",
+              "meeting_point"
+            ],
+            "default": "door",
+            "description": "meeting_point: riders gather at the nearest meeting point"
+          },
+          "periodDays": {
+            "type": "number",
+            "nullable": true,
+            "description": "Days per paid period (7 = weekly pass); empty = a calendar month"
+          },
+          "renewable": {
+            "type": "boolean",
+            "default": true,
+            "description": "false: one period only (a trial)"
+          },
+          "oncePerRider": {
+            "type": "boolean",
+            "default": false,
+            "description": "Each rider may buy it once (trials)"
           },
           "active": {
             "type": "boolean"
@@ -6182,7 +6555,8 @@
             "nullable": true,
             "enum": [
               "PLACE_OUTSIDE_ZONE",
-              "PLAN_DISTANCE_EXCEEDED"
+              "PLAN_DISTANCE_EXCEEDED",
+              "NO_MEETING_POINT_NEARBY"
             ]
           },
           "distanceKm": {
@@ -6217,8 +6591,26 @@
             "type": "number",
             "description": "Taken off the first month"
           },
+          "walletHalalas": {
+            "type": "number",
+            "description": "Wallet credit with this partner taken off the first payment"
+          },
           "firstPaymentHalalas": {
             "type": "number"
+          },
+          "meetingPoint": {
+            "type": "object",
+            "nullable": true,
+            "description": "Meeting-point plans: where to meet and how far to walk"
+          },
+          "periodDays": {
+            "type": "number",
+            "nullable": true,
+            "description": "Days per period; null = a calendar month"
+          },
+          "renewable": {
+            "type": "boolean",
+            "description": "false: one period only (a trial)"
           }
         },
         "required": [
@@ -6233,7 +6625,11 @@
           "tripType",
           "promoCode",
           "discountHalalas",
-          "firstPaymentHalalas"
+          "walletHalalas",
+          "firstPaymentHalalas",
+          "meetingPoint",
+          "periodDays",
+          "renewable"
         ]
       },
       "SubscriptionView": {
@@ -6499,6 +6895,48 @@
           "from",
           "until"
         ]
+      },
+      "CancelPreviewView": {
+        "type": "object",
+        "properties": {
+          "lastServiceDay": {
+            "type": "string",
+            "nullable": true,
+            "description": "Cancel at period end: last day of service"
+          },
+          "remainingTrips": {
+            "type": "number",
+            "description": "Cancel now: trips left in the paid period"
+          },
+          "creditHalalas": {
+            "type": "number",
+            "description": "Cancel now: credit added to the wallet for them"
+          },
+          "canCancelNow": {
+            "type": "boolean",
+            "description": "Whether cancelling now is possible (a paid period with trips left)"
+          }
+        },
+        "required": [
+          "lastServiceDay",
+          "remainingTrips",
+          "creditHalalas",
+          "canCancelNow"
+        ]
+      },
+      "CancelDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "period_end",
+              "now"
+            ],
+            "default": "period_end",
+            "description": "now: stop today, credit the trips left to the wallet"
+          }
+        }
       },
       "PaymentMethodView": {
         "type": "object",
@@ -7170,6 +7608,221 @@
         "required": [
           "licenseNumber",
           "expiresAt"
+        ]
+      },
+      "MeetingPointView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "zoneId": {
+            "type": "string"
+          },
+          "nameAr": {
+            "type": "string"
+          },
+          "nameEn": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "zoneId",
+          "nameAr",
+          "nameEn",
+          "lat",
+          "lng",
+          "active"
+        ]
+      },
+      "CreateMeetingPointDto": {
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "موقف جامع الرمال"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Al Rimal mosque car park"
+          },
+          "lat": {
+            "type": "number",
+            "example": 24.8661
+          },
+          "lng": {
+            "type": "number",
+            "example": 46.8279
+          }
+        },
+        "required": [
+          "zoneId",
+          "nameAr",
+          "nameEn",
+          "lat",
+          "lng"
+        ]
+      },
+      "UpdateMeetingPointDto": {
+        "type": "object",
+        "properties": {
+          "zoneId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "nameAr": {
+            "type": "string",
+            "example": "موقف جامع الرمال"
+          },
+          "nameEn": {
+            "type": "string",
+            "example": "Al Rimal mosque car park"
+          },
+          "lat": {
+            "type": "number",
+            "example": 24.8661
+          },
+          "lng": {
+            "type": "number",
+            "example": 46.8279
+          },
+          "active": {
+            "type": "boolean"
+          }
+        }
+      },
+      "WalletBalanceView": {
+        "type": "object",
+        "properties": {
+          "partnerId": {
+            "type": "string"
+          },
+          "partnerNameAr": {
+            "type": "string"
+          },
+          "partnerNameEn": {
+            "type": "string"
+          },
+          "balanceHalalas": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "partnerId",
+          "partnerNameAr",
+          "partnerNameEn",
+          "balanceHalalas"
+        ]
+      },
+      "WalletEntryView": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "partnerId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "compensation",
+              "refund",
+              "redeem",
+              "adjustment"
+            ]
+          },
+          "amountHalalas": {
+            "type": "number",
+            "description": "Halalas: + credit, - used"
+          },
+          "noteAr": {
+            "type": "string"
+          },
+          "noteEn": {
+            "type": "string"
+          },
+          "tripId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "partnerId",
+          "kind",
+          "amountHalalas",
+          "noteAr",
+          "noteEn",
+          "tripId",
+          "createdAt"
+        ]
+      },
+      "WalletView": {
+        "type": "object",
+        "properties": {
+          "balances": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WalletBalanceView"
+            }
+          },
+          "entries": {
+            "description": "Newest first, up to 100",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WalletEntryView"
+            }
+          }
+        },
+        "required": [
+          "balances",
+          "entries"
+        ]
+      },
+      "AdjustWalletDto": {
+        "type": "object",
+        "properties": {
+          "riderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "partnerId": {
+            "type": "string",
+            "format": "uuid",
+            "description": "Super admins only; others use their own partner"
+          },
+          "amountHalalas": {
+            "type": "number",
+            "example": 2500,
+            "description": "Halalas; negative takes credit back"
+          },
+          "note": {
+            "type": "string",
+            "example": "تعويض عن تأخر رحلة الأحد"
+          }
+        },
+        "required": [
+          "riderId",
+          "amountHalalas",
+          "note"
         ]
       },
       "JoinDto": {

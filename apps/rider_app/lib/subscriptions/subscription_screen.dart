@@ -102,21 +102,48 @@ class _BodyState extends ConsumerState<_Body> {
       await _act((repo) => repo.cancel(s.id));
       return;
     }
-    final ok = await showDialog<bool>(
+    CancelPreview? preview;
+    try {
+      preview = await ref.read(riderRepositoryProvider).cancelPreview(s.id);
+    } catch (_) {
+      preview = null; // Fall back to stopping at period end.
+    }
+    if (!mounted) return;
+    final p = preview;
+    final choice = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        content: Text(t.cancelConfirm),
+        title: Text(t.cancelTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(p?.lastServiceDay == null ? t.cancelConfirm : t.cancelAtEnd(p!.lastServiceDay!)),
+            if (p != null && p.canCancelNow) ...[
+              const SizedBox(height: 12),
+              Text(t.cancelNowText(p.remainingTrips, t.sar(p.creditHalalas))),
+            ],
+          ],
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(t.back)),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(t.back)),
+          if (p != null && p.canCancelNow)
+            TextButton(
+              onPressed: () => Navigator.pop(context, 'now'),
+              style: TextButton.styleFrom(foregroundColor: Brand.red),
+              child: Text(t.cancelNowButton),
+            ),
           TextButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () => Navigator.pop(context, 'period_end'),
             style: TextButton.styleFrom(foregroundColor: Brand.red),
-            child: Text(t.cancel),
+            child: Text(t.cancelAtEndButton),
           ),
         ],
       ),
     );
-    if (ok == true) await _act((repo) => repo.cancel(s.id));
+    if (choice == null) return;
+    await _act((repo) => repo.cancel(s.id, now: choice == 'now'));
+    if (choice == 'now') ref.invalidate(walletProvider);
   }
 
   @override

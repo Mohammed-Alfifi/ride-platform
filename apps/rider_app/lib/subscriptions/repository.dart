@@ -89,7 +89,13 @@ class RiderRepository {
 
   Future<Subscription> resume(String id) async => Subscription.fromJson(await _api.post('/v1/subscriptions/$id/resume'));
 
-  Future<Subscription> cancel(String id) async => Subscription.fromJson(await _api.post('/v1/subscriptions/$id/cancel'));
+  Future<Subscription> cancel(String id, {bool now = false}) async =>
+      Subscription.fromJson(await _api.post('/v1/subscriptions/$id/cancel', data: {if (now) 'mode': 'now'}));
+
+  Future<CancelPreview> cancelPreview(String id) async =>
+      CancelPreview.fromJson(await _api.get('/v1/subscriptions/$id/cancel-preview'));
+
+  Future<Wallet> wallet() async => Wallet.fromJson(await _api.get('/v1/wallet'));
 
   Future<Subscription> keep(String id) async => Subscription.fromJson(await _api.post('/v1/subscriptions/$id/keep'));
 
@@ -141,6 +147,8 @@ final familyProvider = FutureProvider.autoDispose<List<FamilyMember>>((ref) => r
 final tripsProvider = FutureProvider.autoDispose<List<Trip>>((ref) => ref.watch(riderRepositoryProvider).trips());
 
 final cardsProvider = FutureProvider.autoDispose<List<SavedCard>>((ref) => ref.watch(riderRepositoryProvider).cards());
+
+final walletProvider = FutureProvider.autoDispose<Wallet>((ref) => ref.watch(riderRepositoryProvider).wallet());
 
 final invoicesProvider = FutureProvider.autoDispose<List<Invoice>>((ref) => ref.watch(riderRepositoryProvider).invoices());
 

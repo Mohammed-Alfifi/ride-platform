@@ -55,16 +55,22 @@ export class TripGenerator {
   private async forDay(day: string, leg: 'outbound' | 'return', subscriptionId?: string): Promise<number> {
     const outbound = leg === 'outbound';
     const time = outbound ? sql.raw('s.outbound_time') : sql.raw('s.return_time');
+    // The home end is the rider's place, or their meeting point on meeting-point plans.
+    const homeAt = sql.raw('COALESCE(mp.location, p.location)');
+    const homeName = sql.raw('COALESCE(mp.name_ar, p.name)');
+    const awayAt = sql.raw('q.location');
+    const awayName = sql.raw('q.name');
     // The return leg goes from the drop-off back to the pick-up.
-    const [from, to] = outbound ? [sql.raw('p'), sql.raw('q')] : [sql.raw('q'), sql.raw('p')];
+    const [fromAt, fromName, toAt, toName] = outbound ? [homeAt, homeName, awayAt, awayName] : [awayAt, awayName, homeAt, homeName];
     const res = await this.db.execute(sql`
       INSERT INTO trips (subscription_id, partner_id, rider_id, driver_id, service_date, leg, scheduled_at,
                          pickup, pickup_name, dropoff, dropoff_name, passenger_name)
       SELECT s.id, s.partner_id, s.rider_id, s.driver_id, ${day}::date, ${leg}::trip_leg,
              ((${day}::text || ' ' || ${time})::timestamp AT TIME ZONE 'Asia/Riyadh'),
-             ${from}.location, ${from}.name, ${to}.location, ${to}.name, m.name
+             ${fromAt}, ${fromName}, ${toAt}, ${toName}, m.name
       FROM subscriptions s
       LEFT JOIN family_members m ON m.id = s.member_id
+      LEFT JOIN meeting_points mp ON mp.id = s.meeting_point_id
       JOIN places p ON p.id = s.pickup_place_id
       JOIN places q ON q.id = s.dropoff_place_id
       WHERE s.status IN ('active', 'past_due')

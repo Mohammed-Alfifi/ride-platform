@@ -123,6 +123,12 @@ export const envSchema = z
     RUN_MAX_RIDE_EXTRA_MINUTES: z.coerce.number().int().min(0).max(120).default(10),
     /** Time at each stop for getting in or out. */
     RUN_STOP_SECONDS: z.coerce.number().int().min(0).max(600).default(60),
+
+    // --- Product (phase 8) ---
+    /** Meeting-point plans: the furthest a rider is asked to walk to their point (straight line). */
+    MEETING_POINT_MAX_WALK_M: z.coerce.number().int().min(100).max(3000).default(800),
+    /** A trip whose car came more than this many minutes after the rider's time earns compensation. */
+    COMPENSATION_LATE_MINUTES: z.coerce.number().int().min(5).max(120).default(15),
     COMPLIANCE_WARN_DAYS: csv.transform((v) => (v.length ? v.map(Number) : [30, 7, 1])),
     /** Public base URL of this API; payment pages return here and gateways send webhooks here. */
     PUBLIC_API_URL: z.string().url().default('http://localhost:3000'),

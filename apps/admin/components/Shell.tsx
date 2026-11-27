@@ -16,6 +16,7 @@ export function Shell({ children }: { children: ReactNode }) {
     { href: '/drivers', label: t.nav.drivers },
     { href: '/zones', label: t.nav.zones },
     { href: '/plans', label: t.nav.plans },
+    { href: '/meeting-points', label: t.nav.meetingPoints },
     { href: '/join-requests', label: t.nav.joinRequests },
     { href: '/access', label: t.nav.access },
     { href: '/subscriptions', label: t.nav.subscriptions },

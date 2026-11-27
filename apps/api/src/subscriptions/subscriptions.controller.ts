@@ -41,7 +41,9 @@ import {
   SubscribeResult,
   SubscriptionView,
   ContractClausesView,
+  CancelDto,
 } from './subscriptions.dto';
+import { CancelPreviewView } from '../wallet/wallet.module';
 import { SubscriptionsService } from './subscriptions.service';
 
 @ApiTags('rider: subscriptions')
@@ -118,12 +120,19 @@ export class RiderController {
     return this.subs.resume(u.id, id);
   }
 
+  @Get('subscriptions/:id/cancel-preview')
+  @ApiOperation({ summary: 'What cancelling at period end or now gives, before the rider chooses' })
+  @ApiOkResponse({ type: CancelPreviewView })
+  cancelPreview(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<CancelPreviewView> {
+    return this.subs.cancelPreview(u.id, id);
+  }
+
   @Post('subscriptions/:id/cancel')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Stop renewing; service continues to the end of the paid period' })
+  @ApiOperation({ summary: 'Stop renewing (service to period end), or stop now with the trips left credited to the wallet' })
   @ApiOkResponse({ type: SubscriptionView })
-  cancel(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string): Promise<SubscriptionView> {
-    return this.subs.cancel(u.id, id);
+  cancel(@CurrentUser() u: AuthUser, @Param('id', ParseUUIDPipe) id: string, @Body() dto: CancelDto): Promise<SubscriptionView> {
+    return this.subs.cancel(u.id, id, dto.mode);
   }
 
   @Post('subscriptions/:id/keep')
@@ -334,6 +343,7 @@ export class AdminBillingController {
         .select({
           id: subscriptions.id,
           status: subscriptions.status,
+          riderId: subscriptions.riderId,
           riderName: users.name,
           riderPhone: users.phone,
           planNameAr: plans.nameAr,

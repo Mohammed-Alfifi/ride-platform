@@ -93,6 +93,10 @@ const messages: Record<Locale, Record<ErrorCode, string>> = {
     DRIVER_NOT_QUALIFIED: 'السائق لا يستوفي اشتراطات هذه الفئة: {issues}.',
     ESCORT_REQUIRED: 'هذه الباقة تتطلب مرافقا في المركبة. أضف اسم المرافق في بيانات المركبة.',
     CABIN_CHECK_REQUIRED: 'تأكد أن المركبة خالية من الطلاب قبل إنهاء الرحلة.',
+    MEETING_POINT_OUTSIDE_ZONE: 'نقطة التجمع يجب أن تكون داخل نطاق الخدمة.',
+    NO_MEETING_POINT_NEARBY: 'لا توجد نقطة تجمع قريبة من موقعك ضمن {meters} متر.',
+    TRIAL_ALREADY_USED: 'استخدمت هذه الباقة التجريبية من قبل.',
+    TRIAL_NO_SERVICE_DAY: 'لا يقع أي من الأيام التي اخترتها ضمن مدة الباقة.',
     INTERNAL: 'حدث خطأ غير متوقع. حاول مرة أخرى.',
   },
   en: {
@@ -185,6 +189,10 @@ const messages: Record<Locale, Record<ErrorCode, string>> = {
     DRIVER_NOT_QUALIFIED: 'The driver does not meet this class\'s requirements: {issues}.',
     ESCORT_REQUIRED: 'This plan needs an escort on board. Add the escort to the vehicle details.',
     CABIN_CHECK_REQUIRED: 'Confirm no student is left in the vehicle before ending the trip.',
+    MEETING_POINT_OUTSIDE_ZONE: 'The meeting point must be inside the service area.',
+    NO_MEETING_POINT_NEARBY: 'No meeting point within {meters} m of your place.',
+    TRIAL_ALREADY_USED: 'You have already used this trial plan.',
+    TRIAL_NO_SERVICE_DAY: 'None of the days you chose falls within the plan period.',
     INTERNAL: 'Something went wrong. Please try again.',
   },
 };

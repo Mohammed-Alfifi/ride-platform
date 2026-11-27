@@ -36,6 +36,9 @@ class Plan {
     required this.maxDistanceKm,
     this.serviceClass = 'commute',
     this.womenOnly = false,
+    this.pickupMode = 'door',
+    this.periodDays,
+    this.renewable = true,
   });
 
   factory Plan.fromJson(Map<String, dynamic> j) => Plan(
@@ -48,6 +51,9 @@ class Plan {
         maxDistanceKm: _int(j['maxDistanceKm']),
         serviceClass: j['serviceClass'] as String? ?? 'commute',
         womenOnly: j['womenOnly'] as bool? ?? false,
+        pickupMode: j['pickupMode'] as String? ?? 'door',
+        periodDays: j['periodDays'] == null ? null : _int(j['periodDays']),
+        renewable: j['renewable'] as bool? ?? true,
       );
 
   final String id;
@@ -59,7 +65,11 @@ class Plan {
   final int maxDistanceKm;
   final String serviceClass; // commute | education
   final bool womenOnly;
+  final String pickupMode; // door | meeting_point
+  final int? periodDays; // null: a month
+  final bool renewable;
 
+  bool get meetingPoint => pickupMode == 'meeting_point';
   bool get roundTrip => tripType == 'round_trip';
   bool get education => serviceClass == 'education';
   String name(bool ar) => ar ? nameAr : nameEn;
@@ -96,9 +106,17 @@ class Quote {
     required this.vatHalalas,
     this.promoCode,
     this.discountHalalas = 0,
+    this.walletHalalas = 0,
+    this.meetingPoint,
+    this.periodDays,
+    this.renewable = true,
   });
 
   factory Quote.fromJson(Map<String, dynamic> j) => Quote(
+        walletHalalas: _int(j['walletHalalas']),
+        meetingPoint: j['meetingPoint'] is Map ? MeetingPoint.fromJson(Map<String, dynamic>.from(j['meetingPoint'] as Map)) : null,
+        periodDays: j['periodDays'] == null ? null : _int(j['periodDays']),
+        renewable: j['renewable'] as bool? ?? true,
         promoCode: _str(j['promoCode']),
         discountHalalas: _int(j['discountHalalas']),
         eligible: j['eligible'] == true,
@@ -117,8 +135,70 @@ class Quote {
   final int vatHalalas;
   final String? promoCode;
   final int discountHalalas;
+  final int walletHalalas;
+  final MeetingPoint? meetingPoint;
+  final int? periodDays;
+  final bool renewable;
 
-  int get firstPaymentHalalas => priceHalalas - discountHalalas;
+  int get firstPaymentHalalas => priceHalalas - discountHalalas - walletHalalas;
+}
+
+/// Where a meeting-point plan picks the rider up, and how far it is to walk there.
+class MeetingPoint {
+  const MeetingPoint({required this.id, required this.nameAr, required this.nameEn, required this.walkMeters});
+  factory MeetingPoint.fromJson(Map<String, dynamic> j) => MeetingPoint(
+        id: j['id'] as String,
+        nameAr: j['nameAr'] as String,
+        nameEn: j['nameEn'] as String,
+        walkMeters: _int(j['walkMeters']),
+      );
+  final String id;
+  final String nameAr;
+  final String nameEn;
+  final int walkMeters;
+  String name(bool ar) => ar ? nameAr : nameEn;
+}
+
+class WalletEntry {
+  const WalletEntry({required this.kind, required this.amountHalalas, required this.createdAt, this.noteAr, this.noteEn});
+  factory WalletEntry.fromJson(Map<String, dynamic> j) => WalletEntry(
+        kind: j['kind'] as String,
+        amountHalalas: _int(j['amountHalalas']),
+        createdAt: DateTime.parse(j['createdAt'] as String),
+        noteAr: _str(j['noteAr']),
+        noteEn: _str(j['noteEn']),
+      );
+  final String kind; // compensation | refund | redeem | adjustment
+  final int amountHalalas;
+  final DateTime createdAt;
+  final String? noteAr;
+  final String? noteEn;
+  String? note(bool ar) => ar ? noteAr : noteEn;
+}
+
+class Wallet {
+  const Wallet({required this.balanceHalalas, required this.entries});
+  factory Wallet.fromJson(Map<String, dynamic> j) => Wallet(
+        balanceHalalas: (j['balances'] as List? ?? const [])
+            .fold<int>(0, (sum, b) => sum + _int((b as Map)['balanceHalalas'])),
+        entries: (j['entries'] as List? ?? const []).map((e) => WalletEntry.fromJson(Map<String, dynamic>.from(e as Map))).toList(),
+      );
+  final int balanceHalalas;
+  final List<WalletEntry> entries;
+}
+
+class CancelPreview {
+  const CancelPreview({required this.lastServiceDay, required this.remainingTrips, required this.creditHalalas, required this.canCancelNow});
+  factory CancelPreview.fromJson(Map<String, dynamic> j) => CancelPreview(
+        lastServiceDay: _str(j['lastServiceDay']),
+        remainingTrips: _int(j['remainingTrips']),
+        creditHalalas: _int(j['creditHalalas']),
+        canCancelNow: j['canCancelNow'] == true,
+      );
+  final String? lastServiceDay;
+  final int remainingTrips;
+  final int creditHalalas;
+  final bool canCancelNow;
 }
 
 class FamilyMember {

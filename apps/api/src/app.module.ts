@@ -28,6 +28,8 @@ import { PilotModule } from './pilot/pilot.module';
 import { ServicesModule } from './services/services.module';
 import { ComplianceModule } from './compliance/compliance.module';
 import { RoutingModule } from './routing/routing.module';
+import { MeetingPointsModule } from './meeting-points/meeting-points.module';
+import { WalletModule } from './wallet/wallet.module';
 
 const env = loadEnv();
 
@@ -86,6 +88,8 @@ function hasPrettyLogs(): boolean {
     ServicesModule,
     ComplianceModule,
     RoutingModule,
+    MeetingPointsModule,
+    WalletModule,
     PilotModule,
     MonitoringModule,
     JobsModule,
